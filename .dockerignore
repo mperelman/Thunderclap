@@ -1,0 +1,50 @@
+# Docker ignore - exclude from image build
+
+# Data files (rebuild on server)
+data/
+vectordb/
+source_documents/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Archive files
+docs/archive/
+
+# Test files
+tests/
+temp/
+
+# Development files
+scripts/
+build_index.py
+query.py
+
+# Git files
+.git/
+.gitignore
+.railwayignore
+
+# IDE files
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment files
+.env
+env.example
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
