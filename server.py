@@ -135,6 +135,25 @@ async def root():
 async def health():
     return {"status": "ok"}
 
+@app.get("/test")
+async def test():
+    """Test endpoint to verify server is working."""
+    try:
+        print("[TEST] Test endpoint called")
+        sys.stdout.flush()
+        return {
+            "status": "ok",
+            "message": "Server is working",
+            "api_key_present": bool(gemini_key),
+            "api_key_length": len(gemini_key) if gemini_key else 0
+        }
+    except Exception as e:
+        print(f"[TEST] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.stdout.flush()
+        return {"status": "error", "error": str(e)}
+
 @app.get("/query")
 async def query_get():
     """Handle GET requests to /query with helpful error message."""
