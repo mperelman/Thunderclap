@@ -155,8 +155,8 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         raise HTTPException(status_code=400, detail="Question too short")
     
     query_start_time = time.time()
-        init_start = time.time()
-        try:
+    init_start = time.time()
+    try:
         # Generate answer (matches archived working_api.py pattern)
         print(f"[SERVER] Processing query: {req.question}")
         print(f"[SERVER] Request ID: {request_id}")
