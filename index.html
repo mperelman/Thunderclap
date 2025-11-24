@@ -1123,44 +1123,16 @@
                                'Your question is still in the box above - try simplifying it or breaking it into smaller parts.\n\n' +
                                'Check server console logs for Request ID, or visit http://localhost:8000/status to see recent requests.';
                 } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
-                    // Try to check if server is running (async check)
-                    const checkServer = async () => {
-                        try {
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 2000);
-                            const healthCheck = await fetch('http://localhost:8000/health', { 
-                                method: 'GET',
-                                signal: controller.signal
-                            });
-                            clearTimeout(timeoutId);
-                            if (healthCheck.ok) {
-                                // Server is running - likely a timeout or processing issue
-                                return '⚠️ Connection lost. The query might be taking too long (large queries take 30-90 seconds).\n\n' +
-                                       'Your question is still in the box above - just click "Ask Thunderclap" to try again, or simplify your question.\n\n' +
-                                       'Check server console logs for Request ID, or visit http://localhost:8000/status to see recent requests.';
-                            }
-                        } catch (e) {
-                            // Server is not running or not accessible
-                            return '⚠️ Server is not running.\n\n' +
-                                   'Please start the server by running: python server.py\n\n' +
-                                   'Then try your query again.';
-                        }
-                        return '⚠️ Connection lost. Please check if the server is running: python server.py';
-                    };
-                    
-                    // Show checking message immediately, then update when check completes
-                    errorMsg = '⚠️ Connection lost. Checking server status...';
-                    document.getElementById('answer').innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">${errorMsg}</p>`;
-                    checkServer().then(msg => {
-                        document.getElementById('answer').innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">${msg}</p>`;
-                    }).catch(() => {
-                        // If check fails, show server not running message
-                        document.getElementById('answer').innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">⚠️ Server is not running.\n\nPlease start the server by running: python server.py\n\nThen try your query again.</p>`;
-                    });
-                    // Skip default error display - we handle it above with async check
-                    document.getElementById('suggested-questions-container').style.display = 'none';
-                    document.getElementById('result').classList.add('show', 'error');
-                    return; // Exit early to prevent default error display below
+                    // Show actual error with diagnostic info
+                    errorMsg = `⚠️ Network Error: Cannot connect to server\n\n` +
+                               `Error: ${error.name}: ${errorMsg}\n` +
+                               `API URL: ${API_URL}\n\n` +
+                               `Possible causes:\n` +
+                               `- Server not running\n` +
+                               `- Wrong API URL (check ?api= parameter)\n` +
+                               `- CORS issue (server must allow your origin)\n` +
+                               `- Network connectivity problem\n\n` +
+                               `Your question is preserved above - fix the issue and try again.`;
                 } else if (errorMsg.includes('quota') || errorMsg.includes('429')) {
                     errorMsg = '⚠️ API quota exceeded. Please wait 20-30 seconds and try again.\n\n' +
                                'Your question is preserved above - just click "Ask Thunderclap" when ready.';
