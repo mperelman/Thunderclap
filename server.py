@@ -73,7 +73,8 @@ app.add_middleware(
 )
 
 # Store API key for creating QueryEngine instances
-gemini_key = os.getenv('GEMINI_API_KEY')
+gemini_key_raw = os.getenv('GEMINI_API_KEY')
+gemini_key = gemini_key_raw.strip() if gemini_key_raw else None
 if not gemini_key:
     print("="*60)
     print("ERROR: GEMINI_API_KEY environment variable not set!")
@@ -82,6 +83,12 @@ if not gemini_key:
     print("1. Go to Railway → Variables tab")
     print("2. Add variable: GEMINI_API_KEY")
     print("3. Value: Your Gemini API key (no quotes, no spaces)")
+elif len(gemini_key) != 39 or not gemini_key.startswith('AIza'):
+    print("="*60)
+    print(f"WARNING: GEMINI_API_KEY format looks incorrect!")
+    print(f"  Length: {len(gemini_key)} (expected 39)")
+    print(f"  Starts with: {gemini_key[:10]}... (expected 'AIza...')")
+    print("="*60)
     print("4. Railway will auto-redeploy")
     print("="*60)
     sys.exit(1)
