@@ -101,6 +101,23 @@ async def root():
 async def health():
     return {"status": "ok"}
 
+@app.get("/query")
+async def query_get():
+    """Handle GET requests to /query with helpful error message."""
+    return JSONResponse(
+        status_code=405,
+        content={
+            "error": "Method Not Allowed",
+            "message": "The /query endpoint requires a POST request with JSON body.",
+            "example": {
+                "method": "POST",
+                "url": "/query",
+                "headers": {"Content-Type": "application/json"},
+                "body": {"question": "Tell me about Rothschild", "max_length": 15000}
+            }
+        }
+    )
+
 @app.post("/query", response_model=QueryResponse)
 async def query(req: QueryRequest, http_req: Request, resp: Response):
     """Handle query requests - matches archived working_api.py pattern exactly."""
