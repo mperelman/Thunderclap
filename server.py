@@ -198,13 +198,15 @@ def get_status():
     }
 if __name__ == "__main__":
     import uvicorn
+    # Read PORT from environment (Railway/Render set this) or default to 8000
+    port = int(os.getenv("PORT", 8000))
     print("="*60)
     print("Starting Thunderclap AI Server")
     print("="*60)
-    print("Server: http://localhost:8000")
+    print(f"Server: http://0.0.0.0:{port}")
     print("Press Ctrl+C to stop")
     print("="*60)
     # Increase timeout for long-running queries (8 minutes to exceed frontend timeout of 7 minutes)
     # timeout_keep_alive must exceed QUERY_TIMEOUT_SECONDS (420s = 7min) to prevent connection drops
-    uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=480)
+    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=480)
 
