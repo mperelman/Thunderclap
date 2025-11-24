@@ -28,8 +28,8 @@ jobs:
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        # Note: GitHub Pages must be enabled in Settings → Pages → Source: "GitHub Actions"
-        # If you see "Get Pages site failed", enable Pages first: https://github.com/mperelman/Thunderclap/settings/pages
+        with:
+          enablement: true  # Automatically enable GitHub Pages if not already enabled
       
       - name: Build site
         run: |
