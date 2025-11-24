@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+temp/
+*.tmp
+
+# Data files (generated)
+data/
+*.json
+!.gitkeep
+
+# Vector database
+vectordb/
+chroma/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# API Keys
+.env
+*.key
+api_keys.txt
+
+# Large model files
+*.pkl
+*.model
+*.bin
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb

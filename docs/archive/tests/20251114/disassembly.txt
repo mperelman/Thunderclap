@@ -1,0 +1,200 @@
+
+262            LOAD_FAST                3 (expansions)
+               LOAD_CONST               8 (1)
+               BINARY_OP               13 (+=)
+               STORE_FAST               3 (expansions)
+               JUMP_BACKWARD           53 (to L7)
+
+258    L9:     END_FOR
+               POP_TOP
+               JUMP_BACKWARD          100 (to L5)
+
+252   L10:     END_FOR
+               POP_TOP
+               JUMP_BACKWARD          187 (to L3)
+
+242   L11:     END_FOR
+               POP_TOP
+
+264            LOAD_GLOBAL              5 (print + NULL)
+               LOAD_CONST               9 ('  [OK] Added ')
+               LOAD_FAST                3 (expansions)
+               FORMAT_SIMPLE
+               LOAD_CONST              10 (' hierarchical links (specific->general)')
+               BUILD_STRING             3
+               CALL                     1
+               POP_TOP
+
+265            LOAD_FAST                0 (term_to_chunks)
+               RETURN_VALUE
+
+Disassembly of <code object augment_indices_with_identities at 0x0000023B3BB19C60, file "C:\Users\perel\OneDrive\Apps\thunderclap-ai\lib\index_builder.py", line 268>:
+268            RESUME                   0
+
+285            LOAD_FAST                1 (detected_identities)
+               TO_BOOL
+               POP_JUMP_IF_FALSE        6 (to L1)
+               LOAD_CONST               1 ('identities')
+               LOAD_FAST                1 (detected_identities)
+               CONTAINS_OP              1
+               POP_JUMP_IF_FALSE       13 (to L2)
+
+286    L1:     LOAD_GLOBAL              1 (print + NULL)
+               LOAD_CONST               2 ('  [SKIP] No detected identities to augment index')
+               CALL                     1
+               POP_TOP
+
+287            LOAD_FAST                0 (term_to_chunks)
+               RETURN_VALUE
+
+289    L2:     LOAD_GLOBAL              1 (print + NULL)
+               LOAD_CONST               3 ('Augmenting index with identity metadata...')
+               CALL                     1
+               POP_TOP
+
+290            LOAD_CONST               4 (0)
+               STORE_FAST               2 (augmentation_count)
+
+292            LOAD_FAST                1 (detected_identities)
+               LOAD_ATTR                3 (get + NULL|self)
+               LOAD_CONST               1 ('identities')
+               BUILD_MAP                0
+               CALL                     2
+               LOAD_ATTR                5 (items + NULL|self)
+               CALL                     0
+               GET_ITER
+       L3:     FOR_ITER               192 (to L12)
+               UNPACK_SEQUENCE          2
+               STORE_FAST_STORE_FAST   52 (identity, data)
+
+294            LOAD_FAST                4 (data)
+               LOAD_ATTR                3 (get + NULL|self)
+               LOAD_CONST               5 ('families')
+               BUILD_LIST               0
+               CALL                     2
+               COPY                     1
+               TO_BOOL
+               POP_JUMP_IF_TRUE        18 (to L4)
+               POP_TOP
+               LOAD_FAST                4 (data)
+               LOAD_ATTR                3 (get + NULL|self)
+               LOAD_CONST               6 ('individuals')
+               BUILD_LIST               0
+               CALL                     2
+       L4:     STORE_FAST               5 (names)
+
+295            LOAD_FAST                3 (identity)
+               LOAD_ATTR                7 (lower + NULL|self)
+               CALL                     0
+               STORE_FAST               6 (identity_lower)
+
+298            LOAD_FAST_LOAD_FAST     96 (identity_lower, term_to_chunks)
+               CONTAINS_OP              1
+               POP_JUMP_IF_FALSE        4 (to L5)
+
+299            BUILD_LIST               0
+               LOAD_FAST_LOAD_FAST      6 (term_to_chunks, identity_lower)
+               STORE_SUBSCR
+
+301    L5:     LOAD_GLOBAL              9 (set + NULL)
+               LOAD_FAST_LOAD_FAST      6 (term_to_chunks, identity_lower)
+               BINARY_SUBSCR
+               CALL                     1
+               STORE_FAST               7 (existing_chunks)
+
+304            LOAD_FAST                5 (names)
+               GET_ITER
+       L6:     FOR_ITER               100 (to L11)
+               STORE_FAST               8 (name)
+
+305            LOAD_FAST                8 (name)
+               LOAD_ATTR                7 (lower + NULL|self)
+               CALL                     0
+               STORE_FAST               9 (name_lower)
+
+308            LOAD_FAST_LOAD_FAST    144 (name_lower, term_to_chunks)
+               CONTAINS_OP              0
+               POP_JUMP_IF_FALSE       61 (to L10)
+
+309            LOAD_FAST_LOAD_FAST      9 (term_to_chunks, name_lower)
+               BINARY_SUBSCR
+               STORE_FAST              10 (name_chunks)
+
+312            LOAD_FAST               10 (name_chunks)
+               GET_ITER
+       L7:     FOR_ITER                51 (to L9)
+               STORE_FAST              11 (chunk_id)
+
+313            LOAD_FAST_LOAD_FAST    183 (chunk_id, existing_chunks)
+               CONTAINS_OP              1
+               POP_JUMP_IF_TRUE         2 (to L8)
+               JUMP_BACKWARD           10 (to L7)
+
+314    L8:     LOAD_FAST_LOAD_FAST      6 (term_to_chunks, identity_lower)
+               BINARY_SUBSCR
+               LOAD_ATTR               11 (append + NULL|self)
+               LOAD_FAST               11 (chunk_id)
+               CALL                     1
+               POP_TOP
+
+315            LOAD_FAST                7 (existing_chunks)
+               LOAD_ATTR               13 (add + NULL|self)
+               LOAD_FAST               11 (chunk_id)
+               CALL                     1
+               POP_TOP
+
+316            LOAD_FAST                2 (augmentation_count)
+               LOAD_CONST               7 (1)
+               BINARY_OP               13 (+=)
+               STORE_FAST               2 (augmentation_count)
+               JUMP_BACKWARD           53 (to L7)
+
+312    L9:     END_FOR
+               POP_TOP
+
+318   L10:     LOAD_GLOBAL              1 (print + NULL)
+               LOAD_CONST               8 ('  [OK] Added ')
+               LOAD_FAST                2 (augmentation_count)
+               FORMAT_SIMPLE
+Traceback (most recent call last):
+  File "C:\Users\perel\OneDrive\Apps\thunderclap-ai\temp\deep_extract_index_builder.py", line 17, in <module>
+    dis.dis(code)
+    ~~~~~~~^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 116, in dis
+    _disassemble_recursive(x, file=file, depth=depth, show_caches=show_caches, adaptive=adaptive, show_offsets=show_offsets)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 788, in _disassemble_recursive
+    _disassemble_recursive(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        x, file=file, depth=depth, show_caches=show_caches,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        adaptive=adaptive, show_offsets=show_offsets
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 780, in _disassemble_recursive
+    disassemble(co, file=file, show_caches=show_caches, adaptive=adaptive, show_offsets=show_offsets)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 775, in disassemble
+    _disassemble_bytes(_get_code_array(co, adaptive), lasti, linestarts,
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       exception_entries=exception_entries, co_positions=co.co_positions(),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       original_code=co.co_code, arg_resolver=arg_resolver, formatter=formatter)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 838, in _disassemble_bytes
+    print_instructions(instrs, exception_entries, formatter, lasti=lasti)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 846, in print_instructions
+    formatter.print_instruction(instr, is_current_instr)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 443, in print_instruction
+    self.print_instruction_line(instr, mark_as_current)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\dis.py", line 509, in print_instruction_line
+    print(' '.join(fields).rstrip(), file=self.file)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 53: character maps to <undefined>

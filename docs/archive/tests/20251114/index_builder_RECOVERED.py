@@ -1,0 +1,1 @@
+C:\Users\perel\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\python.exe: No module named decompyle3.__main__; 'decompyle3' is a package and cannot be directly executed
