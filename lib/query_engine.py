@@ -2937,9 +2937,10 @@ Answer:"""
         # If adding this request would exceed limit, wait (but be more aggressive - use 95% of limit)
         if recent_tokens + request_tokens > self._token_rate_limit * 0.95:  # Use 95% of limit (more aggressive)
             tokens_over = (recent_tokens + request_tokens) - (self._token_rate_limit * 0.95)
-            # Wait until we can fit this request
+            # Wait until we can fit this request (cap at 15s to avoid connection drops)
             wait_time = (tokens_over / self._token_rate_limit) * 60  # Convert to seconds
-            if wait_time > 2:  # Only wait if more than 2 seconds (reduced threshold)
+            wait_time = min(wait_time, 15.0)  # Cap at 15s maximum
+            if wait_time > 2:  # Only wait if more than 2 seconds
                 print(f"  [RATE_LIMIT] Token limit: waiting {wait_time:.1f}s ({recent_tokens:,}/{self._token_rate_limit:,} tokens used)")
                 time.sleep(wait_time)
     

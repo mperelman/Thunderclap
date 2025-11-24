@@ -168,9 +168,9 @@ class LLMAnswerGenerator:
                     else:
                         wait_time = backoff
                         print(f"  [RETRY] Rate limited, backing off {backoff:.1f}s (attempt {attempts+1}/{max_attempts})")
-                        # For control queries with reduced retries, cap backoff lower to prevent long waits
-                        max_backoff = 30.0 if max_attempts <= 3 else 60.0
-                        backoff = min(backoff * 2, max_backoff)  # Cap at 30s for control queries, 60s otherwise
+                        # Cap backoff to prevent long connection timeouts
+                        max_backoff = 15.0  # Maximum 15s wait to avoid connection drops
+                        backoff = min(backoff * 2, max_backoff)
                     
                     import time
                     time.sleep(wait_time)
@@ -269,7 +269,8 @@ class LLMAnswerGenerator:
                     else:
                         wait_time = backoff
                         print(f"  [RETRY] Async rate limited, backing off {backoff:.1f}s (attempt {attempts+1}/{max_attempts})")
-                        backoff = min(backoff * 2, 60.0)  # Cap at 60 seconds
+                        max_backoff = 15.0  # Maximum 15s wait to avoid connection drops
+                        backoff = min(backoff * 2, max_backoff)
                     
                     import asyncio
                     await asyncio.sleep(wait_time)
