@@ -55,3 +55,7 @@ api_keys.txt
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+
+# Source documents - keep local but don't commit to GitHub
+source_documents/*.docx
+source_documents/**/*.docx
