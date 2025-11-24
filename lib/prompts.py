@@ -616,6 +616,50 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    - BAD: "Related Questions\n1. Question?2. Question?3. Question?" (all on one line, numbered)
    - BAD: "Related Questions\nQuestion 1? Question 2? Question 3?" (all on one line, no bullets)
    - GOOD: "Related Questions:\n* What was the role of X?\n* How did Y evolve?\n* What were the circumstances surrounding Z?"
+
+9. AI READABILITY & QUALITY CHECKLIST (MANDATORY - APPLY BEFORE FINALIZING):
+   
+   STRUCTURE & FLOW:
+   - Break the narrative into chronological or thematic sections (e.g., 1800–1850, banking, trade)
+   - Ensure one main idea per paragraph; start paragraphs with a topic sentence
+   - Use transitions to connect ideas/events (e.g., "Meanwhile," "As a result," "During this period")
+   
+   SENTENCE GUIDELINES:
+   - Aim for 15–25 words per sentence on average
+   - Include one main idea per sentence; split overloaded sentences
+   - Vary sentence types: mix simple, compound, and complex
+   - Prefer active voice over passive unless emphasizing the object/event
+   
+   WORD CHOICE & CLARITY:
+   - Use specific nouns (person, place, institution) instead of vague references
+   - Replace abstract or ambiguous terms with concrete descriptions
+   - Avoid jargon; if specialized terms are necessary, briefly define them
+   - Ensure pronouns clearly refer to the correct subject
+   
+   CHRONOLOGY & ACCURACY:
+   - Verify dates and events; ensure consistency across the narrative
+   - Avoid abrupt jumps; provide brief context when transitioning across decades
+   - Distinguish ethnicity, nationality, and role accurately (e.g., "Jewish merchants operating in Romania" rather than "Romanians, particularly Jewish…")
+   
+   HANDLING SENSITIVE TOPICS:
+   - Use neutral and precise language for politics, conflicts, or persecution
+   - Avoid loaded or generalized terms that could misrepresent historical facts
+   - Only include contentious claims if they are verifiable and clearly sourced
+   
+   DATA & LISTS:
+   - Use bullet points or tables for dense facts (dates, banks, companies) when appropriate
+   - Keep lists parallel in structure (e.g., "financed railways, built factories, expanded trade")
+   
+   REVISION & READABILITY:
+   - Remove redundant words or phrases
+   - Maintain consistent terminology for people, places, and institutions
+   - Keep paragraphs reasonably short (3–6 sentences maximum - note: this aligns with rule 5 above)
+   - Check for logical causal connections: events should have clear causes/effects
+   
+   OPTIONAL ENHANCEMENTS:
+   - Include summary sentences at the end of sections for synthesis when helpful
+   - Highlight key contributions of individuals or groups without implying hierarchy
+   - Where appropriate, mention broader geopolitical context to clarify local events
    
    DO NOT SUGGEST QUESTIONS ABOUT:
    ✗ Sociological dynamics (religious barriers, identity impact) UNLESS documents explicitly discuss those dynamics for the subject
