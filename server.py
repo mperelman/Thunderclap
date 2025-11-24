@@ -161,6 +161,15 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
                 loop.run_in_executor(None, lambda: qe.query(req.question, use_llm=True)),
                 timeout=QUERY_TIMEOUT_SECONDS - 10  # Leave 10s buffer for cleanup
             )
+        except RuntimeError as e:
+            # Handle missing database gracefully
+            error_msg = str(e)
+            print(f"[SERVER] Database error: {error_msg}")
+            trace_event(request_id, "error", type="RuntimeError", message=error_msg)
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database not initialized. {error_msg} Request ID: {request_id}"
+            )
         except asyncio.TimeoutError:
             query_time = time.time() - query_start
             trace_event(request_id, "query_timeout", duration=query_time)

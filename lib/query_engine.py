@@ -91,7 +91,9 @@ class QueryEngine:
             print(f"  [ERROR] Could not find collection '{COLLECTION_NAME}'")
             print(f"    Error: {e}")
             print(f"    Run: python build_index.py")
-            raise
+            print(f"  [WARNING] Server will start but queries will fail until index is built")
+            # Set collection to None - queries will fail gracefully with clear error
+            self.collection = None
         
         # Load pre-built indices
         self._load_indices()
@@ -211,6 +213,9 @@ class QueryEngine:
         Returns:
             List of matching document chunks
         """
+        if self.collection is None:
+            raise RuntimeError("Database not initialized. Please run: python build_index.py")
+        
         term_lower = term.lower()
         # Canonicalize term to match TERM_GROUPS merges (e.g., "blacks" -> "black")
         canonical = canonicalize_term(term_lower)
@@ -245,6 +250,15 @@ class QueryEngine:
         import time
         from lib.config import QUERY_TIMEOUT_SECONDS
         query_start = time.time()
+        
+        # Check if collection exists
+        if self.collection is None:
+            raise RuntimeError(
+                "Database not initialized. The ChromaDB collection 'historical_documents' is missing.\n"
+                "Please run: python build_index.py\n"
+                "This will create the required data/ folder with indices and vector database."
+            )
+        
         # CRITICAL: Always get fresh collection reference to avoid ChromaDB stale UUID caching
         try:
             print(f"  [QUERY_START] Processing: '{question[:60]}...'")
@@ -257,6 +271,10 @@ class QueryEngine:
             print(f"  [FATAL] Cannot get collection at query start: {e}")
             import traceback
             traceback.print_exc()
+            raise RuntimeError(
+                f"Database connection failed: {e}\n"
+                "Please ensure the index has been built: python build_index.py"
+            )
             raise
         """
         Query the documents and generate an answer.
