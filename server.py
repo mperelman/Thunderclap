@@ -20,7 +20,7 @@ import json
 
 # Import query engine
 from lib.query_engine import QueryEngine
-from lib.config import MAX_ANSWER_LENGTH
+from lib.config import MAX_ANSWER_LENGTH, QUERY_TIMEOUT_SECONDS
 
 app = FastAPI(title="Thunderclap AI")
 
@@ -71,6 +71,18 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],  # expose X-Request-ID to browser
 )
+
+# Add middleware to send keepalive headers and prevent proxy timeouts
+@app.middleware("http")
+async def add_timeout_headers(request: Request, call_next):
+    """Add headers to prevent proxy timeouts during long requests."""
+    response = await call_next(request)
+    # Add headers to prevent Railway proxy timeout
+    response.headers["X-Accel-Buffering"] = "no"  # Disable nginx buffering
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Connection"] = "keep-alive"
+    response.headers["Keep-Alive"] = "timeout=600"  # 10 minutes
+    return response
 
 # Store API key for creating QueryEngine instances
 gemini_key_raw = os.getenv('GEMINI_API_KEY')
@@ -355,7 +367,15 @@ if __name__ == "__main__":
     print(f"Server: http://0.0.0.0:{port}")
     print("Press Ctrl+C to stop")
     print("="*60)
-    # Increase timeout for long-running queries (8 minutes to exceed frontend timeout of 7 minutes)
-    # timeout_keep_alive must exceed QUERY_TIMEOUT_SECONDS (420s = 7min) to prevent connection drops
-    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=480)
+    # CRITICAL: Set very high timeout to prevent Railway proxy from timing out
+    # Railway proxy timeout is likely 60s, but we set uvicorn to 600s (10 min) to be safe
+    # This ensures the connection stays alive during long queries
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=port, 
+        timeout_keep_alive=600,  # 10 minutes - exceeds Railway's likely 60s proxy timeout
+        timeout_graceful_shutdown=30,
+        log_level="info"
+    )
 
