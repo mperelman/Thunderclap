@@ -9,7 +9,9 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from collections import defaultdict, deque
 import time
@@ -21,6 +23,16 @@ from lib.query_engine import QueryEngine
 from lib.config import MAX_ANSWER_LENGTH
 
 app = FastAPI(title="Thunderclap AI")
+
+# Add validation error handler to see what's wrong
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print(f"[DEBUG] Validation error: {exc.errors()}")
+    print(f"[DEBUG] Request body: {await request.body()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(await request.body())}
+    )
 
 # CORS
 app.add_middleware(
