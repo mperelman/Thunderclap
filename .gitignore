@@ -25,7 +25,9 @@ temp/
 *.tmp
 
 # Data files (generated)
-data/
+# data/ - TEMPORARILY UNCOMMENTED to include in Railway build
+# TODO: Remove from Git after Railway deployment, then uncomment this line
+# data/
 *.json
 !.gitkeep
 
