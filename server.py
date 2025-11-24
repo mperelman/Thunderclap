@@ -24,14 +24,42 @@ from lib.config import MAX_ANSWER_LENGTH
 
 app = FastAPI(title="Thunderclap AI")
 
+# Add global exception handler to catch ALL errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_type = type(exc).__name__
+    error_msg = str(exc)
+    print(f"[GLOBAL ERROR HANDLER] {error_type}: {error_msg}")
+    print(f"[GLOBAL ERROR HANDLER] Full traceback:")
+    traceback.print_exc()
+    import sys
+    sys.stdout.flush()
+    
+    # Try to get request ID from headers
+    request_id = request.headers.get("X-Request-ID", "unknown")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Server error: {error_msg}",
+            "error_type": error_type,
+            "request_id": request_id
+        }
+    )
+
 # Add validation error handler to see what's wrong
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     print(f"[DEBUG] Validation error: {exc.errors()}")
-    print(f"[DEBUG] Request body: {await request.body()}")
+    try:
+        body = await request.body()
+        print(f"[DEBUG] Request body: {body}")
+    except:
+        print(f"[DEBUG] Could not read request body")
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": str(await request.body())}
+        content={"detail": exc.errors()}
     )
 
 # CORS
