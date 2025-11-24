@@ -422,7 +422,7 @@
     </div>
 
     <script>
-        // API URL - can be set via ?api= parameter
+        // API URL - can be set via ?api= parameter, defaults to Railway for GitHub Pages
         const API_URL = (() => {
             const urlParams = new URLSearchParams(window.location.search);
             const apiParam = urlParams.get('api');
@@ -430,15 +430,13 @@
                 // Ensure it ends with /query if not already
                 return apiParam.endsWith('/query') ? apiParam : apiParam + '/query';
             }
+            // If on GitHub Pages, use Railway URL by default
+            if (window.location.hostname.includes('github.io')) {
+                return 'https://web-production-c4223.up.railway.app/query';
+            }
             // Default to localhost for local development
             return 'http://localhost:8000/query';
         })();
-        
-        // Check if we're on GitHub Pages but API URL is localhost
-        if (window.location.hostname.includes('github.io') && API_URL.includes('localhost')) {
-            console.warn('[WARNING] You are on GitHub Pages but API URL points to localhost.');
-            console.warn('[WARNING] Add ?api=YOUR_RAILWAY_URL to the page URL.');
-        }
         
         function fillExample(text) {
             document.getElementById('question').value = text;
