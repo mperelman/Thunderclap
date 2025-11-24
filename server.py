@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from collections import defaultdict, deque
 import time
@@ -246,51 +246,66 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         trace_event(request_id, "engine_init", duration=init_time)
         sys.stdout.flush()
         
-        # Process query (uses sequential processing to avoid event loop conflicts)
-        # Run blocking query in executor to avoid blocking async event loop
-        # Add timeout wrapper to ensure we don't exceed QUERY_TIMEOUT_SECONDS
+        # CRITICAL FIX: Send immediate response headers to prevent connection timeout
+        # Then process query and stream progress updates
         import asyncio
         loop = asyncio.get_event_loop()
         query_start = time.time()
         
-        # Wrap query in timeout to prevent exceeding server timeout
-        try:
-            answer = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: qe.query(req.question, use_llm=True)),
-                timeout=QUERY_TIMEOUT_SECONDS - 10  # Leave 10s buffer for cleanup
-            )
-        except RuntimeError as e:
-            # Handle missing database gracefully
-            error_msg = str(e)
-            print(f"[SERVER] Database error: {error_msg}")
-            trace_event(request_id, "error", type="RuntimeError", message=error_msg)
-            raise HTTPException(
-                status_code=503,
-                detail=f"Database not initialized. {error_msg} Request ID: {request_id}"
-            )
-        except asyncio.TimeoutError:
+        async def stream_query_progress():
+            """Stream query progress with keepalive to prevent timeouts."""
+            # Send immediate acknowledgment
+            yield f"data: {json.dumps({'status': 'started', 'request_id': request_id})}\n\n"
+            
+            # Start processing in executor
+            query_task = loop.run_in_executor(None, lambda: qe.query(req.question, use_llm=True))
+            
+            # Send keepalive every 15 seconds while processing
+            last_update = time.time()
+            while not query_task.done():
+                await asyncio.sleep(2)  # Check every 2 seconds
+                elapsed = time.time() - last_update
+                if elapsed >= 15.0:  # Send keepalive every 15 seconds
+                    total_elapsed = int(time.time() - query_start)
+                    yield f"data: {json.dumps({'status': 'processing', 'elapsed': total_elapsed, 'request_id': request_id})}\n\n"
+                    last_update = time.time()
+            
+            # Get result
+            try:
+                answer = await query_task
+            except RuntimeError as e:
+                error_msg = str(e)
+                print(f"[SERVER] Database error: {error_msg}")
+                trace_event(request_id, "error", type="RuntimeError", message=error_msg)
+                yield f"data: {json.dumps({'status': 'error', 'detail': f'Database not initialized. {error_msg}', 'request_id': request_id})}\n\n"
+                return
+            
             query_time = time.time() - query_start
-            trace_event(request_id, "query_timeout", duration=query_time)
-            raise HTTPException(
-                status_code=504,
-                detail=f"Query timed out after {query_time:.1f}s (limit: {QUERY_TIMEOUT_SECONDS}s). Request ID: {request_id}"
-            )
+            print(f"[SERVER] Query processing took {query_time:.1f}s")
+            trace_event(request_id, "query_processing", duration=query_time)
+            sys.stdout.flush()
+            
+            # Truncate if needed
+            if len(answer) > req.max_length:
+                answer = answer[:req.max_length] + "\n\n[Truncated]"
+            
+            duration = time.time() - query_start_time
+            trace_event(request_id, "query_complete", duration=duration, answer_length=len(answer))
+            print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
+            sys.stdout.flush()
+            
+            # Send final result
+            yield f"data: {json.dumps({'status': 'complete', 'answer': answer, 'request_id': request_id})}\n\n"
         
-        query_time = time.time() - query_start
-        print(f"[SERVER] Query processing took {query_time:.1f}s")
-        trace_event(request_id, "query_processing", duration=query_time)
-        sys.stdout.flush()
-        
-        # Truncate if needed
-        if len(answer) > req.max_length:
-            answer = answer[:req.max_length] + "\n\n[Truncated]"
-        
-        duration = time.time() - query_start_time
-        trace_event(request_id, "query_complete", duration=duration, answer_length=len(answer))
-        print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
-        sys.stdout.flush()
-        
-        return QueryResponse(answer=answer)
+        return StreamingResponse(
+            stream_query_progress(),
+            media_type="text/event-stream",
+            headers={
+                "X-Request-ID": request_id,
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive"
+            }
+        )
     
     except Exception as e:
         duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
