@@ -103,7 +103,8 @@ class QueryEngine:
         self.llm = None
         try:
             # Use Gemini API key (priority: parameter > env var)
-            api_key = gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+            api_key_raw = gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+            api_key = api_key_raw.strip() if api_key_raw else None
             self.llm = LLMAnswerGenerator(api_key=api_key)
         except Exception as e:
             print(f"  [WARNING] LLM initialization failed: {e}")

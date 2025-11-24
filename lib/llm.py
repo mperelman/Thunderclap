@@ -17,7 +17,9 @@ class LLMAnswerGenerator:
         Args:
             api_key: Gemini API key (or set GEMINI_API_KEY env var)
         """
-        self.api_key = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+        # Get API key with fallback chain, then trim whitespace
+        api_key_raw = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+        self.api_key = api_key_raw.strip() if api_key_raw else None
         self.client = None
         
         # Debug: Log API key status
@@ -27,13 +29,20 @@ class LLMAnswerGenerator:
         if self.api_key:
             print(f"  [LLM INIT] API key length: {len(self.api_key)}")
             print(f"  [LLM INIT] API key starts with: {self.api_key[:10]}...")
+            # Validate format
+            if len(self.api_key) != 39:
+                print(f"  [WARNING] API key length is {len(self.api_key)}, expected 39")
+            if not self.api_key.startswith('AIza'):
+                print(f"  [WARNING] API key doesn't start with 'AIza'")
         
         # Try Gemini first
         if self.api_key:
             try:
                 import google.generativeai as genai
                 print(f"  [LLM INIT] Configuring Gemini with API key...")
+                # Configure with trimmed key
                 genai.configure(api_key=self.api_key)
+                print(f"  [LLM INIT] Gemini configuration complete")
                 # Use low-variance generation to stabilize output length/structure
                 self._gen_config = {
                     "temperature": 0.2,
@@ -46,6 +55,18 @@ class LLMAnswerGenerator:
                     model_name='gemini-2.5-flash',
                     generation_config=self._gen_config,
                 )
+                # Test API key by making a minimal test call
+                print(f"  [LLM INIT] Testing API key with minimal call...")
+                try:
+                    test_response = self.client.generate_content("test")
+                    print(f"  [OK] API key test successful")
+                except Exception as test_err:
+                    error_msg = str(test_err)
+                    print(f"  [ERROR] API key test failed: {error_msg}")
+                    # Re-raise with clearer message
+                    if "API Key not found" in error_msg or "API_KEY_INVALID" in error_msg:
+                        raise RuntimeError(f"Invalid API key: {error_msg}. Check Railway Variables → GEMINI_API_KEY")
+                    raise
                 print("  [OK] Gemini API configured (2.5 Flash, 15 RPM / 1M TPM / 200 RPD)")
             except Exception as e:
                 print(f"  [ERROR] Gemini setup failed: {e}")
