@@ -27,18 +27,15 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Pages
-        uses: actions/configure-pages@v4
-        # NOTE: GitHub Pages must be manually enabled first:
-        # 1. Go to: https://github.com/mperelman/Thunderclap/settings/pages
-        # 2. Under "Source", select: "GitHub Actions"
-        # 3. Click "Save"
-        # Then re-run this workflow
+        uses: actions/configure-pages@v5
       
       - name: Build site
         run: |
           mkdir -p _site
           cp index.html _site/
           if [ -d public ]; then cp -r public _site/; fi
+          echo "Site built successfully"
+          ls -la _site/
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
