@@ -29,14 +29,14 @@
 
 **Your shareable link**:
 ```
-https://mperelman.github.io/Thunderclap/frontend.html?api=https://YOUR-RAILWAY-URL/query
+https://mperelman.github.io/Thunderclap/?api=https://YOUR-RAILWAY-URL/query
 ```
 
 Replace `YOUR-RAILWAY-URL` with your actual Railway domain.
 
 **Example**:
 ```
-https://mperelman.github.io/Thunderclap/frontend.html?api=https://thunderclap-production.up.railway.app/query
+https://mperelman.github.io/Thunderclap/?api=https://thunderclap-production.up.railway.app/query
 ```
 
 ---
@@ -51,13 +51,13 @@ https://mperelman.github.io/Thunderclap/frontend.html?api=https://thunderclap-pr
    - Start Command: `uvicorn server:app --host 0.0.0.0 --port $PORT`
    - Environment: `GEMINI_API_KEY=your-key`
 5. **Deploy** → Get URL like: `https://thunderclap.onrender.com`
-6. **Share**: `https://mperelman.github.io/Thunderclap/frontend.html?api=https://thunderclap.onrender.com/query`
+6. **Share**: `https://mperelman.github.io/Thunderclap/?api=https://thunderclap.onrender.com/query`
 
 ---
 
 ## Make It Permanent (Optional)
 
-Once you have your backend URL, I can update `frontend.html` to use it automatically when accessed from GitHub Pages, so you can just share:
+Once you have your backend URL, I can update `index.html` to use it automatically when accessed from GitHub Pages, so you can just share:
 ```
 https://mperelman.github.io/Thunderclap/
 ```
