@@ -33,10 +33,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy only installed packages from builder
 COPY --from=builder /root/.local /root/.local
 
-# Copy only runtime code (excludes data/, docs/, tests/ via .dockerignore)
+# Copy only runtime code
 COPY server.py .
 COPY lib/ ./lib/
 COPY public/ ./public/
+# Copy data folder (for Railway deployment - includes ChromaDB and indices)
+COPY data/ ./data/
 
 # Environment
 ENV PATH=/root/.local/bin:$PATH
