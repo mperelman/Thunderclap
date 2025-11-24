@@ -423,7 +423,18 @@
 
     <script>
         // IMPORTANT: Change this to your deployed API URL
-        const API_URL = 'http://localhost:8000/query';  // Change to your server!
+        // API URL - defaults to localhost, but can be overridden via URL parameter or environment
+        const API_URL = (() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const apiParam = urlParams.get('api');
+            if (apiParam) return apiParam;
+            // Try to detect if we're on GitHub Pages and use a default remote server if needed
+            if (window.location.hostname.includes('github.io')) {
+                // Default to localhost fallback - user should set ?api=YOUR_SERVER_URL
+                return 'http://localhost:8000/query';
+            }
+            return 'http://localhost:8000/query';
+        })();
         
         function fillExample(text) {
             document.getElementById('question').value = text;
