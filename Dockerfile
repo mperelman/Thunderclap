@@ -49,5 +49,6 @@ EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:$PORT/health || exit 1
 
-# Run server (use exec form with sh -c to expand $PORT)
-CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Run server with explicit timeout settings to prevent Railway proxy timeout
+# Railway's proxy likely times out at 60s, so we set uvicorn to 600s (10 min)
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 600"]
