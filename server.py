@@ -75,8 +75,15 @@ app.add_middleware(
 # Store API key for creating QueryEngine instances
 gemini_key = os.getenv('GEMINI_API_KEY')
 if not gemini_key:
+    print("="*60)
     print("ERROR: GEMINI_API_KEY environment variable not set!")
-    print("ERROR: Set GEMINI_API_KEY in Railway Variables tab")
+    print("="*60)
+    print("To fix:")
+    print("1. Go to Railway → Variables tab")
+    print("2. Add variable: GEMINI_API_KEY")
+    print("3. Value: Your Gemini API key (no quotes, no spaces)")
+    print("4. Railway will auto-redeploy")
+    print("="*60)
     sys.exit(1)
 
 print("="*60)
@@ -84,6 +91,7 @@ print("Initializing Thunderclap AI Server")
 print("="*60)
 print(f"API Key present: {bool(gemini_key)}")
 print(f"API Key length: {len(gemini_key) if gemini_key else 0}")
+print(f"API Key starts with: {gemini_key[:10] if gemini_key else 'N/A'}...")
 print("Server ready! (QueryEngine created per-request)")
 print("="*60)
 
