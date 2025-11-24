@@ -39,7 +39,7 @@ You'll get a backend URL like:
 
 **Share this link:**
 ```
-https://mperelman.github.io/Thunderclap/frontend.html?api=https://YOUR-BACKEND-URL/query
+https://mperelman.github.io/Thunderclap/?api=https://YOUR-BACKEND-URL/query
 ```
 
 ## Important Notes

@@ -11,8 +11,8 @@
    Should show: "Server ready!" on http://localhost:8000
 
 2. **Open frontend in browser**:
-   - Go to: `http://localhost:8080/frontend.html` (I just started a test server)
-   - Or open `frontend.html` directly in your browser
+   - Go to: `http://localhost:8080/index.html` (if using a test server)
+   - Or open `index.html` directly in your browser
 
 3. **Test a query** - if this works locally, the issue is deployment
 
@@ -34,7 +34,6 @@
 
 4. **Access your site**:
    - https://mperelman.github.io/Thunderclap/
-   - https://mperelman.github.io/Thunderclap/frontend.html
 
 ### Step 3: Backend API Issue
 
@@ -52,7 +51,7 @@ ngrok http 8000
 # Copy the https URL (e.g., https://abc123.ngrok.io)
 
 # Then use:
-https://mperelman.github.io/Thunderclap/frontend.html?api=https://abc123.ngrok.io/query
+https://mperelman.github.io/Thunderclap/?api=https://abc123.ngrok.io/query
 ```
 
 **Option B: Deploy backend to Railway**
@@ -61,7 +60,7 @@ https://mperelman.github.io/Thunderclap/frontend.html?api=https://abc123.ngrok.i
 3. Connect repo: `mperelman/Thunderclap`
 4. Set env: `GEMINI_API_KEY=your_key`
 5. Get URL: `https://thunderclap-production.up.railway.app`
-6. Use: `https://mperelman.github.io/Thunderclap/frontend.html?api=https://thunderclap-production.up.railway.app/query`
+6. Use: `https://mperelman.github.io/Thunderclap/?api=https://thunderclap-production.up.railway.app/query`
 
 ### Common Errors
 

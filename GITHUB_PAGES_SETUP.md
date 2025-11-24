@@ -1,9 +1,9 @@
 # GitHub Pages Setup
 
-## Accessing frontend.html via GitHub Pages
+## Accessing index.html via GitHub Pages
 
 Once GitHub Pages is enabled, your frontend will be accessible at:
-**https://mperelman.github.io/Thunderclap/frontend.html**
+**https://mperelman.github.io/Thunderclap/**
 
 ## Setup Steps
 
@@ -16,8 +16,7 @@ Once GitHub Pages is enabled, your frontend will be accessible at:
 2. **The workflow will deploy automatically** when you push to `main` branch
 
 3. **Access the frontend**:
-   - After deployment: https://mperelman.github.io/Thunderclap/frontend.html
-   - Or use: https://mperelman.github.io/Thunderclap/ (if index.html exists)
+   - After deployment: https://mperelman.github.io/Thunderclap/
 
 ## API Configuration
 
@@ -26,7 +25,7 @@ The frontend needs to connect to your backend API server. You have two options:
 ### Option 1: Use URL Parameter (Recommended)
 Add `?api=YOUR_SERVER_URL` to the GitHub Pages URL:
 ```
-https://mperelman.github.io/Thunderclap/frontend.html?api=https://your-server.com
+https://mperelman.github.io/Thunderclap/?api=https://your-server.com/query
 ```
 
 ### Option 2: Local Development

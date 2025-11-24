@@ -18,7 +18,7 @@
 
 5. **Share this link**:
    ```
-   https://mperelman.github.io/Thunderclap/frontend.html?api=https://abc123.ngrok.io
+   https://mperelman.github.io/Thunderclap/?api=https://abc123.ngrok.io/query
    ```
 
 **Note**: ngrok URLs expire after a few hours (free tier) or stay active (paid tier)
@@ -36,9 +36,9 @@
    - `GEMINI_API_KEY` = your API key
 5. **Deploy** → Railway gives you a URL like: `https://thunderclap-production.up.railway.app`
 
-6. **Update frontend.html** to use Railway URL by default (or share with parameter):
+6. **Share with Railway URL**:
    ```
-   https://mperelman.github.io/Thunderclap/frontend.html?api=https://thunderclap-production.up.railway.app
+   https://mperelman.github.io/Thunderclap/?api=https://thunderclap-production.up.railway.app/query
    ```
 
 ### Render (Alternative)
@@ -55,7 +55,7 @@
 
 ## Simplest: Pre-configure Frontend
 
-I can update `frontend.html` to automatically use a deployed backend URL when accessed from GitHub Pages. Just tell me your backend URL and I'll update it!
+I can update `index.html` to automatically use a deployed backend URL when accessed from GitHub Pages. Just tell me your backend URL and I'll update it!
 
 ---
 

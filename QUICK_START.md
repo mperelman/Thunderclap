@@ -24,7 +24,7 @@ Press Ctrl+C to stop
 
 ### Step 2: Open the Frontend
 
-Open `frontend.html` in your web browser (double-click the file or open it via File → Open).
+Open `index.html` in your web browser (double-click the file or open it via File → Open).
 
 ### Step 3: Make Queries
 
