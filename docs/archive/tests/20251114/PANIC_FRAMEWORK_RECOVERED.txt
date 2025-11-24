@@ -1,0 +1,109 @@
+Found 3 panic-related strings:
+
+STRING 1:
+
+RULE #1: RELEVANCE ABOVE ALL (MOST CRITICAL - FILTER EVERYTHING)
+- ONLY include information that DIRECTLY involves the query subject
+- Do NOT include information just because it appears in the same document chunk
+- Test for EVERY sentence: "Does this sentence involve the query subject?" If NO → DELETE IT
+
+WHAT COUNTS AS "DIRECTLY INVOLVES":
+✓ Historical context that explains the subject (e.g., "Parsees fled Persia in 7th century" when query is about Parsees)
+✓ Partnerships/marriages/transactions involving the subject (e.g., "Jardine partnered with Parsee Cowasjee")
+✓ Trading/commercial activities of the subject (not just banking - include trade, industry if docs mention)
+✓ All major families that are part of the subject group (e.g., Tata, Wadia for Parsees)
+✗ Standalone information about completely different entities that appeared in same chunks
+
+SOCIOLOGICAL PATTERNS (caste, identitys, rabbinates):
+- ONLY include when the query subject is directly part of that pattern
+- For specific entity queries → Only include patterns the subject participated in
+- For general pattern queries → Then discuss patterns across multiple entities
+
+RULE #2: ACCURACY - NEVER FABRICATE
+- ONLY state what documents EXPLICITLY say - no inferences, assumptions, or combinations
+- Do NOT connect separate entities mentioned near each other unless document explicitly connects them
+- If document says "X founded Y" then separately "Z founded W", keep them SEPARATE
+- NEVER fabricate relationships between different people or institutions
+- Do NOT mention panics/laws unless documents explicitly link them to the subject
+- Better to be incomplete than inaccurate
+
+
+----------------------------------------------------------------------
+
+STRING 2:
+
+PANICS AS ORGANIZING FRAMEWORK (MAINTAIN THROUGHOUT):
+- Cover EVERY Panic documents mention (1763, 1825, 1837, 1873, 1893, 1907, 1929, etc.)
+- For each: What happened? How did identity shape outcome (if docs say so)?
+- BAD: "Panic of 1825 occurred" then move on
+- GOOD: "During Panic of 1825, [subject] [specific actions from docs]. [Identity analysis if docs support]"
+- Don't invent connections - base on documents
+
+
+----------------------------------------------------------------------
+
+STRING 3:
+
+NARRATIVE STRUCTURE:
+1. RELEVANCE FILTER - STAY ON TOPIC:
+   - Every sentence must be about the query subject or directly involve them
+   - Do NOT include information about other entities just because they're in the same chunk
+   - Ask yourself: "Does this sentence involve [query subject]?" If NO → DELETE IT
+
+2. SUBJECT MUST BE ACTIVE IN EVERY SENTENCE:
+   ✓ "*Lehman* merged with Goldman"
+   ✗ "Goldman merged with *Lehman*"
+
+3. CLEAR CHRONOLOGICAL ORGANIZATION (CRITICAL):
+   - Organize STRICTLY by time periods (e.g., "1770s-1790s", "1800-1815", "1820s-1840s", "Post-1850")
+   - Move forward in time - NEVER jump backwards
+   - CRITICAL: Do NOT organize by topic if it breaks chronology (e.g., no "Factors" section after covering later centuries)
+   - Within each period, group related events together (banking, panics, legal changes, networks)
+   - Connect time periods with transitions
+   - For EACH period, cover what documents mention
+   - ONLY include panics/laws if documents explicitly link them to the subject
+   - BAD: 1770s → 1920s → 1783 → 1798 (jumping backwards after 1920s)
+   - BAD: Covering 1957 then adding a "Factors" section mentioning 1783
+   - GOOD: 1770s-1790s → 1800-1815 → 1820s-1840s → 1850-1900 → 1900-1960 (flows forward)
+
+4. CONNECT PARAGRAPHS - BUILD A NARRATIVE:
+   - Each paragraph should flow into the next
+   - Use transitions to show relationships between events
+   - Don't just list disconnected facts
+   - Show how earlier events shaped later ones
+   - BAD: Isolated statements with no connections
+   - GOOD: "This expansion laid the groundwork for...", "Building on these connections...", "During this period..."
+
+5. SHORT, FOCUSED PARAGRAPHS:
+   - Each paragraph = ONE CLEAR TOPIC (max 3-4 sentences)
+   - NEVER mix unrelated topics in one paragraph
+   - But ensure paragraphs connect to form a coherent whole
+
+6. NO PLATITUDES OR FLOWERY LANGUAGE:
+   ✗ "dynamic nature of the financial world"
+   ✗ "testament to"
+   ✗ "journey"
+   ✗ "transformative era"
+   ✗ "strategically positioned"
+
+7. COMPREHENSIVE COVERAGE (CRITICAL):
+   - Address the question fully - don't provide sparse, incomplete answers
+   - Cover ALL time periods documents mention (e.g., if docs mention 7th century, 1815, 1840s, cover all three)
+   - Do NOT skip time periods - if documents cover 1790s and 1991, you MUST cover 1800-1900 if present
+   - Include periods of decline or transition - these are still important historical context
+   - Cover ALL aspects documents discuss (banking, trading, industry, politics, panics, legal changes, networks, partnerships)
+   - Include ALL major families/entities documents mention as part of the subject
+   - Don't be overly restrictive in filtering - if documents discuss the subject in a context, include it
+   - ONLY exclude information if it's about completely different, unconnected entities
+   - Provide substantive, complete coverage - not just a narrow slice
+
+8. END WITH RELATED QUESTIONS:
+   - Provide 3-5 follow-up questions based on entities/topics mentioned in the documents you just read
+   - Questions should explore topics that had enough content to generate a substantive narrative
+   - Good question types: other families/entities mentioned, broader topics/themes, related places/periods
+   - Bad question types: hyper-specific details that only had 1 sentence in the documents
+   - Test: "Could I write multiple paragraphs answering this from the documents?" If yes → good question
+
+
+----------------------------------------------------------------------
+

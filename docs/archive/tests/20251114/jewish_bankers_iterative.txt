@@ -1,0 +1,66 @@
+Connecting to document database...
+  [OK] Connected to database (1,517 indexed chunks)
+  Loading indices...
+    [OK] Loaded indices (version 2.0)
+      - 19,299 indexed terms
+  Initializing LLM...
+  [OK] Gemini API configured (2.0-flash model)
+  [OK] Query engine ready
+
+  [INFO] Found 1489 relevant chunks
+  [AUTO] High-volume query detected (1489 chunks)
+  [AUTO] Switching to iterative period-based processing...
+
+======================================================================
+ITERATIVE PROCESSING (1489 chunks)
+======================================================================
+
+[STEP 1] Organizing 1489 chunks by time period...
+  Organized into 6 time periods:
+    • Medieval: 42 chunks
+    • 16th-17th centuries: 50 chunks
+    • 19th century: 50 chunks
+    • 20th century: 50 chunks
+    • 21st century: 34 chunks
+    • Undated: 1 chunks
+
+[STEP 2] Generating narratives for each period...
+  [1/6] Processing Medieval...
+  [WAIT] Pausing 5 seconds...
+  [2/6] Processing 16th-17th centuries...
+  [WAIT] Pausing 5 seconds...
+  [3/6] Processing 19th century...
+  [WAIT] Pausing 5 seconds...
+  [4/6] Processing 20th century...
+  [WAIT] Pausing 5 seconds...
+  [5/6] Processing 21st century...
+  [WAIT] Pausing 5 seconds...
+  [6/6] Processing Undated...
+
+[STEP 3] Combining 6 period narratives...
+  [ERROR] Failed to merge narratives: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 200
+Please retry in 5.278102296s. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
+  quota_id: "GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 200
+}
+, retry_delay {
+  seconds: 5
+}
+]
+  [OK] Comprehensive narrative complete
+======================================================================
+

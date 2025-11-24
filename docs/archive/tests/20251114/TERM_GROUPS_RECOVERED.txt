@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import sys; import importlib.util; spec = importlib.util.spec_from_file_location('index_builder_old', 'lib/__pycache__/index_builder.cpython-313.pyc'); module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); import json; print('RECOVERED TERM_GROUPS:'); print(json.dumps(module.TERM_GROUPS, indent=2))
+                                                                                                                                                                                                            ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 1027, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "C:\Users\perel\OneDrive\Apps\thunderclap-ai\lib\index_builder.py", line 7, in <module>
+ImportError: attempted relative import with no known parent package

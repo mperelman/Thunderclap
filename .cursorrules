@@ -1,0 +1,157 @@
+# Cursor Rules for Thunderclap AI
+
+## Default Behavior: Use LLM for Narratives
+
+When user asks about something (tell me about, who is, what is, explain, etc):
+```python
+from query import ask
+answer = ask("user's question", use_llm=True)
+```
+
+Set API key:
+```bash
+$env:GEMINI_API_KEY='AIzaSyBlqE1F2G_L5l2Lg81gyt0UWcME_K3inFo'
+```
+
+## Only Use Raw Search When User Explicitly Asks
+- "search X"
+- "find mentions of X"
+- "show me all X"
+
+Then use:
+```bash
+python query.py X
+```
+
+## Never Create in Main Directory
+- test_*.py (use tests/ folder)
+- *_results.txt (use temp/ folder)
+- Temporary wrapper files (use temp/ folder)
+- ANY temporary files in root (ALWAYS use temp/ folder)
+
+## User's Narrative Preferences (CRITICAL - FOLLOW EXACTLY)
+
+### 0. RELEVANCE ABOVE ALL (TOP PRIORITY - FILTER EVERYTHING)
+- ONLY include information that DIRECTLY involves the query subject
+- Do NOT include information about unrelated entities just because they appear in the same document chunk
+- Ask yourself for EVERY sentence: "Does this sentence involve [query subject]?" If NO → DELETE IT
+- What counts as "directly involves": historical context explaining subject, partnerships with subject, trading/commercial activities of subject, all major families that are part of subject group
+- Don't be overly restrictive - if documents discuss subject in a context (trading, industry, partnerships), include it
+- Sociological patterns (caste, cousinhoods, rabbinates) should ONLY appear when:
+  * Query asks about those patterns generally
+  * Pattern directly involves the query subject
+
+### 1. ACCURACY - NEVER FABRICATE (SECOND PRIORITY)
+- ONLY state what documents EXPLICITLY say - no inferences, assumptions, or combinations
+- Do NOT connect separate entities mentioned near each other unless document explicitly connects them
+- If document says "X founded Y" then separately "Z founded W", these are DIFFERENT entities
+- NEVER fabricate relationships between different people or institutions
+- Do NOT mention panics/laws unless documents explicitly link them to the subject
+- Better to be incomplete than inaccurate
+- Example ERROR: Document mentions Lever and African Association in same paragraph → LLM writes "Lever formed African Association" (WRONG - they were separate/competitors)
+
+### 2. Subject Must Be Active in EVERY Sentence
+✓ "Lehman merged with Goldman" 
+✗ "Goldman fused with Lehman"
+✓ "Lehman partnered with Li Ming and Lazard"
+✗ "Li Ming partnered with Lehman"
+
+### 3. Only Include Directly Relevant Information
+- Every sentence must directly involve the subject
+- Don't include tangential facts just because they're in a chunk
+- Test each sentence: "Does this involve the query subject?" If NO → DELETE IT
+
+### 4. No Platitudes or Flowery Language
+✗ "dynamic nature of the financial world"
+✗ "testament to"
+✗ "journey"
+✗ "transformative era"
+✗ "strategically positioned"
+
+### 5. Thunderclap Framework (CRITICAL - This is Thunderclap's Core Approach)
+View history through SOCIOLOGICAL + PANIC lenses IN EVERY SECTION (not just the opening):
+
+✓ SOCIOLOGY: Analyze how identity shaped opportunities in EVERY time period (BASED ON DOCUMENTS)
+  - COUSINHOODS: Banking dominated by small intermarried elite families, NOT entire populations
+  - Name SPECIFIC families, NOT ethnic/religious groups as monoliths
+  - Examples across cousinhoods (see lib/cousinhoods.py for full list):
+    * Jewish cousinhoods: Sephardim (Mendes, Sassoon, DelBanco), Ashkenazim (Rothschild, Warburg - descended from DelBanco), Court Jews (Oppenheim, Wertheimer)
+    * Quaker: Barclay, Lloyd, Bevan (Britain/colonies/Pennsylvania)
+    * Huguenot: Hope, Mallet, Thellusson (spread from France)
+    * Mennonite, Puritan, Boston Brahmin, Knickerbocker, Protestant Cologne, Greek Orthodox, Armenian, Parsees
+  - KINLINKS ACROSS COUSINHOODS (FUNDAMENTAL): Most cousinhoods kinlinked extensively outside their grouping
+    * Schroder/Baring (Germanic Protestant) kinlinked with London cousinhood (Anglican Smyth, converted Jewish Hambro, Cobbold)
+    * Oppenheim (Jewish) kinlinked with Protestant Cologne (Stein, Schaaffhausen)
+    * Greeks married Huguenots; Morgan kinlinked with Boston Brahmin; Sephardim kinlinked with Ashkenazim
+    * Cross-group networks were essential to banking access and power
+  - MINORITY MIDDLEMEN: Show exclusion from land/politics/industry → channeled into finance  
+  - KINLINKS: Explain marriages/kinship networks and what they enabled (within and across groups)
+  - CASTE: Consider caste within groups (e.g., Kohanim/Katz priestly lineage among Jews) if docs mention
+  - CONVERSIONS: Consider how conversions affected access if docs mention
+  - For questions about group influence/control in banking: Answer based on what documents say about that specific group, time, and place; analyze how narrowly defined (which families? what time/place?); provide context by comparing with other groups; explain dynamics (exclusion, legal access, networks); state if some groups/families dominated certain contexts, with full context
+  - Analyze through MULTIPLE dimensions: religion/race/class, sex/gender, family structure, law
+  - State identity explicitly + explain its impact using what documents say
+  - SEX/GENDER: Did being a woman change access? Did widows operate differently?
+  - FAMILY: How did family structures (inheritance, marriage patterns) shape opportunities?
+  - LAW: What legal barriers or advantages existed? (women barred from exchanges, religious tests)
+  - GOOD: "[Identity] + [what documents say about opportunities/barriers in this era]"
+  - BAD: "X was [identity]" in opening, then abandon analysis in later sections
+  - Maintain sociological analysis THROUGHOUT - don't drop it after first paragraph
+  - Don't invent sociological explanations - use what documents actually say
+
+✓ PANICS AS FRAMEWORK: Cover ALL Panics in ALL time periods (not just opening)
+  - Cover EVERY Panic documents mention: 1763, 1873, 1893, 1907, 1929, etc.
+  - For each: What happened? How did identity shape outcome (if docs say so)?
+  - GOOD: "During Panic of 1873, [subject] [what documents say]. [Identity analysis if docs support]"
+  - BAD: Mention 1763 in opening, then ignore 1873, 1893, 1907 in later sections
+  - Base connections on documents, don't invent theories
+
+✓ NETWORKS: How did marriages/connections create access or exclusion in each era?
+✓ REGULATIONS: How did they change who could access opportunities?
+
+### 6. Naming Conventions (CRITICAL)
+- INSTITUTIONS: Use italics (*Hope*, *Lehman*, *Morgan*)
+- PEOPLE: Regular text (Henry Hope, Henry Lehman, J.P. Morgan)
+- NEVER use "& Co." or "& Company" - causes incorporation/structure issues
+- Be CONSISTENT: "WWI" and "WWII" (not "World War I" then "WWII")
+- CLARIFY ambiguous names: "President Carter" not "Carter"
+
+### 7. Clear Chronological Organization and Comprehensive Coverage (CRITICAL)
+- Organize STRICTLY by time periods (e.g., "1770s-1790s", "1800-1815", "1820s-1840s", "1850-1900")
+- Move forward in time - NEVER jump backwards
+- CRITICAL: Do NOT organize by topic if it breaks chronology (e.g., no "Factors" section after covering later centuries)
+- BAD: Covering 1957 then adding a section mentioning 1783 (jumping backwards)
+- BAD: Covering 1790s, then jumping to 1991 without covering 1800-1900
+- GOOD: 1770s-1790s → 1800-1815 → 1820s-1840s → 1850-1900 → 1900-1960 (flows forward)
+- Cover ALL time periods documents mention - do NOT skip time periods
+- Include periods of decline or transition - these are important historical context
+- Cover ALL aspects documents discuss (banking, trading, industry, partnerships, historical context)
+- Include ALL major families documents mention as part of the subject
+- Within each period, group related events together (banking, panics, legal changes, networks, partnerships)
+- ONLY include panics/laws if documents explicitly link them to the subject
+- Connect paragraphs with transitions - show how events relate
+- Build a narrative arc, not a disconnected list of facts
+- Short paragraphs (3-4 sentences max), but they must flow together
+- Provide substantive, complete coverage - not just a narrow slice
+
+### 8. Writing Style: Bernanke + Maya Angelou
+- Mix analytical rigor (Bernanke) with humanizing details (Maya Angelou)
+- Include events that humanize people (e.g., "fled to London with movable assets", "worked from home as widow")
+- NO melodrama, but show people as human beings navigating constraints
+- Balance factual analysis with moments that reveal individual experiences
+
+### 9. Provide Related Questions at End
+- 3-5 follow-up questions based on entities/topics that appeared in the documents
+- Questions should be about topics with enough content to generate a substantive narrative (multiple paragraphs)
+- Good question types: other families/entities mentioned, broader topics/themes, related places/periods
+- Bad question types: hyper-specific details that only had 1 sentence in the documents
+- Test: "Could I write multiple paragraphs answering this from the documents?" If yes → good question
+
+## System Info
+- 1,509 indexed chunks (500-word chunks with 100-word overlap)
+- 23,504 terms (names, places, events, identities - all searchable)
+- Term grouping: jew/jews/jewish, quaker/quakers, muslim/islam, etc return same results
+- Takes ALL chunks from index (no artificial limits)
+- Batches requests to avoid rate limits (20 chunks, 15-sec pauses)
+- Default to LLM narrative for information requests
+
