@@ -48,10 +48,16 @@ app.add_middleware(
 gemini_key = os.getenv('GEMINI_API_KEY')
 if not gemini_key:
     print("ERROR: GEMINI_API_KEY environment variable not set!")
+    print("ERROR: Set GEMINI_API_KEY in Railway Variables tab")
     sys.exit(1)
 
-print("Initializing Thunderclap AI...")
-print("Server ready! (QueryEngine created per-request)\n")
+print("="*60)
+print("Initializing Thunderclap AI Server")
+print("="*60)
+print(f"API Key present: {bool(gemini_key)}")
+print(f"API Key length: {len(gemini_key) if gemini_key else 0}")
+print("Server ready! (QueryEngine created per-request)")
+print("="*60)
 
 from lib.config import MAX_ANSWER_LENGTH
 
@@ -149,17 +155,30 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         raise HTTPException(status_code=400, detail="Question too short")
     
     query_start_time = time.time()
-    init_start = time.time()
-    try:
+        init_start = time.time()
+        try:
         # Generate answer (matches archived working_api.py pattern)
         print(f"[SERVER] Processing query: {req.question}")
+        print(f"[SERVER] Request ID: {request_id}")
+        print(f"[SERVER] API Key present: {bool(gemini_key)}")
         trace_event(request_id, "query_start", question=req.question[:100])
         sys.stdout.flush()
         
         # Create query engine with async disabled for FastAPI compatibility
+        print(f"[SERVER] Creating QueryEngine...")
+        sys.stdout.flush()
         from lib.query_engine import QueryEngine
         from lib.config import QUERY_TIMEOUT_SECONDS
-        qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
+        try:
+            qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
+            print(f"[SERVER] QueryEngine created successfully")
+            sys.stdout.flush()
+        except Exception as init_error:
+            print(f"[SERVER] FAILED to create QueryEngine: {type(init_error).__name__}: {init_error}")
+            import traceback
+            traceback.print_exc()
+            sys.stdout.flush()
+            raise
         init_time = time.time() - init_start
         print(f"[SERVER] QueryEngine initialization took {init_time:.1f}s")
         trace_event(request_id, "engine_init", duration=init_time)
@@ -213,13 +232,19 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
     
     except Exception as e:
         duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
-        trace_event(request_id, "error", type=type(e).__name__, message=str(e), duration=duration)
-        print(f"[SERVER] Error processing query {request_id}: {e}")
+        error_type = type(e).__name__
+        error_msg = str(e)
+        trace_event(request_id, "error", type=error_type, message=error_msg, duration=duration)
+        print(f"[SERVER] ERROR processing query {request_id}: {error_type}: {error_msg}")
         import traceback
+        print(f"[SERVER] FULL TRACEBACK:")
         traceback.print_exc()
         sys.stdout.flush()
         # Include Request ID in error detail so it's visible even on timeout
-        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)} (Request ID: {request_id})")
+        error_detail = f"Query failed: {str(e)} (Request ID: {request_id})"
+        print(f"[SERVER] Raising HTTPException: {error_detail}")
+        sys.stdout.flush()
+        raise HTTPException(status_code=500, detail=error_detail)
 
 @app.get("/debug/last")
 def debug_last(n: int = 50):
