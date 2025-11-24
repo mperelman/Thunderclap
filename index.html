@@ -1020,10 +1020,10 @@
             }
             
             try {
-                setProgress(30, 'Contacting server...');
+                setProgress(30, 'Starting query...');
                 
-                // Use Server-Sent Events for streaming with keepalive
-                const response = await fetch(API_URL, {
+                // Start background job - returns immediately to avoid Railway timeout
+                const startResponse = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1034,39 +1034,73 @@
                     })
                 });
                 
-                if (!response.ok) {
-                    const reqId = response.headers.get('X-Request-ID') || 'n/a';
-                    if (response.status === 429) {
-                        throw new Error('Rate limit exceeded. Please try again later. (Request ID: ' + reqId + ')');
+                if (!startResponse.ok) {
+                    if (startResponse.status === 429) {
+                        throw new Error('Rate limit exceeded. Please try again later.');
                     }
-                    throw new Error('Query failed. Please try again. (HTTP ' + response.status + ', Request ID: ' + reqId + ')');
+                    throw new Error('Failed to start query. HTTP ' + startResponse.status);
                 }
                 
-                const reqId = response.headers.get('X-Request-ID') || 'n/a';
+                const jobData = await startResponse.json();
+                const jobId = jobData.job_id;
+                
                 const debugInfo = document.getElementById('debug-info');
                 const debugReq = document.getElementById('debug-request-id');
                 const debugStatus = document.getElementById('debug-status');
                 const debugLink = document.getElementById('debug-link');
-                debugReq.textContent = reqId;
-                debugStatus.textContent = response.status + ' ' + (response.statusText || '');
+                debugReq.textContent = jobId;
+                debugStatus.textContent = '202 Accepted';
                 debugLink.href = 'http://localhost:8000/debug/last?n=50';
                 debugLink.style.display = 'inline';
                 debugInfo.style.display = 'block';
                 
-                setProgress(60, 'Generating answer...');
+                setProgress(40, 'Processing query...');
                 
-                const data = await response.json();
-                setProgress(85, 'Formatting...');
+                // Poll for completion every 2 seconds
+                const pollInterval = 2000; // 2 seconds
+                const maxPolls = 210; // 7 minutes max (210 * 2s = 420s)
+                let pollCount = 0;
                 
-                // Extract suggested questions
-                const parsed = extractSuggestedQuestions(data.answer);
+                while (pollCount < maxPolls) {
+                    await new Promise(r => setTimeout(r, pollInterval));
+                    pollCount++;
+                    
+                    const statusResponse = await fetch(`${API_URL}/${jobId}`);
+                    if (!statusResponse.ok) {
+                        throw new Error(`Failed to check status. HTTP ${statusResponse.status}`);
+                    }
+                    
+                    const statusData = await statusResponse.json();
+                    
+                    if (statusData.status === 'complete') {
+                        setProgress(85, 'Formatting...');
+                        
+                        // Extract suggested questions
+                        const parsed = extractSuggestedQuestions(statusData.answer);
+                        
+                        // Show result
+                        document.getElementById('answer').innerHTML = formatMarkdown(parsed.text);
+                        displaySuggestedQuestions(parsed.questions);
+                        document.getElementById('result').classList.add('show');
+                        document.getElementById('result').classList.remove('error');
+                        setProgress(100, 'Done');
+                        return; // Success!
+                        
+                    } else if (statusData.status === 'error') {
+                        throw new Error(statusData.error || 'Query processing failed');
+                        
+                    } else if (statusData.status === 'processing') {
+                        const elapsed = Math.floor(statusData.elapsed || 0);
+                        setProgress(50, `Processing... (${elapsed}s elapsed)`);
+                        // Continue polling
+                    } else {
+                        // pending - continue polling
+                        setProgress(45, 'Waiting to start...');
+                    }
+                }
                 
-                // Show result and hide quick-query suggestions
-                document.getElementById('answer').innerHTML = formatMarkdown(parsed.text);
-                displaySuggestedQuestions(parsed.questions);
-                document.getElementById('result').classList.add('show');
-                document.getElementById('result').classList.remove('error');
-                setProgress(100, 'Done');
+                // Timeout after max polls
+                throw new Error('Query is taking too long. Please try again or simplify your question.');
                 
             } catch (error) {
                 // Google principle #8: Make errors recoverable, not punishing

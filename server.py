@@ -8,7 +8,7 @@ import os
 # Ensure lib is in path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -17,6 +17,8 @@ from collections import defaultdict, deque
 import time
 import uuid
 import json
+import asyncio
+from typing import Optional, Dict
 
 # Import query engine
 from lib.query_engine import QueryEngine
@@ -123,6 +125,21 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
 
+class QueryJobResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+
+class QueryStatusResponse(BaseModel):
+    job_id: str
+    status: str  # "pending", "processing", "complete", "error"
+    answer: Optional[str] = None
+    error: Optional[str] = None
+    elapsed: Optional[float] = None
+
+# In-memory job store (simple dict - for production use Redis or database)
+JOB_STORE: Dict[str, Dict] = {}
+
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
 request_counts = defaultdict(list)
 RATE_LIMIT = 10000  # requests per hour
@@ -198,143 +215,109 @@ async def query_get():
         }
     )
 
-@app.post("/query", response_model=QueryResponse)
-async def query(req: QueryRequest, http_req: Request, resp: Response):
-    """Handle query requests - matches archived working_api.py pattern exactly."""
-    client_ip = http_req.client.host if http_req and http_req.client else "unknown"
-    request_id = str(uuid.uuid4())
-    resp.headers["X-Request-ID"] = request_id
-    
-    # Log request start IMMEDIATELY
-    trace_event(request_id, "request_start", ip=client_ip, question=req.question[:100])
-    print(f"[SERVER] Request {request_id} started: {req.question[:60]}...")
+async def process_query_job(job_id: str, question: str, max_length: int):
+    """Background task to process query."""
     import sys
-    sys.stdout.flush()
+    JOB_STORE[job_id]["status"] = "processing"
+    JOB_STORE[job_id]["start_time"] = time.time()
+    
+    try:
+        print(f"[JOB {job_id}] Starting query processing...")
+        sys.stdout.flush()
+        
+        from lib.query_engine import QueryEngine
+        from lib.config import QUERY_TIMEOUT_SECONDS
+        
+        qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
+        
+        loop = asyncio.get_event_loop()
+        answer = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda: qe.query(question, use_llm=True)),
+            timeout=QUERY_TIMEOUT_SECONDS - 10
+        )
+        
+        # Truncate if needed
+        if len(answer) > max_length:
+            answer = answer[:max_length] + "\n\n[Truncated]"
+        
+        elapsed = time.time() - JOB_STORE[job_id]["start_time"]
+        JOB_STORE[job_id]["status"] = "complete"
+        JOB_STORE[job_id]["answer"] = answer
+        JOB_STORE[job_id]["elapsed"] = elapsed
+        
+        print(f"[JOB {job_id}] Completed in {elapsed:.1f}s")
+        sys.stdout.flush()
+        
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        elapsed = time.time() - JOB_STORE[job_id].get("start_time", time.time())
+        
+        JOB_STORE[job_id]["status"] = "error"
+        JOB_STORE[job_id]["error"] = f"{error_type}: {error_msg}"
+        JOB_STORE[job_id]["elapsed"] = elapsed
+        
+        print(f"[JOB {job_id}] Error: {error_type}: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        sys.stdout.flush()
+
+@app.post("/query", response_model=QueryJobResponse)
+async def query(req: QueryRequest, http_req: Request, background_tasks: BackgroundTasks):
+    """Start query processing as background job - returns immediately to avoid Railway timeout."""
+    client_ip = http_req.client.host if http_req and http_req.client else "unknown"
+    job_id = str(uuid.uuid4())
+    
+    # Validate input
+    if len(req.question) < 3:
+        raise HTTPException(status_code=400, detail="Question too short")
     
     # Rate limiting
     try:
         check_rate_limit(client_ip)
     except HTTPException as rl_ex:
-        trace_event(request_id, "rate_limit", detail=rl_ex.detail)
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
-            content={"detail": rl_ex.detail, "request_id": request_id},
-            status_code=rl_ex.status_code,
-            headers={"X-Request-ID": request_id},
-        )
+        raise
     
-    # Validate input
-    if len(req.question) < 3:
-        trace_event(request_id, "validation_error", detail="Question too short")
-        raise HTTPException(status_code=400, detail="Question too short")
+    # Create job entry
+    JOB_STORE[job_id] = {
+        "status": "pending",
+        "question": req.question,
+        "max_length": req.max_length,
+        "created_at": time.time()
+    }
     
-    query_start_time = time.time()
-    init_start = time.time()
-    try:
-        # Generate answer (matches archived working_api.py pattern)
-        print(f"[SERVER] Processing query: {req.question}")
-        print(f"[SERVER] Request ID: {request_id}")
-        print(f"[SERVER] API Key present: {bool(gemini_key)}")
-        trace_event(request_id, "query_start", question=req.question[:100])
-        sys.stdout.flush()
-        
-        # Create query engine with async disabled for FastAPI compatibility
-        print(f"[SERVER] Creating QueryEngine...")
-        sys.stdout.flush()
-        from lib.query_engine import QueryEngine
-        from lib.config import QUERY_TIMEOUT_SECONDS
-        try:
-            qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
-            print(f"[SERVER] QueryEngine created successfully")
-            sys.stdout.flush()
-        except Exception as init_error:
-            print(f"[SERVER] FAILED to create QueryEngine: {type(init_error).__name__}: {init_error}")
-            import traceback
-            traceback.print_exc()
-            sys.stdout.flush()
-            raise
-        init_time = time.time() - init_start
-        print(f"[SERVER] QueryEngine initialization took {init_time:.1f}s")
-        trace_event(request_id, "engine_init", duration=init_time)
-        sys.stdout.flush()
-        
-        # Process query (uses sequential processing to avoid event loop conflicts)
-        # Run blocking query in executor to avoid blocking async event loop
-        # Add timeout wrapper to ensure we don't exceed QUERY_TIMEOUT_SECONDS
-        import asyncio
-        loop = asyncio.get_event_loop()
-        query_start = time.time()
-        
-        # Wrap query in timeout to prevent exceeding server timeout
-        try:
-            print(f"[SERVER] Starting query execution in executor...")
-            sys.stdout.flush()
-            answer = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: qe.query(req.question, use_llm=True)),
-                timeout=QUERY_TIMEOUT_SECONDS - 10  # Leave 10s buffer for cleanup
-            )
-            print(f"[SERVER] Query executor completed successfully")
-            sys.stdout.flush()
-        except RuntimeError as e:
-            # Handle missing database gracefully
-            error_msg = str(e)
-            print(f"[SERVER] Database error: {error_msg}")
-            trace_event(request_id, "error", type="RuntimeError", message=error_msg)
-            raise HTTPException(
-                status_code=503,
-                detail=f"Database not initialized. {error_msg} Request ID: {request_id}"
-            )
-        except asyncio.TimeoutError:
-            query_time = time.time() - query_start
-            trace_event(request_id, "query_timeout", duration=query_time)
-            raise HTTPException(
-                status_code=504,
-                detail=f"Query timed out after {query_time:.1f}s (limit: {QUERY_TIMEOUT_SECONDS}s). Request ID: {request_id}"
-            )
-        except Exception as executor_error:
-            error_type = type(executor_error).__name__
-            error_msg = str(executor_error)
-            print(f"[SERVER] Executor error: {error_type}: {error_msg}")
-            import traceback
-            traceback.print_exc()
-            sys.stdout.flush()
-            trace_event(request_id, "error", type=error_type, message=error_msg)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Query execution failed: {error_msg} (Request ID: {request_id})"
-            )
-        
-        query_time = time.time() - query_start
-        print(f"[SERVER] Query processing took {query_time:.1f}s")
-        trace_event(request_id, "query_processing", duration=query_time)
-        sys.stdout.flush()
-        
-        # Truncate if needed
-        if len(answer) > req.max_length:
-            answer = answer[:req.max_length] + "\n\n[Truncated]"
-        
-        duration = time.time() - query_start_time
-        trace_event(request_id, "query_complete", duration=duration, answer_length=len(answer))
-        print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
-        sys.stdout.flush()
-        
-        return QueryResponse(answer=answer)
+    # Start background task
+    background_tasks.add_task(process_query_job, job_id, req.question, req.max_length)
     
-    except Exception as e:
-        duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
-        error_type = type(e).__name__
-        error_msg = str(e)
-        trace_event(request_id, "error", type=error_type, message=error_msg, duration=duration)
-        print(f"[SERVER] ERROR processing query {request_id}: {error_type}: {error_msg}")
-        import traceback
-        print(f"[SERVER] FULL TRACEBACK:")
-        traceback.print_exc()
-        sys.stdout.flush()
-        # Include Request ID in error detail so it's visible even on timeout
-        error_detail = f"Query failed: {str(e)} (Request ID: {request_id})"
-        print(f"[SERVER] Raising HTTPException: {error_detail}")
-        sys.stdout.flush()
-        raise HTTPException(status_code=500, detail=error_detail)
+    trace_event(job_id, "job_created", question=req.question[:100])
+    print(f"[SERVER] Job {job_id} created for: {req.question[:60]}...")
+    import sys
+    sys.stdout.flush()
+    
+    return QueryJobResponse(
+        job_id=job_id,
+        status="pending",
+        message="Query processing started. Poll /query/{job_id} for status."
+    )
+
+@app.get("/query/{job_id}", response_model=QueryStatusResponse)
+async def get_query_status(job_id: str):
+    """Get query job status and result."""
+    if job_id not in JOB_STORE:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    
+    job = JOB_STORE[job_id]
+    elapsed = None
+    if "start_time" in job:
+        elapsed = time.time() - job["start_time"]
+    
+    return QueryStatusResponse(
+        job_id=job_id,
+        status=job["status"],
+        answer=job.get("answer"),
+        error=job.get("error"),
+        elapsed=elapsed
+    )
 
 @app.get("/debug/last")
 def debug_last(n: int = 50):
