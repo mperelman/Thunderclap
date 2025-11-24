@@ -335,8 +335,16 @@ def get_status():
     return {
         "status": "running",
         "last_traces": list(TRACE_BUFFER)[-20:],
-        "trace_count": len(TRACE_BUFFER)
+        "trace_count": len(TRACE_BUFFER),
+        "query_timeout_seconds": QUERY_TIMEOUT_SECONDS
     }
+
+@app.get("/test-timeout")
+async def test_timeout():
+    """Test endpoint to check Railway's proxy timeout."""
+    import asyncio
+    await asyncio.sleep(65)  # Sleep for 65 seconds to test if Railway times out
+    return {"message": "Timeout test passed - server is still alive after 65 seconds"}
 if __name__ == "__main__":
     import uvicorn
     # Read PORT from environment (Railway/Render set this) or default to 8000
