@@ -1020,9 +1020,11 @@
             }
             
             try {
+                console.log('[DEBUG] Starting query, API_URL:', API_URL);
                 setProgress(30, 'Starting query...');
                 
                 // Start background job - returns immediately to avoid Railway timeout
+                console.log('[DEBUG] Fetching:', API_URL);
                 const startResponse = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -1033,6 +1035,7 @@
                         max_length: 15000
                     })
                 });
+                console.log('[DEBUG] Response status:', startResponse.status);
                 
                 if (!startResponse.ok) {
                     if (startResponse.status === 429) {
@@ -1103,9 +1106,16 @@
                 throw new Error('Query is taking too long. Please try again or simplify your question.');
                 
             } catch (error) {
+                // Log actual error for debugging
+                console.error('[ERROR] Actual error:', error);
+                console.error('[ERROR] Error name:', error.name);
+                console.error('[ERROR] Error message:', error.message);
+                console.error('[ERROR] Error stack:', error.stack);
+                console.error('[ERROR] API_URL:', API_URL);
+                
                 // Google principle #8: Make errors recoverable, not punishing
                 // Preserve the query in the input field so user can try again
-                let errorMsg = error.message;
+                let errorMsg = error.message || String(error);
                 let reqId = 'n/a';
                 
                 // Try to get Request ID from response if available (for non-timeout errors)
@@ -1122,16 +1132,13 @@
                     errorMsg = '⚠️ Query timed out (took longer than 7 minutes).\n\n' +
                                'Your question is still in the box above - try simplifying it or breaking it into smaller parts.\n\n' +
                                'Check server console logs for Request ID, or visit http://localhost:8000/status to see recent requests.';
-                } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+                } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError') || error.name === 'TypeError') {
                     // Show actual error with diagnostic info
-                    errorMsg = `⚠️ Network Error: Cannot connect to server\n\n` +
-                               `Error: ${error.name}: ${errorMsg}\n` +
+                    errorMsg = `⚠️ NETWORK ERROR (Check browser console for details)\n\n` +
+                               `Error Type: ${error.name}\n` +
+                               `Error Message: ${errorMsg}\n` +
                                `API URL: ${API_URL}\n\n` +
-                               `Possible causes:\n` +
-                               `- Server not running\n` +
-                               `- Wrong API URL (check ?api= parameter)\n` +
-                               `- CORS issue (server must allow your origin)\n` +
-                               `- Network connectivity problem\n\n` +
+                               `Open browser console (F12) to see full error details.\n\n` +
                                `Your question is preserved above - fix the issue and try again.`;
                 } else if (errorMsg.includes('quota') || errorMsg.includes('429')) {
                     errorMsg = '⚠️ API quota exceeded. Please wait 20-30 seconds and try again.\n\n' +
