@@ -20,10 +20,19 @@ class LLMAnswerGenerator:
         self.api_key = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
         self.client = None
         
+        # Debug: Log API key status
+        print(f"  [LLM INIT] API key provided: {bool(api_key)}")
+        print(f"  [LLM INIT] API key from env: {bool(os.getenv('GEMINI_API_KEY'))}")
+        print(f"  [LLM INIT] Final API key present: {bool(self.api_key)}")
+        if self.api_key:
+            print(f"  [LLM INIT] API key length: {len(self.api_key)}")
+            print(f"  [LLM INIT] API key starts with: {self.api_key[:10]}...")
+        
         # Try Gemini first
         if self.api_key:
             try:
                 import google.generativeai as genai
+                print(f"  [LLM INIT] Configuring Gemini with API key...")
                 genai.configure(api_key=self.api_key)
                 # Use low-variance generation to stabilize output length/structure
                 self._gen_config = {
@@ -40,9 +49,12 @@ class LLMAnswerGenerator:
                 print("  [OK] Gemini API configured (2.5 Flash, 15 RPM / 1M TPM / 200 RPD)")
             except Exception as e:
                 print(f"  [ERROR] Gemini setup failed: {e}")
+                import traceback
+                traceback.print_exc()
                 self.client = None
         else:
-            print("  [WARNING] No Gemini API key found")
+            print("  [ERROR] No Gemini API key found - cannot initialize LLM")
+            raise RuntimeError("GEMINI_API_KEY environment variable not set. Set it in Railway Variables tab.")
     
     def _is_rate_limit_error(self, exc: Exception) -> bool:
         msg = str(exc).lower()
