@@ -422,19 +422,23 @@
     </div>
 
     <script>
-        // IMPORTANT: Change this to your deployed API URL
-        // API URL - defaults to localhost, but can be overridden via URL parameter or environment
+        // API URL - can be set via ?api= parameter
         const API_URL = (() => {
             const urlParams = new URLSearchParams(window.location.search);
             const apiParam = urlParams.get('api');
-            if (apiParam) return apiParam;
-            // Try to detect if we're on GitHub Pages and use a default remote server if needed
-            if (window.location.hostname.includes('github.io')) {
-                // Default to localhost fallback - user should set ?api=YOUR_SERVER_URL
-                return 'http://localhost:8000/query';
+            if (apiParam) {
+                // Ensure it ends with /query if not already
+                return apiParam.endsWith('/query') ? apiParam : apiParam + '/query';
             }
+            // Default to localhost for local development
             return 'http://localhost:8000/query';
         })();
+        
+        // Check if we're on GitHub Pages but API URL is localhost
+        if (window.location.hostname.includes('github.io') && API_URL.includes('localhost')) {
+            console.warn('[WARNING] You are on GitHub Pages but API URL points to localhost.');
+            console.warn('[WARNING] Add ?api=YOUR_RAILWAY_URL to the page URL.');
+        }
         
         function fillExample(text) {
             document.getElementById('question').value = text;
@@ -1133,12 +1137,22 @@
                                'Your question is still in the box above - try simplifying it or breaking it into smaller parts.\n\n' +
                                'Check server console logs for Request ID, or visit http://localhost:8000/status to see recent requests.';
                 } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError') || error.name === 'TypeError') {
-                    // Show actual error with diagnostic info
-                    errorMsg = `⚠️ NETWORK ERROR (Check browser console for details)\n\n` +
-                               `Error Type: ${error.name}\n` +
-                               `Error Message: ${errorMsg}\n` +
-                               `API URL: ${API_URL}\n\n` +
-                               `Open browser console (F12) to see full error details.\n\n` +
+                    // Check if localhost API URL is being used from GitHub Pages
+                    let helpText = '';
+                    if (API_URL.includes('localhost') && window.location.hostname.includes('github.io')) {
+                        helpText = `\n\n🔴 PROBLEM: You're accessing from GitHub Pages but API URL is localhost!\n\n` +
+                                   `SOLUTION: Add your Railway URL to the page URL:\n` +
+                                   `https://mperelman.github.io/Thunderclap/?api=https://YOUR-RAILWAY-URL.up.railway.app\n\n` +
+                                   `Replace YOUR-RAILWAY-URL with your actual Railway domain.\n`;
+                    } else if (API_URL.includes('localhost')) {
+                        helpText = `\n\nMake sure your local server is running:\n` +
+                                   `python server.py\n`;
+                    }
+                    
+                    errorMsg = `⚠️ NETWORK ERROR: Cannot connect to server\n\n` +
+                               `Error: ${error.name}: ${errorMsg}\n` +
+                               `API URL: ${API_URL}\n` +
+                               helpText +
                                `Your question is preserved above - fix the issue and try again.`;
                 } else if (errorMsg.includes('quota') || errorMsg.includes('429')) {
                     errorMsg = '⚠️ API quota exceeded. Please wait 20-30 seconds and try again.\n\n' +
