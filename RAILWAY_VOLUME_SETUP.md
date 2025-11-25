@@ -9,12 +9,22 @@ Railway's container filesystem is running out of space when downloading LFS file
 
 Railway Volumes provide persistent storage that doesn't count against container disk limits.
 
-### Step 1: Create Volume in Railway
+### Step 1: Increase Volume Size (or Create New)
+
+**If volume already exists (99% full):**
 1. Go to Railway dashboard → your service
-2. Click "Volumes" tab (or "Settings" → "Volumes")
+2. Click "Volumes" tab
+3. Find your volume (`web-volume` or similar)
+4. Click on it → "Settings" or "Edit"
+5. Increase size to **at least 1GB** (2GB recommended)
+6. Save changes
+
+**OR create new larger volume:**
+1. Go to Railway dashboard → your service
+2. Click "Volumes" tab
 3. Click "New Volume" or "Create Volume"
 4. Name: `thunderclap-data`
-5. Size: 1GB (or larger)
+5. Size: **1GB minimum** (2GB recommended for safety)
 6. Click "Create"
 
 ### Step 2: Mount Volume at `/app/data` (CRITICAL)
