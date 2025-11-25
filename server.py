@@ -181,15 +181,39 @@ async def health():
 
 @app.get("/test")
 async def test():
-    """Test endpoint to verify server is working."""
+    """Test endpoint to verify server is working and check data files."""
     try:
         print("[TEST] Test endpoint called")
         sys.stdout.flush()
+        
+        # Check data folder status
+        data_status = {}
+        chroma_path = "data/vectordb/chroma.sqlite3"
+        if os.path.exists(chroma_path):
+            size = os.path.getsize(chroma_path)
+            data_status["chroma_exists"] = True
+            data_status["chroma_size"] = size
+            data_status["chroma_size_mb"] = round(size / (1024 * 1024), 2)
+            data_status["is_pointer"] = size < 1000000
+        else:
+            data_status["chroma_exists"] = False
+        
+        indices_path = "data/indices.json"
+        data_status["indices_exists"] = os.path.exists(indices_path)
+        if os.path.exists(indices_path):
+            data_status["indices_size"] = os.path.getsize(indices_path)
+        
+        vectordb_dir = "data/vectordb"
+        if os.path.exists(vectordb_dir):
+            files = os.listdir(vectordb_dir)
+            data_status["vectordb_files"] = files[:10]  # First 10 files
+        
         return {
             "status": "ok",
             "message": "Server is working",
             "api_key_present": bool(gemini_key),
-            "api_key_length": len(gemini_key) if gemini_key else 0
+            "api_key_length": len(gemini_key) if gemini_key else 0,
+            "data_status": data_status
         }
     except Exception as e:
         print(f"[TEST] Error: {e}")
