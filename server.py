@@ -88,6 +88,13 @@ async def add_timeout_headers(request: Request, call_next):
 
 # Store API key for creating QueryEngine instances
 gemini_key_raw = os.getenv('GEMINI_API_KEY')
+print("="*60)
+print("[STARTUP] Checking GEMINI_API_KEY environment variable...")
+print(f"[STARTUP] Raw value from os.getenv: {bool(gemini_key_raw)}")
+if gemini_key_raw:
+    print(f"[STARTUP] Raw value length: {len(gemini_key_raw)}")
+    print(f"[STARTUP] Raw value starts with: {gemini_key_raw[:10]}...")
+    print(f"[STARTUP] Raw value (first 20 chars): {gemini_key_raw[:20]}...")
 gemini_key = gemini_key_raw.strip() if gemini_key_raw else None
 if not gemini_key:
     print("="*60)
@@ -97,15 +104,20 @@ if not gemini_key:
     print("1. Go to Railway → Variables tab")
     print("2. Add variable: GEMINI_API_KEY")
     print("3. Value: Your Gemini API key (no quotes, no spaces)")
+    print("4. Railway will auto-redeploy")
+    print("="*60)
 elif len(gemini_key) != 39 or not gemini_key.startswith('AIza'):
     print("="*60)
     print(f"WARNING: GEMINI_API_KEY format looks incorrect!")
     print(f"  Length: {len(gemini_key)} (expected 39)")
     print(f"  Starts with: {gemini_key[:10]}... (expected 'AIza...')")
     print("="*60)
-    print("4. Railway will auto-redeploy")
+    print("Check Railway Variables → GEMINI_API_KEY")
     print("="*60)
-    sys.exit(1)
+    # Don't exit - let it try anyway, might still work
+else:
+    print(f"[STARTUP] ✓ GEMINI_API_KEY found and looks valid (length: {len(gemini_key)})")
+    print("="*60)
 
 print("="*60)
 print("Initializing Thunderclap AI Server")
