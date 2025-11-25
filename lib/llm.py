@@ -70,9 +70,14 @@ class LLMAnswerGenerator:
                 print("  [OK] Gemini API configured (2.5 Flash, 15 RPM / 1M TPM / 200 RPD)")
             except Exception as e:
                 print(f"  [ERROR] Gemini setup failed: {e}")
+                print(f"  [ERROR] API key was present: {bool(self.api_key)}")
+                if self.api_key:
+                    print(f"  [ERROR] API key length: {len(self.api_key)}")
+                    print(f"  [ERROR] API key starts with: {self.api_key[:10]}...")
                 import traceback
                 traceback.print_exc()
                 self.client = None
+                # Don't raise here - let it fail gracefully when used
         else:
             print("  [ERROR] No Gemini API key found - cannot initialize LLM")
             raise RuntimeError("GEMINI_API_KEY environment variable not set. Set it in Railway Variables tab.")
