@@ -43,11 +43,30 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     
     echo "=== Verification ==="
     SIZE=$(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0)
-    echo "chroma.sqlite3 size: $SIZE bytes"
+    echo "chroma.sqlite3 size: $SIZE bytes ($(echo "scale=2; $SIZE/1024/1024" | bc) MB)"
     if [ "$SIZE" -lt 1000000 ]; then
         echo "ERROR: File is still a pointer file after download!"
         exit 1
     fi
-    echo "SUCCESS: LFS files downloaded"
+    # Verify SQLite database integrity
+    echo "=== Verifying SQLite database integrity ==="
+    sqlite3 data/vectordb/chroma.sqlite3 "PRAGMA integrity_check;" > /tmp/integrity_check.txt 2>&1
+    INTEGRITY_RESULT=$(cat /tmp/integrity_check.txt)
+    if echo "$INTEGRITY_RESULT" | grep -q "ok"; then
+        echo "SUCCESS: Database integrity check passed"
+    else
+        echo "WARNING: Database integrity check failed:"
+        echo "$INTEGRITY_RESULT"
+        echo "Database may be corrupted. Attempting to re-download..."
+        rm -f data/vectordb/chroma.sqlite3
+        git lfs pull origin main || (git lfs fetch origin main && git lfs checkout)
+        echo "Re-verifying after re-download..."
+        sqlite3 data/vectordb/chroma.sqlite3 "PRAGMA integrity_check;" > /tmp/integrity_check2.txt 2>&1
+        if ! grep -q "ok" /tmp/integrity_check2.txt; then
+            echo "ERROR: Database still corrupted after re-download!"
+            exit 1
+        fi
+    fi
+    echo "SUCCESS: LFS files downloaded and verified"
 fi
 
