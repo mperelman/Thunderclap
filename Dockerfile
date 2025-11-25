@@ -40,9 +40,10 @@ COPY --from=builder /root/.local /root/.local
 COPY server.py .
 COPY lib/ ./lib/
 COPY public/ ./public/
-# Copy data folder from Git (includes LFS-tracked files)
-# Git LFS files will be automatically fetched when Railway clones the repo
-COPY data/ ./data/
+# Copy entire repo context (Railway clones the repo, so data/ is already here)
+# Then fetch LFS files to replace pointers with actual files
+COPY . .
+RUN git lfs pull || echo "Warning: Git LFS pull failed - data files may be missing"
 
 # Environment
 ENV PATH=/root/.local/bin:$PATH
