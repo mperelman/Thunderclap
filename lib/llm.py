@@ -82,15 +82,25 @@ class LLMAnswerGenerator:
                         raise RuntimeError(f"API key test failed: {error_msg}\nCheck Railway logs for full error details.")
                 print("  [OK] Gemini API configured (2.5 Flash, 15 RPM / 1M TPM / 200 RPD)")
             except Exception as e:
-                print(f"  [ERROR] Gemini setup failed: {e}")
+                error_msg = str(e)
+                print(f"  [ERROR] Gemini setup failed: {error_msg}")
                 print(f"  [ERROR] API key was present: {bool(self.api_key)}")
                 if self.api_key:
                     print(f"  [ERROR] API key length: {len(self.api_key)}")
                     print(f"  [ERROR] API key starts with: {self.api_key[:10]}...")
                 import traceback
                 traceback.print_exc()
+                import sys
+                sys.stdout.flush()
+                
+                # Store error for better error messages later
+                self._init_error = error_msg
                 self.client = None
-                # Don't raise here - let it fail gracefully when used
+                
+                # If it's an invalid API key error, raise it immediately
+                if "invalid" in error_msg.lower() or "api key" in error_msg.lower() or "api_key" in error_msg.lower():
+                    raise RuntimeError(f"Gemini API initialization failed: {error_msg}\nCheck Railway Variables → GEMINI_API_KEY is correct.")
+                # Otherwise, let it fail gracefully when used (might be quota/network issue)
         else:
             print("  [ERROR] No Gemini API key found - cannot initialize LLM")
             raise RuntimeError("GEMINI_API_KEY environment variable not set. Set it in Railway Variables tab.")
