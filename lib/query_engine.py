@@ -92,7 +92,12 @@ class QueryEngine:
             else:
                 print(f"  [DEBUG] chroma.sqlite3 NOT FOUND in {VECTORDB_DIR}")
         
-        self.chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+        # Initialize ChromaDB with explicit settings to avoid tenant errors
+        from chromadb.config import Settings
+        self.chroma_client = chromadb.PersistentClient(
+            path=VECTORDB_DIR,
+            settings=Settings(anonymized_telemetry=False)
+        )
         try:
             # List all collections to see what's available
             collections = self.chroma_client.list_collections()
