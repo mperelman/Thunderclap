@@ -1,9 +1,10 @@
 # Docker ignore - exclude from image build
 
-# Data files - TEMPORARILY INCLUDED for Railway deployment
-# TODO: Remove data/ after uploading to Railway volume
-# data/
-# vectordb/
+# Data files - INCLUDED in Docker build for Railway
+# Note: data/ is gitignored, so Railway builds from local files during deployment
+# For production, use Railway Volumes instead
+data/
+vectordb/
 source_documents/
 
 # Documentation

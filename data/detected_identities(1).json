@@ -1,0 +1,2316 @@
+{
+  "identities": {
+    "zambian": {
+      "families": [
+        "moyo"
+      ],
+      "counts": {
+        "moyo": 2
+      },
+      "type": "llm_detected"
+    },
+    "jewish": {
+      "families": [
+        "sassoon",
+        "safra",
+        "rothschild",
+        "cantor",
+        "soros",
+        "rosenberg",
+        "samuel",
+        "cohen",
+        "wertheim",
+        "catz",
+        "madoff",
+        "harris",
+        "gilinski",
+        "lieberman",
+        "blankfein",
+        "wojcicki",
+        "reffkin",
+        "schumer",
+        "levitt",
+        "javice",
+        "braverman",
+        "ellison",
+        "rappaport",
+        "berezovsky",
+        "isaac",
+        "jacob",
+        "joseph",
+        "dublon",
+        "hill samuel",
+        "dimon",
+        "sayer",
+        "kadoorie",
+        "corzine",
+        "schneerson",
+        "mendelssohn",
+        "levita",
+        "karp",
+        "levine",
+        "sandler",
+        "siegel",
+        "gutmann",
+        "pritzker",
+        "black",
+        "kaplan",
+        "bankman-fried",
+        "katz",
+        "trump",
+        "mezvinsky",
+        "emhoff",
+        "gusinsky",
+        "abramovich",
+        "kolomoisky",
+        "kagalovsky",
+        "wasserstein",
+        "cattaui",
+        "menasche sassoon"
+      ],
+      "counts": {
+        "sassoon": 6,
+        "safra": 5,
+        "rothschild": 5,
+        "cantor": 5,
+        "soros": 5,
+        "rosenberg": 3,
+        "samuel": 3,
+        "cohen": 3,
+        "wertheim": 2,
+        "catz": 2,
+        "madoff": 2,
+        "harris": 2,
+        "gilinski": 2,
+        "lieberman": 2,
+        "blankfein": 2,
+        "wojcicki": 2,
+        "reffkin": 2,
+        "schumer": 2,
+        "levitt": 2,
+        "javice": 2,
+        "braverman": 2,
+        "ellison": 2,
+        "rappaport": 2,
+        "berezovsky": 2,
+        "isaac": 1,
+        "jacob": 1,
+        "joseph": 1,
+        "dublon": 1,
+        "hill samuel": 1,
+        "dimon": 1,
+        "sayer": 1,
+        "kadoorie": 1,
+        "corzine": 1,
+        "schneerson": 1,
+        "mendelssohn": 1,
+        "levita": 1,
+        "karp": 1,
+        "levine": 1,
+        "sandler": 1,
+        "siegel": 1,
+        "gutmann": 1,
+        "pritzker": 1,
+        "black": 1,
+        "kaplan": 1,
+        "bankman-fried": 1,
+        "katz": 1,
+        "trump": 1,
+        "mezvinsky": 1,
+        "emhoff": 1,
+        "gusinsky": 1,
+        "abramovich": 1,
+        "kolomoisky": 1,
+        "kagalovsky": 1,
+        "wasserstein": 1,
+        "cattaui": 1,
+        "menasche sassoon": 1
+      },
+      "type": "llm_detected"
+    },
+    "kohanim": {
+      "families": [
+        "cohen",
+        "kagan",
+        "kahn",
+        "kann",
+        "caen",
+        "kaplan"
+      ],
+      "counts": {
+        "cohen": 1,
+        "kagan": 1,
+        "kahn": 1,
+        "kann": 1,
+        "caen": 1,
+        "kaplan": 1
+      },
+      "type": "llm_detected"
+    },
+    "levite": {
+      "families": [
+        "levi",
+        "landau",
+        "levin",
+        "levy",
+        "loewe",
+        "epstein",
+        "horowitz",
+        "segal"
+      ],
+      "counts": {
+        "levi": 1,
+        "landau": 1,
+        "levin": 1,
+        "levy": 1,
+        "loewe": 1,
+        "epstein": 1,
+        "horowitz": 1,
+        "segal": 1
+      },
+      "type": "llm_detected"
+    },
+    "british": {
+      "families": [
+        "rose",
+        "umunna",
+        "kwarteng",
+        "haruko",
+        "tuke",
+        "brew",
+        "leigh-pemberton",
+        "wyndham",
+        "benson",
+        "goodhart",
+        "mornington",
+        "gupta",
+        "horta-osorio",
+        "farage",
+        "keswick",
+        "levene",
+        "smith",
+        "thatcher"
+      ],
+      "counts": {
+        "rose": 4,
+        "umunna": 3,
+        "kwarteng": 2,
+        "haruko": 2,
+        "tuke": 2,
+        "brew": 1,
+        "leigh-pemberton": 1,
+        "wyndham": 1,
+        "benson": 1,
+        "goodhart": 1,
+        "mornington": 1,
+        "gupta": 1,
+        "horta-osorio": 1,
+        "farage": 1,
+        "keswick": 1,
+        "levene": 1,
+        "smith": 1,
+        "thatcher": 1
+      },
+      "type": "llm_detected"
+    },
+    "court_jew": {
+      "families": [
+        "liebman",
+        "wertheim"
+      ],
+      "counts": {
+        "liebman": 3,
+        "wertheim": 2
+      },
+      "type": "llm_detected"
+    },
+    "russian": {
+      "families": [
+        "yeltsin",
+        "romanov",
+        "chernomyrdin",
+        "aven",
+        "gerashchenko",
+        "derby",
+        "jordan",
+        "lopukhin",
+        "matiukhin",
+        "khodorkovsky",
+        "gurfinkel",
+        "kagalovsky",
+        "edwards",
+        "berlin",
+        "vyakhirev",
+        "alekperov",
+        "potanin",
+        "paramonova"
+      ],
+      "counts": {
+        "yeltsin": 4,
+        "romanov": 2,
+        "chernomyrdin": 2,
+        "aven": 2,
+        "gerashchenko": 2,
+        "derby": 1,
+        "jordan": 1,
+        "lopukhin": 1,
+        "matiukhin": 1,
+        "khodorkovsky": 1,
+        "gurfinkel": 1,
+        "kagalovsky": 1,
+        "edwards": 1,
+        "berlin": 1,
+        "vyakhirev": 1,
+        "alekperov": 1,
+        "potanin": 1,
+        "paramonova": 1
+      },
+      "type": "llm_detected"
+    },
+    "anglican": {
+      "families": [
+        "cayley",
+        "smyth",
+        "goodhart"
+      ],
+      "counts": {
+        "cayley": 2,
+        "smyth": 1,
+        "goodhart": 1
+      },
+      "type": "llm_detected"
+    },
+    "armenian": {
+      "families": [
+        "minas"
+      ],
+      "counts": {
+        "minas": 1
+      },
+      "type": "llm_detected"
+    },
+    "sephardi": {
+      "families": [
+        "aguilar",
+        "gideon",
+        "chavez"
+      ],
+      "counts": {
+        "aguilar": 3,
+        "gideon": 1,
+        "chavez": 1
+      },
+      "type": "llm_detected"
+    },
+    "calvinist": {
+      "families": [
+        "neufville"
+      ],
+      "counts": {
+        "neufville": 1
+      },
+      "type": "llm_detected"
+    },
+    "mennonite": {
+      "families": [
+        "neufville"
+      ],
+      "counts": {
+        "neufville": 1
+      },
+      "type": "llm_detected"
+    },
+    "huguenot": {
+      "families": [
+        "delancey"
+      ],
+      "counts": {
+        "delancey": 1
+      },
+      "type": "llm_detected"
+    },
+    "dutch": {
+      "families": [
+        "delancey",
+        "kroes",
+        "kok"
+      ],
+      "counts": {
+        "delancey": 1,
+        "kroes": 1,
+        "kok": 1
+      },
+      "type": "llm_detected"
+    },
+    "protestant": {
+      "families": [
+        "fries",
+        "quandt"
+      ],
+      "counts": {
+        "fries": 1,
+        "quandt": 1
+      },
+      "type": "llm_detected"
+    },
+    "converted": {
+      "families": [
+        "albright",
+        "gideon",
+        "trump"
+      ],
+      "counts": {
+        "albright": 2,
+        "gideon": 1,
+        "trump": 1
+      },
+      "type": "llm_detected"
+    },
+    "christian": {
+      "families": [
+        "albright",
+        "gideon",
+        "abdelnour",
+        "boutros",
+        "chammah",
+        "bitar",
+        "jabre",
+        "tamraz",
+        "raiffeisen",
+        "medvedev",
+        "tymoshenko",
+        "poroshenko",
+        "saakashvili"
+      ],
+      "counts": {
+        "albright": 2,
+        "gideon": 1,
+        "abdelnour": 1,
+        "boutros": 1,
+        "chammah": 1,
+        "bitar": 1,
+        "jabre": 1,
+        "tamraz": 1,
+        "raiffeisen": 1,
+        "medvedev": 1,
+        "tymoshenko": 1,
+        "poroshenko": 1,
+        "saakashvili": 1
+      },
+      "type": "llm_detected"
+    },
+    "greek": {
+      "families": [
+        "papadimitriou",
+        "peterson",
+        "christodoulou",
+        "mitsotakis"
+      ],
+      "counts": {
+        "papadimitriou": 2,
+        "peterson": 1,
+        "christodoulou": 1,
+        "mitsotakis": 1
+      },
+      "type": "llm_detected"
+    },
+    "israeli": {
+      "families": [
+        "catz",
+        "gadiesh",
+        "maor",
+        "reffkin"
+      ],
+      "counts": {
+        "catz": 2,
+        "gadiesh": 2,
+        "maor": 2,
+        "reffkin": 2
+      },
+      "type": "llm_detected"
+    },
+    "american": {
+      "families": [
+        "bush",
+        "trump",
+        "clinton",
+        "catz",
+        "rockefeller",
+        "craven",
+        "gramm",
+        "scardino",
+        "diaz",
+        "katz-descendant",
+        "rapoport",
+        "obama",
+        "baker",
+        "wagner",
+        "gault",
+        "lansdale",
+        "chao",
+        "thain",
+        "habib",
+        "karp",
+        "hunt",
+        "jain",
+        "emhoff",
+        "derby",
+        "jordan",
+        "edwards",
+        "berlin",
+        "greenberg",
+        "evan",
+        "romney",
+        "buffet",
+        "abel",
+        "biden",
+        "carter",
+        "rohatyn"
+      ],
+      "counts": {
+        "bush": 4,
+        "trump": 3,
+        "clinton": 3,
+        "catz": 2,
+        "rockefeller": 2,
+        "craven": 2,
+        "gramm": 2,
+        "scardino": 2,
+        "diaz": 2,
+        "katz-descendant": 2,
+        "rapoport": 2,
+        "obama": 2,
+        "baker": 2,
+        "wagner": 2,
+        "gault": 2,
+        "lansdale": 1,
+        "chao": 1,
+        "thain": 1,
+        "habib": 1,
+        "karp": 1,
+        "hunt": 1,
+        "jain": 1,
+        "emhoff": 1,
+        "derby": 1,
+        "jordan": 1,
+        "edwards": 1,
+        "berlin": 1,
+        "greenberg": 1,
+        "evan": 1,
+        "romney": 1,
+        "buffet": 1,
+        "abel": 1,
+        "biden": 1,
+        "carter": 1,
+        "rohatyn": 1
+      },
+      "type": "llm_detected"
+    },
+    "brazilian": {
+      "families": [
+        "araujo",
+        "dublon"
+      ],
+      "counts": {
+        "araujo": 3,
+        "dublon": 1
+      },
+      "type": "llm_detected"
+    },
+    "lebanese": {
+      "families": [
+        "helu",
+        "tamraz",
+        "gemayel",
+        "harp helu",
+        "abdelnour",
+        "boutros",
+        "chammah",
+        "bitar",
+        "jabre",
+        "mack",
+        "noujaim",
+        "solh saud"
+      ],
+      "counts": {
+        "helu": 3,
+        "tamraz": 2,
+        "gemayel": 2,
+        "harp helu": 2,
+        "abdelnour": 1,
+        "boutros": 1,
+        "chammah": 1,
+        "bitar": 1,
+        "jabre": 1,
+        "mack": 1,
+        "noujaim": 1,
+        "solh saud": 1
+      },
+      "type": "llm_detected"
+    },
+    "saudi": {
+      "families": [
+        "solh saud",
+        "aggad"
+      ],
+      "counts": {
+        "solh saud": 2,
+        "aggad": 1
+      },
+      "type": "llm_detected"
+    },
+    "ghanaian": {
+      "families": [
+        "kwarteng",
+        "rawlings",
+        "bedie"
+      ],
+      "counts": {
+        "kwarteng": 2,
+        "rawlings": 1,
+        "bedie": 1
+      },
+      "type": "llm_detected"
+    },
+    "italian": {
+      "families": [
+        "sindona",
+        "cuccia",
+        "agnelli",
+        "pelosi"
+      ],
+      "counts": {
+        "sindona": 1,
+        "cuccia": 1,
+        "agnelli": 1,
+        "pelosi": 1
+      },
+      "type": "llm_detected"
+    },
+    "swiss": {
+      "families": [
+        "rohner",
+        "gut",
+        "rappaport",
+        "dreyfus"
+      ],
+      "counts": {
+        "rohner": 3,
+        "gut": 2,
+        "rappaport": 2,
+        "dreyfus": 1
+      },
+      "type": "llm_detected"
+    },
+    "black": {
+      "families": [
+        "jordan",
+        "parsons",
+        "mcguire",
+        "ferguson",
+        "obama",
+        "thiam",
+        "harris",
+        "ligondé",
+        "christophe",
+        "taylor",
+        "o'leary",
+        "reffkin",
+        "auguste",
+        "hunt",
+        "mason",
+        "brewer",
+        "ellison",
+        "duckett",
+        "womack",
+        "butler",
+        "clyburn",
+        "rawlinson",
+        "jones",
+        "delatour",
+        "duvalier",
+        "namphy",
+        "badenoch",
+        "gault",
+        "dibble",
+        "dinkins",
+        "raines",
+        "o'neil",
+        "oneil",
+        "carver",
+        "jarrett",
+        "rice",
+        "karp",
+        "pompey",
+        "walker",
+        "bostic",
+        "fryer",
+        "floyd",
+        "bragg",
+        "steward",
+        "smith",
+        "booker",
+        "adeyemo",
+        "young",
+        "bowdler",
+        "thomas-greenfield",
+        "austin",
+        "gay",
+        "lewis",
+        "thomas",
+        "jeffries",
+        "jefferson",
+        "warren",
+        "kande",
+        "chiyangwa",
+        "dumbutshena"
+      ],
+      "counts": {
+        "jordan": 8,
+        "parsons": 8,
+        "mcguire": 6,
+        "ferguson": 3,
+        "obama": 3,
+        "thiam": 3,
+        "harris": 3,
+        "ligondé": 3,
+        "christophe": 3,
+        "taylor": 2,
+        "o'leary": 2,
+        "reffkin": 2,
+        "auguste": 2,
+        "hunt": 2,
+        "mason": 2,
+        "brewer": 2,
+        "ellison": 2,
+        "duckett": 2,
+        "womack": 2,
+        "butler": 2,
+        "clyburn": 2,
+        "rawlinson": 2,
+        "jones": 2,
+        "delatour": 2,
+        "duvalier": 2,
+        "namphy": 2,
+        "badenoch": 2,
+        "gault": 2,
+        "dibble": 1,
+        "dinkins": 1,
+        "raines": 1,
+        "o'neil": 1,
+        "oneil": 1,
+        "carver": 1,
+        "jarrett": 1,
+        "rice": 1,
+        "karp": 1,
+        "pompey": 1,
+        "walker": 1,
+        "bostic": 1,
+        "fryer": 1,
+        "floyd": 1,
+        "bragg": 1,
+        "steward": 1,
+        "smith": 1,
+        "booker": 1,
+        "adeyemo": 1,
+        "young": 1,
+        "bowdler": 1,
+        "thomas-greenfield": 1,
+        "austin": 1,
+        "gay": 1,
+        "lewis": 1,
+        "thomas": 1,
+        "jeffries": 1,
+        "jefferson": 1,
+        "warren": 1,
+        "kande": 1,
+        "chiyangwa": 1,
+        "dumbutshena": 1
+      },
+      "type": "llm_detected"
+    },
+    "chinese_thai": {
+      "families": [
+        "panich"
+      ],
+      "counts": {
+        "panich": 2
+      },
+      "type": "llm_detected"
+    },
+    "nigerian": {
+      "families": [
+        "ogunlesi",
+        "umunna",
+        "adamolekun",
+        "osinbajo",
+        "vaughan",
+        "cole"
+      ],
+      "counts": {
+        "ogunlesi": 5,
+        "umunna": 3,
+        "adamolekun": 2,
+        "osinbajo": 2,
+        "vaughan": 1,
+        "cole": 1
+      },
+      "type": "llm_detected"
+    },
+    "slave": {
+      "families": [
+        "taylor"
+      ],
+      "counts": {
+        "taylor": 1
+      },
+      "type": "llm_detected"
+    },
+    "canadian": {
+      "families": [
+        "craven",
+        "ramji",
+        "campeau"
+      ],
+      "counts": {
+        "craven": 2,
+        "ramji": 2,
+        "campeau": 1
+      },
+      "type": "llm_detected"
+    },
+    "indian": {
+      "families": [
+        "gupta",
+        "harris",
+        "nooyi",
+        "pichai",
+        "talwar",
+        "boual",
+        "puri",
+        "pandit",
+        "ramji",
+        "ambani",
+        "tanden",
+        "braverman",
+        "modi",
+        "chilukuri",
+        "bose",
+        "krishnamurthy",
+        "nadella",
+        "asnani",
+        "kashkari",
+        "gopinath",
+        "aiyengar",
+        "chakrabarti",
+        "bhutani",
+        "singhal",
+        "venkatakrishnan",
+        "sunak",
+        "murthy",
+        "narasimhan",
+        "jain",
+        "gandhi",
+        "mehta",
+        "mohan"
+      ],
+      "counts": {
+        "gupta": 6,
+        "harris": 5,
+        "nooyi": 3,
+        "pichai": 3,
+        "talwar": 2,
+        "boual": 2,
+        "puri": 2,
+        "pandit": 2,
+        "ramji": 2,
+        "ambani": 2,
+        "tanden": 2,
+        "braverman": 2,
+        "modi": 2,
+        "chilukuri": 2,
+        "bose": 1,
+        "krishnamurthy": 1,
+        "nadella": 1,
+        "asnani": 1,
+        "kashkari": 1,
+        "gopinath": 1,
+        "aiyengar": 1,
+        "chakrabarti": 1,
+        "bhutani": 1,
+        "singhal": 1,
+        "venkatakrishnan": 1,
+        "sunak": 1,
+        "murthy": 1,
+        "narasimhan": 1,
+        "jain": 1,
+        "gandhi": 1,
+        "mehta": 1,
+        "mohan": 1
+      },
+      "type": "llm_detected"
+    },
+    "german": {
+      "families": [
+        "herrhausen",
+        "moltke",
+        "oppenheim",
+        "schwarzman",
+        "kohl",
+        "wieandt",
+        "bismarck",
+        "albersmeier",
+        "blessing",
+        "thiel",
+        "stepic"
+      ],
+      "counts": {
+        "herrhausen": 3,
+        "moltke": 2,
+        "oppenheim": 2,
+        "schwarzman": 1,
+        "kohl": 1,
+        "wieandt": 1,
+        "bismarck": 1,
+        "albersmeier": 1,
+        "blessing": 1,
+        "thiel": 1,
+        "stepic": 1
+      },
+      "type": "llm_detected"
+    },
+    "greek_orthodox": {
+      "families": [
+        "helu",
+        "harp helu",
+        "dimon"
+      ],
+      "counts": {
+        "helu": 3,
+        "harp helu": 2,
+        "dimon": 1
+      },
+      "type": "llm_detected"
+    },
+    "catholic": {
+      "families": [
+        "biden",
+        "brady",
+        "ellison",
+        "gerstner",
+        "powell",
+        "callahan",
+        "sullivan"
+      ],
+      "counts": {
+        "biden": 3,
+        "brady": 2,
+        "ellison": 2,
+        "gerstner": 1,
+        "powell": 1,
+        "callahan": 1,
+        "sullivan": 1
+      },
+      "type": "llm_detected"
+    },
+    "episcopalian": {
+      "families": [
+        "wilson"
+      ],
+      "counts": {
+        "wilson": 2
+      },
+      "type": "llm_detected"
+    },
+    "scottish": {
+      "families": [
+        "powell",
+        "fraser",
+        "macgregor"
+      ],
+      "counts": {
+        "powell": 2,
+        "fraser": 1,
+        "macgregor": 1
+      },
+      "type": "llm_detected"
+    },
+    "irish": {
+      "families": [
+        "mason",
+        "callahan",
+        "sullivan",
+        "sutherland",
+        "milmo",
+        "dougan"
+      ],
+      "counts": {
+        "mason": 2,
+        "callahan": 1,
+        "sullivan": 1,
+        "sutherland": 1,
+        "milmo": 1,
+        "dougan": 1
+      },
+      "type": "llm_detected"
+    },
+    "iraqi": {
+      "families": [
+        "sassoon",
+        "kadoorie"
+      ],
+      "counts": {
+        "sassoon": 1,
+        "kadoorie": 1
+      },
+      "type": "llm_detected"
+    },
+    "chinese": {
+      "families": [
+        "ren",
+        "huang",
+        "kuok",
+        "riady",
+        "zhao",
+        "jensen",
+        "xi",
+        "sophonpanich",
+        "liem",
+        "salim",
+        "chua",
+        "nubla",
+        "chao",
+        "meilan",
+        "zhang",
+        "guofeng",
+        "chen",
+        "rong",
+        "yung",
+        "zhou",
+        "deng",
+        "mao",
+        "srifuengfungs",
+        "tejaphaibuls",
+        "bin",
+        "hua",
+        "liu",
+        "erfei",
+        "zou",
+        "ding",
+        "christianson",
+        "wei",
+        "peng",
+        "li",
+        "yan",
+        "wang",
+        "shih",
+        "ye",
+        "sun",
+        "jiang"
+      ],
+      "counts": {
+        "ren": 5,
+        "huang": 3,
+        "kuok": 2,
+        "riady": 2,
+        "zhao": 2,
+        "jensen": 2,
+        "xi": 2,
+        "sophonpanich": 1,
+        "liem": 1,
+        "salim": 1,
+        "chua": 1,
+        "nubla": 1,
+        "chao": 1,
+        "meilan": 1,
+        "zhang": 1,
+        "guofeng": 1,
+        "chen": 1,
+        "rong": 1,
+        "yung": 1,
+        "zhou": 1,
+        "deng": 1,
+        "mao": 1,
+        "srifuengfungs": 1,
+        "tejaphaibuls": 1,
+        "bin": 1,
+        "hua": 1,
+        "liu": 1,
+        "erfei": 1,
+        "zou": 1,
+        "ding": 1,
+        "christianson": 1,
+        "wei": 1,
+        "peng": 1,
+        "li": 1,
+        "yan": 1,
+        "wang": 1,
+        "shih": 1,
+        "ye": 1,
+        "sun": 1,
+        "jiang": 1
+      },
+      "type": "llm_detected"
+    },
+    "malaysian": {
+      "families": [
+        "kuok",
+        "mohamad",
+        "tan",
+        "ismail",
+        "ahmad",
+        "yahaya"
+      ],
+      "counts": {
+        "kuok": 2,
+        "mohamad": 2,
+        "tan": 1,
+        "ismail": 1,
+        "ahmad": 1,
+        "yahaya": 1
+      },
+      "type": "llm_detected"
+    },
+    "indonesian": {
+      "families": [
+        "liem",
+        "salim"
+      ],
+      "counts": {
+        "liem": 1,
+        "salim": 1
+      },
+      "type": "llm_detected"
+    },
+    "taiwanese": {
+      "families": [
+        "chao",
+        "chiang",
+        "tai",
+        "jensen",
+        "su",
+        "yu"
+      ],
+      "counts": {
+        "chao": 3,
+        "chiang": 2,
+        "tai": 2,
+        "jensen": 2,
+        "su": 2,
+        "yu": 1
+      },
+      "type": "llm_detected"
+    },
+    "filipino": {
+      "families": [
+        "lopez",
+        "marcos",
+        "chua",
+        "perez"
+      ],
+      "counts": {
+        "lopez": 3,
+        "marcos": 2,
+        "chua": 1,
+        "perez": 1
+      },
+      "type": "llm_detected"
+    },
+    "basque": {
+      "families": [
+        "ayala",
+        "aboitiz",
+        "chavez"
+      ],
+      "counts": {
+        "ayala": 3,
+        "aboitiz": 3,
+        "chavez": 1
+      },
+      "type": "llm_detected"
+    },
+    "asian": {
+      "families": [
+        "chao",
+        "li",
+        "gramm",
+        "talwar"
+      ],
+      "counts": {
+        "chao": 3,
+        "li": 2,
+        "gramm": 2,
+        "talwar": 1
+      },
+      "type": "llm_detected"
+    },
+    "australian": {
+      "families": [
+        "rinehart",
+        "wolfensohn",
+        "holmes"
+      ],
+      "counts": {
+        "rinehart": 2,
+        "wolfensohn": 1,
+        "holmes": 1
+      },
+      "type": "llm_detected"
+    },
+    "czech": {
+      "families": [
+        "petschek"
+      ],
+      "counts": {
+        "petschek": 1
+      },
+      "type": "llm_detected"
+    },
+    "shanghainese": {
+      "families": [
+        "pao"
+      ],
+      "counts": {
+        "pao": 1
+      },
+      "type": "llm_detected"
+    },
+    "lithuanian": {
+      "families": [
+        "gilinski"
+      ],
+      "counts": {
+        "gilinski": 2
+      },
+      "type": "llm_detected"
+    },
+    "turkish": {
+      "families": [
+        "ozmen",
+        "kutman",
+        "eren",
+        "ozmens"
+      ],
+      "counts": {
+        "ozmen": 2,
+        "kutman": 1,
+        "eren": 1,
+        "ozmens": 1
+      },
+      "type": "llm_detected"
+    },
+    "egyptian": {
+      "families": [
+        "habib",
+        "heikal",
+        "nasser"
+      ],
+      "counts": {
+        "habib": 4,
+        "heikal": 1,
+        "nasser": 1
+      },
+      "type": "llm_detected"
+    },
+    "hindi": {
+      "families": [
+        "kotak"
+      ],
+      "counts": {
+        "kotak": 1
+      },
+      "type": "llm_detected"
+    },
+    "czechoslovakian": {
+      "families": [
+        "albright"
+      ],
+      "counts": {
+        "albright": 2
+      },
+      "type": "llm_detected"
+    },
+    "mormon": {
+      "families": [
+        "romney"
+      ],
+      "counts": {
+        "romney": 3
+      },
+      "type": "llm_detected"
+    },
+    "latina": {
+      "families": [
+        "dias",
+        "alvarez",
+        "cortez"
+      ],
+      "counts": {
+        "dias": 2,
+        "alvarez": 2,
+        "cortez": 1
+      },
+      "type": "llm_detected"
+    },
+    "female": {
+      "families": [
+        "yellen",
+        "harris",
+        "callan",
+        "rose",
+        "chao",
+        "habib",
+        "cohen",
+        "dias",
+        "o'leary",
+        "lagarde",
+        "largarde",
+        "rinehart",
+        "horbach",
+        "friedman",
+        "pompey",
+        "hunt",
+        "ellison",
+        "reeves",
+        "banga",
+        "haruko",
+        "su",
+        "masters",
+        "yastine",
+        "krawcheck",
+        "miller",
+        "cruz",
+        "zhang",
+        "kroes",
+        "solotar",
+        "kayser",
+        "cole",
+        "sandberg",
+        "daly",
+        "may",
+        "georgieva",
+        "gopinath",
+        "nooyi",
+        "brewer",
+        "green",
+        "gay",
+        "thomas",
+        "warner",
+        "hammack",
+        "khan",
+        "wahab",
+        "lauren",
+        "clinton",
+        "truncale",
+        "piepszak",
+        "lake",
+        "blessing",
+        "aiyengar",
+        "callahan",
+        "yan",
+        "paramonova",
+        "vinnikova",
+        "shakersoltan",
+        "ermakova",
+        "asankojoieva",
+        "nabiullina",
+        "gontareva"
+      ],
+      "counts": {
+        "yellen": 6,
+        "harris": 5,
+        "callan": 3,
+        "rose": 3,
+        "chao": 3,
+        "habib": 3,
+        "cohen": 3,
+        "dias": 2,
+        "o'leary": 2,
+        "lagarde": 2,
+        "largarde": 2,
+        "rinehart": 2,
+        "horbach": 2,
+        "friedman": 2,
+        "pompey": 2,
+        "hunt": 2,
+        "ellison": 2,
+        "reeves": 2,
+        "banga": 2,
+        "haruko": 2,
+        "su": 2,
+        "masters": 1,
+        "yastine": 1,
+        "krawcheck": 1,
+        "miller": 1,
+        "cruz": 1,
+        "zhang": 1,
+        "kroes": 1,
+        "solotar": 1,
+        "kayser": 1,
+        "cole": 1,
+        "sandberg": 1,
+        "daly": 1,
+        "may": 1,
+        "georgieva": 1,
+        "gopinath": 1,
+        "nooyi": 1,
+        "brewer": 1,
+        "green": 1,
+        "gay": 1,
+        "thomas": 1,
+        "warner": 1,
+        "hammack": 1,
+        "khan": 1,
+        "wahab": 1,
+        "lauren": 1,
+        "clinton": 1,
+        "truncale": 1,
+        "piepszak": 1,
+        "lake": 1,
+        "blessing": 1,
+        "aiyengar": 1,
+        "callahan": 1,
+        "yan": 1,
+        "paramonova": 1,
+        "vinnikova": 1,
+        "shakersoltan": 1,
+        "ermakova": 1,
+        "asankojoieva": 1,
+        "nabiullina": 1,
+        "gontareva": 1
+      },
+      "type": "llm_detected"
+    },
+    "hawaiian": {
+      "families": [
+        "gramm"
+      ],
+      "counts": {
+        "gramm": 2
+      },
+      "type": "llm_detected"
+    },
+    "austrian": {
+      "families": [
+        "schimmelbusch"
+      ],
+      "counts": {
+        "schimmelbusch": 1
+      },
+      "type": "llm_detected"
+    },
+    "paris": {
+      "families": [
+        "lagarde"
+      ],
+      "counts": {
+        "lagarde": 1
+      },
+      "type": "llm_detected"
+    },
+    "muslim": {
+      "families": [
+        "zakaria",
+        "ramji",
+        "abedi",
+        "hussein",
+        "abedin",
+        "ismail",
+        "akhmetov",
+        "tabasi",
+        "khamenei",
+        "raisi",
+        "babangida",
+        "yassin",
+        "yousef"
+      ],
+      "counts": {
+        "zakaria": 2,
+        "ramji": 2,
+        "abedi": 2,
+        "hussein": 2,
+        "abedin": 1,
+        "ismail": 1,
+        "akhmetov": 1,
+        "tabasi": 1,
+        "khamenei": 1,
+        "raisi": 1,
+        "babangida": 1,
+        "yassin": 1,
+        "yousef": 1
+      },
+      "type": "llm_detected"
+    },
+    "hispanic": {
+      "families": [
+        "diaz",
+        "chavez",
+        "rodriguez"
+      ],
+      "counts": {
+        "diaz": 2,
+        "chavez": 2,
+        "rodriguez": 1
+      },
+      "type": "llm_detected"
+    },
+    "latino": {
+      "families": [
+        "diaz",
+        "chavez",
+        "rodriguez"
+      ],
+      "counts": {
+        "diaz": 2,
+        "chavez": 2,
+        "rodriguez": 1
+      },
+      "type": "llm_detected"
+    },
+    "puerto_rican": {
+      "families": [
+        "alvarez"
+      ],
+      "counts": {
+        "alvarez": 2
+      },
+      "type": "llm_detected"
+    },
+    "hasidic": {
+      "families": [
+        "schneerson"
+      ],
+      "counts": {
+        "schneerson": 1
+      },
+      "type": "llm_detected"
+    },
+    "hindu": {
+      "families": [
+        "brahmin",
+        "adani",
+        "gupta",
+        "tanden",
+        "kashkari",
+        "narasimhan"
+      ],
+      "counts": {
+        "brahmin": 3,
+        "adani": 2,
+        "gupta": 2,
+        "tanden": 2,
+        "kashkari": 1,
+        "narasimhan": 1
+      },
+      "type": "llm_detected"
+    },
+    "sikh": {
+      "families": [
+        "boual",
+        "banga"
+      ],
+      "counts": {
+        "boual": 2,
+        "banga": 2
+      },
+      "type": "llm_detected"
+    },
+    "jainism": {
+      "families": [
+        "jain"
+      ],
+      "counts": {
+        "jain": 1
+      },
+      "type": "llm_detected"
+    },
+    "kenyan": {
+      "families": [
+        "desai"
+      ],
+      "counts": {
+        "desai": 1
+      },
+      "type": "llm_detected"
+    },
+    "brahmin": {
+      "families": [
+        "pichai",
+        "nooyi",
+        "harris",
+        "krishnamurthy",
+        "nadella",
+        "aiyengar",
+        "chakrabarti",
+        "venkatakrishnan",
+        "narasimhan",
+        "mohan"
+      ],
+      "counts": {
+        "pichai": 3,
+        "nooyi": 2,
+        "harris": 2,
+        "krishnamurthy": 1,
+        "nadella": 1,
+        "aiyengar": 1,
+        "chakrabarti": 1,
+        "venkatakrishnan": 1,
+        "narasimhan": 1,
+        "mohan": 1
+      },
+      "type": "llm_detected"
+    },
+    "french": {
+      "families": [
+        "aigrain",
+        "attal"
+      ],
+      "counts": {
+        "aigrain": 1,
+        "attal": 1
+      },
+      "type": "llm_detected"
+    },
+    "coptic": {
+      "families": [
+        "habib"
+      ],
+      "counts": {
+        "habib": 4
+      },
+      "type": "llm_detected"
+    },
+    "west_african": {
+      "families": [
+        "thiam"
+      ],
+      "counts": {
+        "thiam": 2
+      },
+      "type": "llm_detected"
+    },
+    "korean": {
+      "families": [
+        "ahn",
+        "kim"
+      ],
+      "counts": {
+        "ahn": 2,
+        "kim": 1
+      },
+      "type": "llm_detected"
+    },
+    "ismaili": {
+      "families": [
+        "ramji"
+      ],
+      "counts": {
+        "ramji": 2
+      },
+      "type": "llm_detected"
+    },
+    "shia": {
+      "families": [
+        "ramji"
+      ],
+      "counts": {
+        "ramji": 2
+      },
+      "type": "llm_detected"
+    },
+    "tanzanian": {
+      "families": [
+        "ramji"
+      ],
+      "counts": {
+        "ramji": 2
+      },
+      "type": "llm_detected"
+    },
+    "polish": {
+      "families": [
+        "wojcicki"
+      ],
+      "counts": {
+        "wojcicki": 2
+      },
+      "type": "llm_detected"
+    },
+    "aristocrat": {
+      "families": [
+        "rinehart",
+        "fraser",
+        "derby",
+        "jordan"
+      ],
+      "counts": {
+        "rinehart": 2,
+        "fraser": 1,
+        "derby": 1,
+        "jordan": 1
+      },
+      "type": "llm_detected"
+    },
+    "guyanese": {
+      "families": [
+        "pompey"
+      ],
+      "counts": {
+        "pompey": 2
+      },
+      "type": "llm_detected"
+    },
+    "bania": {
+      "families": [
+        "adani"
+      ],
+      "counts": {
+        "adani": 2
+      },
+      "type": "llm_detected"
+    },
+    "royal": {
+      "families": [
+        "christophe",
+        "elizabeth",
+        "selassie"
+      ],
+      "counts": {
+        "christophe": 3,
+        "elizabeth": 1,
+        "selassie": 1
+      },
+      "type": "llm_detected"
+    },
+    "queen": {
+      "families": [
+        "elizabeth"
+      ],
+      "counts": {
+        "elizabeth": 1
+      },
+      "type": "llm_detected"
+    },
+    "jamaican": {
+      "families": [
+        "harris"
+      ],
+      "counts": {
+        "harris": 2
+      },
+      "type": "llm_detected"
+    },
+    "pakistani": {
+      "families": [
+        "khan"
+      ],
+      "counts": {
+        "khan": 2
+      },
+      "type": "llm_detected"
+    },
+    "gay": {
+      "families": [
+        "bostic",
+        "daly",
+        "attal"
+      ],
+      "counts": {
+        "bostic": 1,
+        "daly": 1,
+        "attal": 1
+      },
+      "type": "llm_detected"
+    },
+    "anglo-catholic": {
+      "families": [
+        "may"
+      ],
+      "counts": {
+        "may": 1
+      },
+      "type": "llm_detected"
+    },
+    "roman_catholic": {
+      "families": [
+        "johnson"
+      ],
+      "counts": {
+        "johnson": 1
+      },
+      "type": "llm_detected"
+    },
+    "bulgarian": {
+      "families": [
+        "georgieva"
+      ],
+      "counts": {
+        "georgieva": 1
+      },
+      "type": "llm_detected"
+    },
+    "mexican": {
+      "families": [
+        "helu",
+        "salinas",
+        "harp helu",
+        "colosio",
+        "pliego",
+        "salinas pliego",
+        "carranza"
+      ],
+      "counts": {
+        "helu": 3,
+        "salinas": 3,
+        "harp helu": 2,
+        "colosio": 2,
+        "pliego": 2,
+        "salinas pliego": 2,
+        "carranza": 1
+      },
+      "type": "llm_detected"
+    },
+    "white": {
+      "families": [
+        "vance",
+        "trump"
+      ],
+      "counts": {
+        "vance": 2,
+        "trump": 1
+      },
+      "type": "llm_detected"
+    },
+    "arabic": {
+      "families": [
+        "habib"
+      ],
+      "counts": {
+        "habib": 1
+      },
+      "type": "llm_detected"
+    },
+    "yoruba": {
+      "families": [
+        "awolowo"
+      ],
+      "counts": {
+        "awolowo": 3
+      },
+      "type": "llm_detected"
+    },
+    "native american": {
+      "families": [
+        "haaland"
+      ],
+      "counts": {
+        "haaland": 2
+      },
+      "type": "llm_detected"
+    },
+    "mulatto": {
+      "families": [
+        "bennett"
+      ],
+      "counts": {
+        "bennett": 3
+      },
+      "type": "llm_detected"
+    },
+    "buddhist": {
+      "families": [
+        "braverman"
+      ],
+      "counts": {
+        "braverman": 2
+      },
+      "type": "llm_detected"
+    },
+    "vietnamese": {
+      "families": [
+        "hung",
+        "lan"
+      ],
+      "counts": {
+        "hung": 2,
+        "lan": 2
+      },
+      "type": "llm_detected"
+    },
+    "latvian": {
+      "families": [
+        "rimšēvičs"
+      ],
+      "counts": {
+        "rimšēvičs": 1
+      },
+      "type": "llm_detected"
+    },
+    "mckinsey-alum": {
+      "families": [
+        "ramji"
+      ],
+      "counts": {
+        "ramji": 1
+      },
+      "type": "llm_detected"
+    },
+    "south_african": {
+      "families": [
+        "cohen"
+      ],
+      "counts": {
+        "cohen": 1
+      },
+      "type": "llm_detected"
+    },
+    "indian-american": {
+      "families": [
+        "haley",
+        "ramaswamy"
+      ],
+      "counts": {
+        "haley": 2,
+        "ramaswamy": 2
+      },
+      "type": "llm_detected"
+    },
+    "african": {
+      "families": [
+        "moi",
+        "biya",
+        "doe",
+        "seko",
+        "barre",
+        "banda",
+        "babangida",
+        "rawlings",
+        "eyadéma",
+        "habyarimana",
+        "kagame",
+        "museveni",
+        "obote",
+        "kande",
+        "jonah",
+        "houphouet-boigny",
+        "koffigoh",
+        "busia",
+        "kérékou",
+        "kanzinga",
+        "rwangabo",
+        "fadiga"
+      ],
+      "counts": {
+        "moi": 3,
+        "biya": 2,
+        "doe": 2,
+        "seko": 2,
+        "barre": 2,
+        "banda": 2,
+        "babangida": 2,
+        "rawlings": 2,
+        "eyadéma": 2,
+        "habyarimana": 2,
+        "kagame": 2,
+        "museveni": 2,
+        "obote": 2,
+        "kande": 1,
+        "jonah": 1,
+        "houphouet-boigny": 1,
+        "koffigoh": 1,
+        "busia": 1,
+        "kérékou": 1,
+        "kanzinga": 1,
+        "rwangabo": 1,
+        "fadiga": 1
+      },
+      "type": "llm_detected"
+    },
+    "ivory_coast": {
+      "families": [
+        "kande"
+      ],
+      "counts": {
+        "kande": 1
+      },
+      "type": "llm_detected"
+    },
+    "japanese": {
+      "families": [
+        "fukuda",
+        "sato",
+        "kishi",
+        "haruko",
+        "tsuneishi"
+      ],
+      "counts": {
+        "fukuda": 2,
+        "sato": 2,
+        "kishi": 2,
+        "haruko": 2,
+        "tsuneishi": 2
+      },
+      "type": "llm_detected"
+    },
+    "samurai": {
+      "families": [
+        "fukuda"
+      ],
+      "counts": {
+        "fukuda": 2
+      },
+      "type": "llm_detected"
+    },
+    "british_palestinian": {
+      "families": [
+        "rappaport"
+      ],
+      "counts": {
+        "rappaport": 2
+      },
+      "type": "llm_detected"
+    },
+    "ukrainian": {
+      "families": [
+        "fridman",
+        "tymoshenko",
+        "kolomoisky",
+        "akhmetov",
+        "manafort",
+        "gates",
+        "podesta"
+      ],
+      "counts": {
+        "fridman": 2,
+        "tymoshenko": 2,
+        "kolomoisky": 1,
+        "akhmetov": 1,
+        "manafort": 1,
+        "gates": 1,
+        "podesta": 1
+      },
+      "type": "llm_detected"
+    },
+    "gentile": {
+      "families": [
+        "vyakhirev",
+        "alekperov",
+        "potanin"
+      ],
+      "counts": {
+        "vyakhirev": 1,
+        "alekperov": 1,
+        "potanin": 1
+      },
+      "type": "llm_detected"
+    },
+    "romanian": {
+      "families": [
+        "ceausescu",
+        "isarescu"
+      ],
+      "counts": {
+        "ceausescu": 1,
+        "isarescu": 1
+      },
+      "type": "llm_detected"
+    },
+    "belarusian": {
+      "families": [
+        "lukashenka",
+        "chyhir"
+      ],
+      "counts": {
+        "lukashenka": 1,
+        "chyhir": 1
+      },
+      "type": "llm_detected"
+    },
+    "overseas chinese": {
+      "families": [
+        "chearavanont",
+        "virameteekul",
+        "liem",
+        "riady",
+        "chen"
+      ],
+      "counts": {
+        "chearavanont": 1,
+        "virameteekul": 1,
+        "liem": 1,
+        "riady": 1,
+        "chen": 1
+      },
+      "type": "llm_detected"
+    },
+    "asian-american": {
+      "families": [
+        "chao"
+      ],
+      "counts": {
+        "chao": 1
+      },
+      "type": "llm_detected"
+    },
+    "nicaraguan": {
+      "families": [
+        "ortega",
+        "chamorro",
+        "somoza",
+        "pellas"
+      ],
+      "counts": {
+        "ortega": 4,
+        "chamorro": 2,
+        "somoza": 1,
+        "pellas": 1
+      },
+      "type": "llm_detected"
+    },
+    "marxist": {
+      "families": [
+        "ortega"
+      ],
+      "counts": {
+        "ortega": 1
+      },
+      "type": "llm_detected"
+    },
+    "honduran": {
+      "families": [
+        "asfura diaz",
+        "reina",
+        "callejas",
+        "flores",
+        "zelaya",
+        "castro",
+        "reina bustillo",
+        "sierra",
+        "reina castro"
+      ],
+      "counts": {
+        "asfura diaz": 3,
+        "reina": 2,
+        "callejas": 2,
+        "flores": 2,
+        "zelaya": 2,
+        "castro": 2,
+        "reina bustillo": 1,
+        "sierra": 1,
+        "reina castro": 1
+      },
+      "type": "llm_detected"
+    },
+    "haitian": {
+      "families": [
+        "duvalier",
+        "ligondé",
+        "delatour",
+        "bennett",
+        "christophe",
+        "namphy"
+      ],
+      "counts": {
+        "duvalier": 1,
+        "ligondé": 1,
+        "delatour": 1,
+        "bennett": 1,
+        "christophe": 1,
+        "namphy": 1
+      },
+      "type": "llm_detected"
+    },
+    "congolese": {
+      "families": [
+        "seko",
+        "kabila"
+      ],
+      "counts": {
+        "seko": 4,
+        "kabila": 1
+      },
+      "type": "llm_detected"
+    },
+    "south african": {
+      "families": [
+        "katz",
+        "mandela"
+      ],
+      "counts": {
+        "katz": 5,
+        "mandela": 1
+      },
+      "type": "llm_detected"
+    },
+    "zimbabwean": {
+      "families": [
+        "mugabe",
+        "chiyangwa",
+        "dumbutshena",
+        "gono"
+      ],
+      "counts": {
+        "mugabe": 3,
+        "chiyangwa": 1,
+        "dumbutshena": 1,
+        "gono": 1
+      },
+      "type": "llm_detected"
+    },
+    "angolan": {
+      "families": [
+        "santos",
+        "savimbi",
+        "isabel",
+        "neto"
+      ],
+      "counts": {
+        "santos": 5,
+        "savimbi": 4,
+        "isabel": 2,
+        "neto": 1
+      },
+      "type": "llm_detected"
+    },
+    "ethiopian": {
+      "families": [
+        "selassie"
+      ],
+      "counts": {
+        "selassie": 1
+      },
+      "type": "llm_detected"
+    },
+    "sudanese": {
+      "families": [
+        "nimeiri",
+        "mirghani"
+      ],
+      "counts": {
+        "nimeiri": 1,
+        "mirghani": 1
+      },
+      "type": "llm_detected"
+    },
+    "cuban": {
+      "families": [
+        "castro"
+      ],
+      "counts": {
+        "castro": 5
+      },
+      "type": "llm_detected"
+    },
+    "hutu": {
+      "families": [
+        "habyarimana",
+        "ndadaye",
+        "ntaryamira"
+      ],
+      "counts": {
+        "habyarimana": 2,
+        "ndadaye": 1,
+        "ntaryamira": 1
+      },
+      "type": "llm_detected"
+    },
+    "tutsi": {
+      "families": [
+        "kagame",
+        "kinigi"
+      ],
+      "counts": {
+        "kagame": 2,
+        "kinigi": 1
+      },
+      "type": "llm_detected"
+    },
+    "turk": {
+      "families": [
+        "helu",
+        "harp helu"
+      ],
+      "counts": {
+        "helu": 3,
+        "harp helu": 2
+      },
+      "type": "llm_detected"
+    },
+    "venezuelan": {
+      "families": [
+        "chavez"
+      ],
+      "counts": {
+        "chavez": 3
+      },
+      "type": "llm_detected"
+    },
+    "ivorian": {
+      "families": [
+        "thiam",
+        "ouattara",
+        "gbagbo",
+        "houphouet-boigny",
+        "bedie",
+        "ghagbo",
+        "outtara"
+      ],
+      "counts": {
+        "thiam": 3,
+        "ouattara": 2,
+        "gbagbo": 2,
+        "houphouet-boigny": 1,
+        "bedie": 1,
+        "ghagbo": 1,
+        "outtara": 1
+      },
+      "type": "llm_detected"
+    },
+    "burkina faso": {
+      "families": [
+        "ouattara"
+      ],
+      "counts": {
+        "ouattara": 1
+      },
+      "type": "llm_detected"
+    },
+    "palestinian": {
+      "families": [
+        "masri",
+        "yassin",
+        "yousef",
+        "arafat",
+        "mansour",
+        "muslih",
+        "hamami",
+        "abu taha",
+        "aggad",
+        "arafa",
+        "nashashibi",
+        "jabari",
+        "shehadeh"
+      ],
+      "counts": {
+        "masri": 2,
+        "yassin": 2,
+        "yousef": 2,
+        "arafat": 1,
+        "mansour": 1,
+        "muslih": 1,
+        "hamami": 1,
+        "abu taha": 1,
+        "aggad": 1,
+        "arafa": 1,
+        "nashashibi": 1,
+        "jabari": 1,
+        "shehadeh": 1
+      },
+      "type": "llm_detected"
+    }
+  },
+  "statistics": {
+    "cached_chunks": 3137,
+    "prompt_version": "v2"
+  }
+}

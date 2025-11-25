@@ -1,0 +1,4 @@
+data/deduplicated_terms/deduplicated_cache.json filter=lfs diff=lfs merge=lfs -text
+data/vectordb/chroma.sqlite3 filter=lfs diff=lfs merge=lfs -text
+data/vectordb/**/*.bin filter=lfs diff=lfs merge=lfs -text
+data/vectordb/**/*.pickle filter=lfs diff=lfs merge=lfs -text
