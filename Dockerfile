@@ -59,19 +59,23 @@ RUN echo "=== Initializing git repository ===" && \
     git remote add origin https://github.com/mperelman/Thunderclap.git && \
     echo "=== Fetching git refs from remote ===" && \
     git fetch origin main:main && \
-    echo "=== Checking out main branch (will overwrite existing files) ===" && \
-    git checkout -f main && \
+    echo "=== Checking out main branch (skipping LFS files to avoid quota errors) ===" && \
+    GIT_LFS_SKIP_SMUDGE=1 git checkout -f main || \
+    (echo "=== Checkout failed, trying without LFS ===" && \
+     git config lfs.fetchexclude "*" && \
+     git checkout -f main) || \
+    (echo "=== Checkout still failed, continuing anyway ===" && true) && \
     echo "=== Resetting to ensure clean state ===" && \
-    git reset --hard origin/main && \
+    git reset --hard origin/main 2>/dev/null || true && \
     echo "=== Checking Git LFS status ===" && \
     git lfs version && \
     echo "=== Attempting to fetch LFS files (will continue if quota exceeded) ===" && \
-    (git lfs pull origin main || \
+    (git lfs pull origin main 2>&1 || \
      (echo "=== LFS pull failed, trying fetch+checkout ===" && \
-      git lfs fetch origin main && \
-      git lfs checkout) || \
+      git lfs fetch origin main 2>&1 && \
+      git lfs checkout 2>&1) || \
      (echo "=== LFS fetch failed, trying specific files ===" && \
-      git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json) || \
+      git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json 2>&1) || \
      echo "=== WARNING: LFS download failed (quota exceeded or network issue) ===" && \
      echo "=== This is OK - download_lfs.sh will download files at runtime ===") && \
     echo "=== Checking if LFS files were downloaded ===" && \
