@@ -6,12 +6,15 @@ FROM python:3.11-slim as builder
 
 WORKDIR /app
 
-# Install minimal build dependencies
+# Install minimal build dependencies + Git LFS (needed to fetch LFS-tracked files)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     curl \
+    git \
+    git-lfs \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && git lfs install
 
 # Copy minimal runtime requirements (excludes sentence-transformers, openai, python-docx)
 COPY requirements.txt .
@@ -37,11 +40,9 @@ COPY --from=builder /root/.local /root/.local
 COPY server.py .
 COPY lib/ ./lib/
 COPY public/ ./public/
-# Copy data folder (if it exists locally - Railway will build from your local files)
-# Note: data/ is gitignored, so it won't be in GitHub repo
-# Railway builds from your connected Git repo, so data/ must be uploaded via Volumes
-# OR temporarily commit data/ to include it in the build
-COPY data/ ./data/ 2>/dev/null || echo "Warning: data/ folder not found - will need Railway Volume"
+# Copy data folder from Git (includes LFS-tracked files)
+# Git LFS files will be automatically fetched when Railway clones the repo
+COPY data/ ./data/
 
 # Environment
 ENV PATH=/root/.local/bin:$PATH
