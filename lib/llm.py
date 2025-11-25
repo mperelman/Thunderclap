@@ -58,15 +58,28 @@ class LLMAnswerGenerator:
                 # Test API key by making a minimal test call
                 print(f"  [LLM INIT] Testing API key with minimal call...")
                 try:
-                    test_response = self.client.generate_content("test")
+                    test_response = self.client.generate_content("test", request_options={"timeout": 10})
                     print(f"  [OK] API key test successful")
                 except Exception as test_err:
                     error_msg = str(test_err)
+                    error_lower = error_msg.lower()
                     print(f"  [ERROR] API key test failed: {error_msg}")
-                    # Re-raise with clearer message
-                    if "API Key not found" in error_msg or "API_KEY_INVALID" in error_msg:
-                        raise RuntimeError(f"Invalid API key: {error_msg}. Check Railway Variables → GEMINI_API_KEY")
-                    raise
+                    print(f"  [ERROR] Full error type: {type(test_err).__name__}")
+                    
+                    # Check for specific error types
+                    if "api key" in error_lower or "api_key" in error_lower or "invalid" in error_lower:
+                        raise RuntimeError(f"Invalid or expired API key: {error_msg}\nCheck Railway Variables → GEMINI_API_KEY is correct and not expired.")
+                    elif "quota" in error_lower or "429" in error_msg or "rate limit" in error_lower:
+                        print(f"  [WARNING] API quota/rate limit hit during test, but API key is valid")
+                        print(f"  [WARNING] Continuing anyway - quota may reset or you may need to wait")
+                        # Don't fail - quota issues are temporary
+                    elif "timeout" in error_lower or "network" in error_lower:
+                        print(f"  [WARNING] Network/timeout issue during test, but API key format looks valid")
+                        print(f"  [WARNING] Continuing anyway - network issues are temporary")
+                        # Don't fail - network issues are temporary
+                    else:
+                        # Unknown error - still raise it but with context
+                        raise RuntimeError(f"API key test failed: {error_msg}\nCheck Railway logs for full error details.")
                 print("  [OK] Gemini API configured (2.5 Flash, 15 RPM / 1M TPM / 200 RPD)")
             except Exception as e:
                 print(f"  [ERROR] Gemini setup failed: {e}")
