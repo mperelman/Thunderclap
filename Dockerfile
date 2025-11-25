@@ -46,9 +46,34 @@ COPY public/ ./public/
 # Copy entire repo context (Railway clones the repo)
 # .git/ and data/ are now included (removed from .dockerignore)
 COPY . .
+
+# Debug: Check what we have before LFS pull
+RUN echo "=== Checking Git LFS status ===" && \
+    git lfs version && \
+    git lfs ls-files | head -5 && \
+    echo "=== Checking data folder ===" && \
+    ls -la data/ 2>/dev/null | head -10 || echo "data/ folder not found" && \
+    echo "=== Checking for LFS pointer files ===" && \
+    file data/vectordb/chroma.sqlite3 2>/dev/null || echo "chroma.sqlite3 not found" && \
+    file data/deduplicated_terms/deduplicated_cache.json 2>/dev/null || echo "deduplicated_cache.json not found"
+
 # Fetch LFS files to replace pointers with actual files
-# Railway clones the repo, so .git should be available
-RUN git lfs pull || (echo "Warning: Git LFS pull failed, trying fetch+checkout..." && git lfs fetch --all && git lfs checkout) || echo "ERROR: Could not fetch LFS files - check Railway logs"
+RUN echo "=== Fetching LFS files ===" && \
+    git lfs pull || \
+    (echo "=== LFS pull failed, trying fetch+checkout ===" && \
+     git lfs fetch --all && \
+     git lfs checkout) || \
+    (echo "=== ERROR: Could not fetch LFS files ===" && \
+     echo "Checking what we have:" && \
+     ls -lh data/vectordb/chroma.sqlite3 2>/dev/null || echo "chroma.sqlite3 missing" && \
+     exit 1)
+
+# Verify LFS files were fetched
+RUN echo "=== Verifying LFS files after fetch ===" && \
+    file data/vectordb/chroma.sqlite3 && \
+    file data/deduplicated_terms/deduplicated_cache.json && \
+    ls -lh data/vectordb/chroma.sqlite3 && \
+    echo "=== LFS files verified successfully ==="
 
 # Environment
 ENV PATH=/root/.local/bin:$PATH
