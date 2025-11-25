@@ -121,6 +121,11 @@ EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:$PORT/health || exit 1
 
+# Copy LFS download script
+COPY download_lfs.sh .
+RUN chmod +x download_lfs.sh
+
 # Run server with explicit timeout settings to prevent Railway proxy timeout
 # Railway's proxy likely times out at 60s, so we set uvicorn to 600s (10 min)
-CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 600"]
+# First try to download LFS files if needed, then start server
+CMD ["sh", "-c", "./download_lfs.sh && uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 600"]
