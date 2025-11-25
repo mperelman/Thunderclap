@@ -139,14 +139,26 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     echo "Fetching main branch..."
     git fetch origin main || (echo "ERROR: git fetch failed!" && exit 1)
     
-    echo "Removing corrupted/incomplete files before checkout..."
+    echo "=== Aggressively removing corrupted files ==="
+    # Close any SQLite connections by removing the file and lock files
+    rm -f data/vectordb/chroma.sqlite3 2>/dev/null || true
+    rm -f data/vectordb/chroma.sqlite3-shm 2>/dev/null || true
+    rm -f data/vectordb/chroma.sqlite3-wal 2>/dev/null || true
+    # Remove entire directory contents
     rm -rf data/vectordb/* 2>/dev/null || true
+    rm -rf data/vectordb/.* 2>/dev/null || true
+    # Ensure directory exists and is writable
+    mkdir -p data/vectordb
+    chmod 755 data/vectordb
+    echo "Corrupted files removed"
     
-    echo "Checking out main..."
-    git checkout -f origin/main || git checkout -f main || (echo "ERROR: git checkout failed!" && exit 1)
+    echo "Fetching LFS files directly (skipping git checkout to avoid file lock issues)..."
+    # Fetch LFS files directly without git checkout
+    git lfs fetch origin main || (echo "ERROR: git lfs fetch failed!" && exit 1)
     
-    echo "Pulling LFS files..."
-    git lfs pull origin main || (echo "LFS pull failed, trying fetch+checkout..." && git lfs fetch origin main && git lfs checkout) || (echo "ERROR: LFS download failed!" && exit 1)
+    echo "Checking out LFS files..."
+    # Checkout LFS files directly - this should work even if git checkout failed
+    git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json || git lfs checkout || (echo "ERROR: git lfs checkout failed!" && exit 1)
     
     echo "=== Verification ==="
     SIZE=$(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0)
@@ -165,7 +177,11 @@ if [ "$NEED_DOWNLOAD" = true ]; then
         echo "WARNING: Database integrity check failed:"
         echo "$INTEGRITY_RESULT"
         echo "Database may be corrupted. Attempting to re-download..."
-        rm -f data/vectordb/chroma.sqlite3
+        # Aggressively remove corrupted file and any SQLite lock files
+        rm -f data/vectordb/chroma.sqlite3 2>/dev/null || true
+        rm -f data/vectordb/chroma.sqlite3-shm 2>/dev/null || true
+        rm -f data/vectordb/chroma.sqlite3-wal 2>/dev/null || true
+        chmod 755 data/vectordb 2>/dev/null || true
         git lfs pull origin main || (git lfs fetch origin main && git lfs checkout)
         echo "Re-verifying after re-download..."
         sqlite3 data/vectordb/chroma.sqlite3 "PRAGMA integrity_check;" > /tmp/integrity_check2.txt 2>&1
