@@ -44,28 +44,29 @@ COPY server.py .
 COPY lib/ ./lib/
 COPY public/ ./public/
 # Copy entire repo context (Railway clones the repo)
-# .git/ and data/ are now included (removed from .dockerignore)
+# Note: .git/ is NOT included in Docker build context, so we'll initialize git
 COPY . .
 
-# Debug: Check what we have before LFS pull
-RUN echo "=== Checking Git LFS status ===" && \
+# Initialize git repository and fetch LFS files from remote
+# Railway clones the repo, so we can fetch LFS files directly from GitHub
+RUN echo "=== Initializing git repository ===" && \
+    git init && \
+    git remote add origin https://github.com/mperelman/Thunderclap.git || echo "Remote already exists" && \
+    echo "=== Checking Git LFS status ===" && \
     git lfs version && \
-    git lfs ls-files | head -5 && \
-    echo "=== Checking data folder ===" && \
-    ls -la data/ 2>/dev/null | head -10 || echo "data/ folder not found" && \
-    echo "=== Checking for LFS pointer files ===" && \
-    file data/vectordb/chroma.sqlite3 2>/dev/null || echo "chroma.sqlite3 not found" && \
-    file data/deduplicated_terms/deduplicated_cache.json 2>/dev/null || echo "deduplicated_cache.json not found"
-
-# Fetch LFS files to replace pointers with actual files
-RUN echo "=== Fetching LFS files ===" && \
-    git lfs pull || \
-    (echo "=== LFS pull failed, trying fetch+checkout ===" && \
-     git lfs fetch --all && \
+    echo "=== Checking LFS pointer files ===" && \
+    file data/vectordb/chroma.sqlite3 2>/dev/null && \
+    ls -lh data/vectordb/chroma.sqlite3 && \
+    echo "=== Fetching LFS files from remote ===" && \
+    git lfs fetch origin main && \
+    git lfs checkout || \
+    (echo "=== Alternative: Fetching all LFS files ===" && \
+     git lfs fetch --all origin && \
      git lfs checkout) || \
     (echo "=== ERROR: Could not fetch LFS files ===" && \
-     echo "Checking what we have:" && \
-     ls -lh data/vectordb/chroma.sqlite3 2>/dev/null || echo "chroma.sqlite3 missing" && \
+     echo "Current file:" && \
+     file data/vectordb/chroma.sqlite3 && \
+     ls -lh data/vectordb/chroma.sqlite3 && \
      exit 1)
 
 # Verify LFS files were fetched (fail build if missing)
