@@ -20,7 +20,7 @@ This means:
 3. Go to **Variables** tab
 4. **Check if `GEMINI_API_KEY` exists** and has the value:
    ```
-   AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w
+   YOUR_API_KEY_HERE
    ```
 
 ### Step 2: Check Railway Logs
@@ -39,7 +39,7 @@ The key should:
 - Be exactly 39 characters long
 - Have no spaces or extra characters
 
-Your key: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w` (39 chars) ✅
+Your key should: Start with `AIza`, be 39 characters long ✅
 
 ### Step 4: Check if Key is Activated
 
@@ -87,4 +87,7 @@ or
 ```
 
 These will tell you exactly what's wrong.
+
+
+
 

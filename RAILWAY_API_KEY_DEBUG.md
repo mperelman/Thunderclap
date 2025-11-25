@@ -19,7 +19,7 @@ This means the API key is either:
 2. Open your Thunderclap service
 3. Go to **Variables** tab
 4. **Check if `GEMINI_API_KEY` exists**
-5. **Value should be exactly**: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w`
+5. **Value should be exactly**: `YOUR_API_KEY_HERE` (get from https://aistudio.google.com/apikey)
    - No spaces before/after
    - No quotes around it
    - No extra characters
@@ -34,7 +34,7 @@ The server should print the API key status. Check Railway logs for:
 
 ### Step 3: Test API Key Format
 
-Your key: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w`
+Your key should: Start with `AIza`, be 39 characters long
 - Length: 39 characters ✅
 - Starts with: `AIza` ✅
 - Format looks correct ✅
@@ -58,7 +58,7 @@ After updating the key:
 - Not: `gemini_api_key` or `GEMINI-API-KEY`
 
 **Issue 2: Key has spaces**
-- Copy-paste exactly: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w`
+- Copy-paste exactly: `YOUR_API_KEY_HERE` (no spaces, no quotes)
 - No spaces before/after
 
 **Issue 3: Key not activated**
@@ -80,4 +80,7 @@ After updating the key:
 1. **Double-check Railway Variables** - Make sure `GEMINI_API_KEY` is set correctly
 2. **Check Railway logs** - Look for API key related messages
 3. **Share what you see** - Especially any `[ERROR]` or `[WARNING]` messages
+
+
+
 
