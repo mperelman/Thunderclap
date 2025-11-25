@@ -66,12 +66,16 @@ RUN echo "=== Initializing git repository ===" && \
     echo "=== Checking LFS pointer files after checkout ===" && \
     file data/vectordb/chroma.sqlite3 2>/dev/null && \
     ls -lh data/vectordb/chroma.sqlite3 && \
-    echo "=== Fetching LFS files from remote ===" && \
-    git lfs fetch origin main && \
-    echo "=== Checking LFS objects after fetch ===" && \
-    git lfs ls-files | head -5 && \
-    echo "=== Running LFS checkout ===" && \
-    git lfs checkout && \
+    echo "=== Fetching LFS files from remote (using pull) ===" && \
+    git lfs pull origin main || \
+    (echo "=== Pull failed, trying fetch+checkout ===" && \
+     git lfs fetch origin main && \
+     echo "=== Checking LFS objects after fetch ===" && \
+     git lfs ls-files | head -5 && \
+     echo "=== Running LFS checkout ===" && \
+     git lfs checkout) || \
+    (echo "=== Trying to checkout specific files ===" && \
+     git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json) && \
     echo "=== Verifying files after checkout ===" && \
     file data/vectordb/chroma.sqlite3 && \
     ls -lh data/vectordb/chroma.sqlite3 && \
