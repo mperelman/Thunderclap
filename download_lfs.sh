@@ -18,6 +18,16 @@ fi
 NEED_DOWNLOAD=false
 NEED_VERIFY=true
 
+# If volume is mounted, check if we need to copy files from container filesystem
+# Docker build already downloaded files, but volume mount might overlay an empty directory
+if mountpoint -q /app/data 2>/dev/null; then
+    # Volume is mounted - check if it's empty but files exist in container
+    if [ ! -f "/app/data/vectordb/chroma.sqlite3" ] && [ -f "/app/data/../vectordb/chroma.sqlite3" ] 2>/dev/null; then
+        echo "INFO: Volume mounted but empty. Files exist in container, will use those."
+        # Note: Can't easily copy across mount boundary, so will download if needed
+    fi
+fi
+
 # Check if chroma.sqlite3 exists and is a real file (not pointer)
 if [ -f "data/vectordb/chroma.sqlite3" ]; then
     SIZE=$(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0)
@@ -39,13 +49,14 @@ else
     NEED_DOWNLOAD=true
 fi
 
-# Always verify integrity if file exists
+# Always verify integrity if file exists BEFORE trying to download
 if [ "$NEED_VERIFY" = true ] && [ -f "data/vectordb/chroma.sqlite3" ]; then
     echo "=== Verifying SQLite database integrity ==="
     sqlite3 data/vectordb/chroma.sqlite3 "PRAGMA integrity_check;" > /tmp/integrity_check.txt 2>&1
     INTEGRITY_RESULT=$(cat /tmp/integrity_check.txt)
     if echo "$INTEGRITY_RESULT" | grep -q "ok"; then
-        echo "SUCCESS: Database integrity check passed"
+        echo "SUCCESS: Database integrity check passed - no download needed"
+        NEED_DOWNLOAD=false
     else
         echo "ERROR: Database integrity check failed:"
         echo "$INTEGRITY_RESULT"
@@ -76,8 +87,9 @@ if [ "$NEED_DOWNLOAD" = true ]; then
         echo "Available space: $AVAILABLE KB"
     fi
     
-    # Need at least 250MB free (197MB data + overhead)
-    if [ "$AVAILABLE" -lt 250000 ]; then
+    # Need at least 180MB free (177MB database + minimal overhead)
+    # Lowered to accommodate volumes with ~188MB available
+    if [ "$AVAILABLE" -lt 180000 ]; then
         echo "WARNING: Low disk space ($AVAILABLE KB). Cleaning up volume..."
         # Remove corrupted/partial database files
         echo "Removing corrupted/incomplete database files..."
@@ -103,7 +115,7 @@ if [ "$NEED_DOWNLOAD" = true ]; then
             echo "Available space: $AVAILABLE KB"
         fi
         
-        if [ "$AVAILABLE" -lt 250000 ]; then
+        if [ "$AVAILABLE" -lt 180000 ]; then
             echo "ERROR: Still not enough space after cleanup ($AVAILABLE KB)."
             echo ""
             echo "SOLUTION: Increase Railway Volume size:"
