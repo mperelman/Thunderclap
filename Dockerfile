@@ -37,8 +37,11 @@ COPY --from=builder /root/.local /root/.local
 COPY server.py .
 COPY lib/ ./lib/
 COPY public/ ./public/
-# Copy data folder (for Railway deployment - includes ChromaDB and indices)
-COPY data/ ./data/
+# Copy data folder (if it exists locally - Railway will build from your local files)
+# Note: data/ is gitignored, so it won't be in GitHub repo
+# Railway builds from your connected Git repo, so data/ must be uploaded via Volumes
+# OR temporarily commit data/ to include it in the build
+COPY data/ ./data/ 2>/dev/null || echo "Warning: data/ folder not found - will need Railway Volume"
 
 # Environment
 ENV PATH=/root/.local/bin:$PATH

@@ -1,0 +1,572 @@
+{
+  "identities": {
+    "american": {
+      "families": [
+        "express",
+        "corp",
+        "investments",
+        "securities",
+        "revolution",
+        "operations",
+        "cities",
+        "investment",
+        "panics",
+        "history",
+        "cotton",
+        "association",
+        "investors",
+        "metal",
+        "brown",
+        "railroads",
+        "shipping",
+        "ventures",
+        "telephone",
+        "development",
+        "british",
+        "exchange",
+        "shearson",
+        "progress",
+        "through"
+      ],
+      "counts": {
+        "express": 36,
+        "corp": 14,
+        "investments": 11,
+        "securities": 10,
+        "revolution": 9,
+        "operations": 9,
+        "cities": 9,
+        "investment": 8,
+        "panics": 7,
+        "history": 7,
+        "cotton": 7,
+        "association": 7,
+        "investors": 7,
+        "metal": 5,
+        "brown": 5,
+        "railroads": 5,
+        "shipping": 5,
+        "ventures": 5,
+        "telephone": 5,
+        "development": 5,
+        "british": 5,
+        "exchange": 5,
+        "shearson": 5,
+        "progress": 5,
+        "through": 4
+      },
+      "geography": "new york, london, paris"
+    },
+    "german": {
+      "families": [
+        "states",
+        "industry",
+        "british",
+        "electric",
+        "lands",
+        "baron",
+        "lutherans",
+        "sought",
+        "wilhelm",
+        "colonial",
+        "sold",
+        "risked",
+        "government",
+        "reparations",
+        "cities",
+        "empire",
+        "such",
+        "cooperation",
+        "diamond",
+        "coal",
+        "socialism",
+        "helped",
+        "occupation",
+        "investors",
+        "committee"
+      ],
+      "counts": {
+        "states": 9,
+        "industry": 7,
+        "british": 6,
+        "electric": 4,
+        "lands": 4,
+        "baron": 4,
+        "lutherans": 4,
+        "sought": 4,
+        "wilhelm": 4,
+        "colonial": 4,
+        "sold": 4,
+        "risked": 4,
+        "government": 4,
+        "reparations": 4,
+        "cities": 3,
+        "empire": 3,
+        "such": 3,
+        "cooperation": 3,
+        "diamond": 3,
+        "coal": 3,
+        "socialism": 3,
+        "helped": 3,
+        "occupation": 3,
+        "investors": 3,
+        "committee": 3
+      },
+      "geography": "london, britain, paris"
+    },
+    "jewish": {
+      "families": [
+        "german",
+        "meisel",
+        "developed",
+        "bonn",
+        "gentile",
+        "seneor",
+        "refused",
+        "eastern",
+        "bassevi",
+        "frankel",
+        "popper",
+        "financed",
+        "financiers",
+        "central",
+        "expanded",
+        "schwerin",
+        "representation",
+        "linked",
+        "hold",
+        "speyer",
+        "gain",
+        "controlled",
+        "oppenheim",
+        "focused",
+        "refugees"
+      ],
+      "counts": {
+        "german": 6,
+        "meisel": 5,
+        "developed": 5,
+        "bonn": 5,
+        "gentile": 5,
+        "seneor": 4,
+        "refused": 4,
+        "eastern": 4,
+        "bassevi": 4,
+        "frankel": 4,
+        "popper": 4,
+        "financed": 4,
+        "financiers": 4,
+        "central": 4,
+        "expanded": 4,
+        "schwerin": 4,
+        "representation": 4,
+        "linked": 4,
+        "hold": 4,
+        "speyer": 4,
+        "gain": 4,
+        "controlled": 4,
+        "oppenheim": 4,
+        "focused": 4,
+        "refugees": 4
+      },
+      "geography": "london, paris, france"
+    },
+    "spanish": {
+      "families": [
+        "succession"
+      ],
+      "counts": {
+        "succession": 10
+      },
+      "geography": "france, amsterdam, britain"
+    },
+    "british": {
+      "families": [
+        "empire",
+        "french",
+        "shipping",
+        "corp",
+        "petroleum",
+        "rule",
+        "electric",
+        "government",
+        "linen",
+        "service",
+        "investors",
+        "american",
+        "african",
+        "through",
+        "acquired",
+        "steel",
+        "supplying",
+        "coal",
+        "columbia",
+        "airways",
+        "captured",
+        "occupation",
+        "between",
+        "dutch",
+        "provided"
+      ],
+      "counts": {
+        "empire": 12,
+        "french": 11,
+        "shipping": 11,
+        "corp": 11,
+        "petroleum": 11,
+        "rule": 9,
+        "electric": 9,
+        "government": 8,
+        "linen": 8,
+        "service": 8,
+        "investors": 7,
+        "american": 6,
+        "african": 6,
+        "through": 5,
+        "acquired": 5,
+        "steel": 5,
+        "supplying": 5,
+        "coal": 5,
+        "columbia": 5,
+        "airways": 5,
+        "captured": 4,
+        "occupation": 4,
+        "between": 4,
+        "dutch": 4,
+        "provided": 4
+      },
+      "geography": "london, paris, france"
+    },
+    "female": {
+      "families": [
+        "hold",
+        "prospered",
+        "head",
+        "seat",
+        "central",
+        "children",
+        "executive",
+        "first",
+        "chair",
+        "initiative"
+      ],
+      "counts": {
+        "hold": 5,
+        "prospered": 5,
+        "head": 5,
+        "seat": 4,
+        "central": 4,
+        "children": 3,
+        "executive": 3,
+        "first": 3,
+        "chair": 3,
+        "initiative": 3
+      },
+      "geography": "new york, london, paris"
+    },
+    "french": {
+      "families": [
+        "revolution",
+        "aristocrat",
+        "army",
+        "louis",
+        "british",
+        "ministry",
+        "houston",
+        "forces",
+        "through",
+        "english",
+        "colonies",
+        "invasion",
+        "impoverished",
+        "german",
+        "lost",
+        "government",
+        "code",
+        "investment",
+        "rothschild",
+        "investors",
+        "indochine",
+        "aristocrats",
+        "monopolized",
+        "formed",
+        "troops"
+      ],
+      "counts": {
+        "revolution": 12,
+        "aristocrat": 10,
+        "army": 8,
+        "louis": 6,
+        "british": 6,
+        "ministry": 6,
+        "houston": 6,
+        "forces": 5,
+        "through": 5,
+        "english": 4,
+        "colonies": 4,
+        "invasion": 4,
+        "impoverished": 4,
+        "german": 4,
+        "lost": 4,
+        "government": 4,
+        "code": 4,
+        "investment": 4,
+        "rothschild": 4,
+        "investors": 4,
+        "indochine": 4,
+        "aristocrats": 4,
+        "monopolized": 4,
+        "formed": 4,
+        "troops": 3
+      },
+      "geography": "london, britain, france"
+    },
+    "dutch": {
+      "families": [
+        "indies",
+        "british",
+        "mocatta",
+        "baltasar",
+        "owning",
+        "indonesian",
+        "gerard",
+        "knickerbockers",
+        "amro"
+      ],
+      "counts": {
+        "indies": 25,
+        "british": 4,
+        "mocatta": 4,
+        "baltasar": 4,
+        "owning": 4,
+        "indonesian": 3,
+        "gerard": 3,
+        "knickerbockers": 3,
+        "amro": 3
+      },
+      "geography": "london, britain, france"
+    },
+    "huguenot": {
+      "families": [
+        "bidermann",
+        "mallet",
+        "returned",
+        "jacques",
+        "bernard",
+        "cazenove",
+        "thellusson",
+        "andre",
+        "hottinguer",
+        "hentsch",
+        "regent"
+      ],
+      "counts": {
+        "bidermann": 6,
+        "mallet": 6,
+        "returned": 4,
+        "jacques": 4,
+        "bernard": 3,
+        "cazenove": 3,
+        "thellusson": 3,
+        "andre": 3,
+        "hottinguer": 3,
+        "hentsch": 3,
+        "regent": 3
+      },
+      "geography": "paris, london, france"
+    },
+    "hindu": {
+      "families": [
+        "castes",
+        "highly"
+      ],
+      "counts": {
+        "castes": 3,
+        "highly": 3
+      },
+      "geography": "Unknown"
+    },
+    "italian": {
+      "families": [
+        "libya",
+        "peninsula",
+        "mussolini",
+        "puihc"
+      ],
+      "counts": {
+        "libya": 5,
+        "peninsula": 4,
+        "mussolini": 3,
+        "puihc": 3
+      },
+      "geography": "britain, new york, london"
+    },
+    "court_jew": {
+      "families": [
+        "seneor",
+        "frankel",
+        "liebman",
+        "speyer",
+        "kassel",
+        "wertheim",
+        "meisel",
+        "oppenheim"
+      ],
+      "counts": {
+        "seneor": 4,
+        "frankel": 4,
+        "liebman": 4,
+        "speyer": 4,
+        "kassel": 3,
+        "wertheim": 3,
+        "meisel": 3,
+        "oppenheim": 3
+      },
+      "geography": "london, paris, france"
+    },
+    "greek": {
+      "families": [
+        "sursock",
+        "marseille"
+      ],
+      "counts": {
+        "sursock": 3,
+        "marseille": 3
+      },
+      "geography": "france, paris, london"
+    },
+    "widow": {
+      "families": [
+        "gomperz",
+        "adolphe",
+        "morgan",
+        "isaac"
+      ],
+      "counts": {
+        "gomperz": 4,
+        "adolphe": 4,
+        "morgan": 4,
+        "isaac": 3
+      },
+      "geography": "new york, london, boston"
+    },
+    "puritan": {
+      "families": [
+        "colonists"
+      ],
+      "counts": {
+        "colonists": 3
+      },
+      "geography": "Unknown"
+    },
+    "boston_brahmin": {
+      "families": [
+        "adams",
+        "lowell",
+        "cabot",
+        "perry",
+        "perkins"
+      ],
+      "counts": {
+        "adams": 8,
+        "lowell": 7,
+        "cabot": 5,
+        "perry": 5,
+        "perkins": 5
+      },
+      "geography": "boston, new york, london"
+    },
+    "portuguese": {
+      "families": [
+        "colonies"
+      ],
+      "counts": {
+        "colonies": 5
+      },
+      "geography": "new york, london, paris"
+    },
+    "sephardim": {
+      "families": [
+        "gradis",
+        "heir",
+        "aguilar",
+        "livorno"
+      ],
+      "counts": {
+        "gradis": 4,
+        "heir": 4,
+        "aguilar": 3,
+        "livorno": 3
+      },
+      "geography": "france, london, paris"
+    },
+    "russian": {
+      "families": [
+        "debts",
+        "revolution",
+        "ukraine",
+        "pogroms",
+        "antisemitism",
+        "grain",
+        "forces",
+        "belarus",
+        "loans",
+        "supported",
+        "wheat",
+        "army",
+        "bonds",
+        "lithuania"
+      ],
+      "counts": {
+        "debts": 6,
+        "revolution": 6,
+        "ukraine": 5,
+        "pogroms": 5,
+        "antisemitism": 5,
+        "grain": 4,
+        "forces": 3,
+        "belarus": 3,
+        "loans": 3,
+        "supported": 3,
+        "wheat": 3,
+        "army": 3,
+        "bonds": 3,
+        "lithuania": 3
+      },
+      "geography": "london, france, paris"
+    },
+    "quaker": {
+      "families": [
+        "freame"
+      ],
+      "counts": {
+        "freame": 3
+      },
+      "geography": "france, dutch, england"
+    },
+    "black": {
+      "families": [
+        "brimmer",
+        "lewis",
+        "jeffries",
+        "raines",
+        "ferguson"
+      ],
+      "counts": {
+        "brimmer": 6,
+        "lewis": 5,
+        "jeffries": 4,
+        "raines": 3,
+        "ferguson": 3
+      },
+      "geography": "new york, britain, london"
+    }
+  },
+  "statistics": {
+    "total_identities_found": 32,
+    "total_families_identified": 3874,
+    "identities_detected": 21,
+    "noise_filtered": 0
+  },
+  "validation": {}
+}
