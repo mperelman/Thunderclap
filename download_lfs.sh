@@ -55,15 +55,27 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     echo "Available space: $AVAILABLE KB"
     # Need at least 250MB free (197MB data + overhead)
     if [ "$AVAILABLE" -lt 250000 ]; then
-        echo "WARNING: Low disk space ($AVAILABLE KB). Cleaning up..."
+        echo "WARNING: Low disk space ($AVAILABLE KB). Cleaning up aggressively..."
         # Remove git history to free space
-        rm -rf .git/objects/pack/* 2>/dev/null || true
-        rm -rf .git/lfs/tmp/* 2>/dev/null || true
-        # Remove any partial downloads
-        find data/vectordb -name "*.tmp" -delete 2>/dev/null || true
-        find data/vectordb -size -1M -delete 2>/dev/null || true
+        rm -rf .git/objects/* 2>/dev/null || true
+        rm -rf .git/lfs/* 2>/dev/null || true
+        rm -rf .git/refs/* 2>/dev/null || true
+        # Remove any partial/corrupted downloads
+        rm -rf data/vectordb/* 2>/dev/null || true
+        # Remove Python cache
+        find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+        find . -name "*.pyc" -delete 2>/dev/null || true
+        # Remove docs and other large files not needed at runtime
+        rm -rf docs/archive/* 2>/dev/null || true
+        rm -rf temp/* 2>/dev/null || true
         echo "After cleanup:"
         df -h /app
+        AVAILABLE=$(df /app | tail -1 | awk '{print $4}')
+        if [ "$AVAILABLE" -lt 250000 ]; then
+            echo "ERROR: Still not enough space after cleanup ($AVAILABLE KB). Cannot download LFS files."
+            echo "Consider using Railway Volumes for persistent storage."
+            exit 1
+        fi
     fi
     
     echo "Initializing git repo..."
