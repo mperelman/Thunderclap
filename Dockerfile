@@ -27,12 +27,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck + Git LFS + file command (needed to fetch LFS files)
+# Install curl for healthcheck + Git LFS + file command + sqlite3 (needed to fetch LFS files and verify DB)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     git-lfs \
     file \
+    sqlite3 \
+    bc \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && git lfs install
