@@ -152,13 +152,67 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     chmod 755 data/vectordb
     echo "Corrupted files removed"
     
-    echo "Fetching LFS files directly (skipping git checkout to avoid file lock issues)..."
-    # Fetch LFS files directly without git checkout
-    git lfs fetch origin main || (echo "ERROR: git lfs fetch failed!" && exit 1)
+    echo "=== Attempting to download LFS files from GitHub ==="
+    echo "This may take several minutes due to GitHub LFS quota limits..."
     
-    echo "Checking out LFS files..."
-    # Checkout LFS files directly - this should work even if git checkout failed
-    git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json || git lfs checkout || (echo "ERROR: git lfs checkout failed!" && exit 1)
+    # Try multiple methods with retries
+    DOWNLOAD_SUCCESS=false
+    MAX_RETRIES=3
+    
+    for attempt in $(seq 1 $MAX_RETRIES); do
+        echo ""
+        echo "=== Attempt $attempt of $MAX_RETRIES ==="
+        
+        # Method 1: Try git lfs pull (most reliable)
+        echo "Trying: git lfs pull origin main..."
+        if git lfs pull origin main 2>&1; then
+            echo "SUCCESS: git lfs pull worked!"
+            DOWNLOAD_SUCCESS=true
+            break
+        else
+            echo "git lfs pull failed, trying next method..."
+        fi
+        
+        # Method 2: Try git lfs fetch + checkout
+        echo "Trying: git lfs fetch origin main..."
+        if git lfs fetch origin main 2>&1; then
+            echo "git lfs fetch succeeded, now checking out..."
+            if git lfs checkout 2>&1; then
+                echo "SUCCESS: git lfs fetch + checkout worked!"
+                DOWNLOAD_SUCCESS=true
+                break
+            fi
+        fi
+        
+        # Method 3: Try specific files
+        echo "Trying: git lfs checkout specific files..."
+        if git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json 2>&1; then
+            echo "SUCCESS: Specific file checkout worked!"
+            DOWNLOAD_SUCCESS=true
+            break
+        fi
+        
+        # Wait before retry (exponential backoff)
+        if [ $attempt -lt $MAX_RETRIES ]; then
+            WAIT_TIME=$((attempt * 10))
+            echo "All methods failed. Waiting ${WAIT_TIME}s before retry..."
+            sleep $WAIT_TIME
+        fi
+    done
+    
+    if [ "$DOWNLOAD_SUCCESS" = false ]; then
+        echo ""
+        echo "=== ERROR: All download attempts failed ==="
+        echo "This is likely due to GitHub LFS quota being exceeded."
+        echo ""
+        echo "Possible solutions:"
+        echo "1. Increase GitHub LFS storage quota (GitHub Settings → Billing → LFS Data)"
+        echo "2. Wait and try again later (quota may reset)"
+        echo "3. Upload files directly to Railway Volume (bypass GitHub LFS)"
+        echo ""
+        echo "The service will start but queries will fail until files are available."
+        exit 1
+    fi
     
     echo "=== Verification ==="
     SIZE=$(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0)
