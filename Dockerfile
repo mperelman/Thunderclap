@@ -55,14 +55,14 @@ RUN echo "=== Initializing git repository ===" && \
     git config user.name "Railway Build" && \
     git config user.email "build@railway.app" && \
     git remote add origin https://github.com/mperelman/Thunderclap.git && \
+    echo "=== Fetching git refs from remote ===" && \
+    git fetch origin main:main && \
+    git checkout main && \
     echo "=== Checking Git LFS status ===" && \
     git lfs version && \
     echo "=== Checking LFS pointer files ===" && \
     file data/vectordb/chroma.sqlite3 2>/dev/null && \
     ls -lh data/vectordb/chroma.sqlite3 && \
-    echo "=== Adding files to git index for LFS tracking ===" && \
-    git add .gitattributes && \
-    git add data/ && \
     echo "=== Fetching LFS files from remote ===" && \
     git lfs fetch origin main && \
     git lfs checkout || \
