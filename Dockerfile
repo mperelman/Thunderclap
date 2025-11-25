@@ -128,4 +128,5 @@ RUN chmod +x download_lfs.sh
 # Run server with explicit timeout settings to prevent Railway proxy timeout
 # Railway's proxy likely times out at 60s, so we set uvicorn to 600s (10 min)
 # First try to download LFS files if needed, then start server
-CMD ["sh", "-c", "./download_lfs.sh && uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 600"]
+# Use explicit path and ensure script runs
+CMD ["sh", "-c", "echo '=== Starting container ===' && pwd && ls -la download_lfs.sh && chmod +x download_lfs.sh && ./download_lfs.sh && echo '=== Starting server ===' && uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 600"]
