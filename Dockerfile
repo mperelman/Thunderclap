@@ -43,12 +43,12 @@ COPY --from=builder /root/.local /root/.local
 COPY server.py .
 COPY lib/ ./lib/
 COPY public/ ./public/
-# Copy entire repo context (Railway clones the repo, so data/ is already here)
-# Include .git folder for LFS operations
+# Copy entire repo context (Railway clones the repo)
+# .git/ and data/ are now included (removed from .dockerignore)
 COPY . .
-COPY .git .git
 # Fetch LFS files to replace pointers with actual files
-RUN git lfs pull || (echo "Warning: Git LFS pull failed, trying alternative method..." && git lfs fetch --all && git lfs checkout) || echo "ERROR: Could not fetch LFS files"
+# Railway clones the repo, so .git should be available
+RUN git lfs pull || (echo "Warning: Git LFS pull failed, trying fetch+checkout..." && git lfs fetch --all && git lfs checkout) || echo "ERROR: Could not fetch LFS files - check Railway logs"
 
 # Environment
 ENV PATH=/root/.local/bin:$PATH
