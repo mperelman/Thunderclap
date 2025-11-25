@@ -27,11 +27,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck
+# Install curl for healthcheck + Git LFS (needed to fetch LFS files)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    git \
+    git-lfs \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && git lfs install
 
 # Copy only installed packages from builder
 COPY --from=builder /root/.local /root/.local
