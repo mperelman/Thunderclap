@@ -136,7 +136,10 @@ class LLMAnswerGenerator:
             Exception: If API call fails and no fallback available
         """
         if not self.client:
-            raise Exception("No LLM client available. Set GEMINI_API_KEY environment variable.")
+            error_detail = ""
+            if hasattr(self, '_init_error'):
+                error_detail = f" Initialization error: {self._init_error}"
+            raise Exception(f"No LLM client available. Set GEMINI_API_KEY environment variable.{error_detail}")
         
         backoff = 1.0
         attempts = 0
