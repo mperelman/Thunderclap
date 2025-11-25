@@ -57,7 +57,10 @@ RUN echo "=== Initializing git repository ===" && \
     git remote add origin https://github.com/mperelman/Thunderclap.git && \
     echo "=== Fetching git refs from remote ===" && \
     git fetch origin main:main && \
-    git checkout main && \
+    echo "=== Removing conflicting files before checkout ===" && \
+    rm -rf data/ .gitattributes .dockerignore .railway-trigger.txt Dockerfile Procfile README.md START_SERVER.bat TEST_API.bat .cursorrules .github .railwayignore nixpacks.toml render.yaml requirements-full.txt requirements-minimal.txt runtime.txt upload_data_to_railway.sh 2>/dev/null || true && \
+    echo "=== Checking out main branch ===" && \
+    git checkout -f main && \
     echo "=== Checking Git LFS status ===" && \
     git lfs version && \
     echo "=== Checking LFS pointer files ===" && \
