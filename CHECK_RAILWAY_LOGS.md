@@ -31,7 +31,7 @@ ERROR: GEMINI_API_KEY environment variable not set!
 
 1. In Railway dashboard, go to **Variables** tab
 2. **Check if `GEMINI_API_KEY` exists**
-3. **Value should be**: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w`
+3. **Value should be**: `YOUR_API_KEY_HERE` (get from https://aistudio.google.com/apikey)
 4. **Make sure**:
    - No spaces before/after
    - No quotes around it
@@ -41,11 +41,11 @@ ERROR: GEMINI_API_KEY environment variable not set!
 
 **Issue 1: Key not set**
 - Railway Variables tab → Add `GEMINI_API_KEY`
-- Value: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w`
+- Value: `YOUR_API_KEY_HERE` (get from https://aistudio.google.com/apikey)
 - Save
 
 **Issue 2: Key has extra characters**
-- Copy-paste exactly: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w`
+- Copy-paste exactly: `YOUR_API_KEY_HERE` (no spaces, no quotes)
 - No spaces, no quotes
 
 **Issue 3: Railway hasn't restarted**
@@ -65,4 +65,7 @@ ERROR: GEMINI_API_KEY environment variable not set!
 4. **Test again** after verifying
 
 The server trace you showed is from old requests. We need to see what Railway logs show RIGHT NOW.
+
+
+
 

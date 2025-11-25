@@ -1,9 +1,7 @@
 # Verify API Key Format
 
 ## Your API Key
-```
-AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w
-```
+Get your API key from: https://aistudio.google.com/apikey
 
 ## Format Check ✅
 
@@ -17,7 +15,7 @@ AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w
 2. **Open your Thunderclap service**
 3. **Go to Variables tab**
 4. **Check `GEMINI_API_KEY`**:
-   - Value should be **exactly**: `AIzaSyDLV5J4etz6jDNIAYFqTa06ljXd7y6TO_w`
+   - Value should be your API key from https://aistudio.google.com/apikey
    - **No spaces** before/after
    - **No quotes** around it
    - **Exact match**
@@ -45,4 +43,7 @@ After verifying:
 2. Check Railway logs for:
    - `[OK] Gemini API configured` ✅
    - OR `[ERROR] Gemini setup failed: ...` ❌
+
+
+
 
