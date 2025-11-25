@@ -187,6 +187,21 @@ async def root():
         }
     }
 
+@app.get("/debug/env")
+async def debug_env():
+    """Debug endpoint to check environment variables."""
+    import os
+    key_raw = os.getenv('GEMINI_API_KEY')
+    return {
+        "GEMINI_API_KEY_set": bool(key_raw),
+        "GEMINI_API_KEY_length": len(key_raw) if key_raw else 0,
+        "GEMINI_API_KEY_starts_with": key_raw[:10] + "..." if key_raw and len(key_raw) > 10 else "N/A",
+        "GEMINI_API_KEY_ends_with": "..." + key_raw[-5:] if key_raw and len(key_raw) > 5 else "N/A",
+        "server_gemini_key_set": bool(gemini_key),
+        "server_gemini_key_length": len(gemini_key) if gemini_key else 0,
+        "all_env_vars_with_gemini": [k for k in os.environ.keys() if 'GEMINI' in k.upper() or 'GOOGLE' in k.upper()],
+    }
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -261,10 +276,18 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         print(f"[JOB {job_id}] Starting query processing...")
         sys.stdout.flush()
         
+        # Check API key availability
+        api_key_to_use = gemini_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+        if not api_key_to_use:
+            raise Exception("GEMINI_API_KEY not found. Check Railway Variables → GEMINI_API_KEY is set and service has been restarted.")
+        
         from lib.query_engine import QueryEngine
         from lib.config import QUERY_TIMEOUT_SECONDS
         
-        qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
+        print(f"[JOB {job_id}] API key available: {bool(api_key_to_use)}, length: {len(api_key_to_use) if api_key_to_use else 0}")
+        sys.stdout.flush()
+        
+        qe = QueryEngine(gemini_api_key=api_key_to_use, use_async=False)
         
         loop = asyncio.get_event_loop()
         answer = await asyncio.wait_for(
