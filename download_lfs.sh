@@ -1,5 +1,6 @@
 #!/bin/bash
 # Download LFS files if they're missing, pointer files, or corrupted
+# Updated: 2025-01-21 - Added volume space checks and cleanup
 
 echo "=== Checking LFS files ==="
 
