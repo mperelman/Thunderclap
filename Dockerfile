@@ -27,11 +27,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck + Git LFS (needed to fetch LFS files)
+# Install curl for healthcheck + Git LFS + file command (needed to fetch LFS files)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     git-lfs \
+    file \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && git lfs install
@@ -51,12 +52,17 @@ COPY . .
 # Railway clones the repo, so we can fetch LFS files directly from GitHub
 RUN echo "=== Initializing git repository ===" && \
     git init && \
-    git remote add origin https://github.com/mperelman/Thunderclap.git || echo "Remote already exists" && \
+    git config user.name "Railway Build" && \
+    git config user.email "build@railway.app" && \
+    git remote add origin https://github.com/mperelman/Thunderclap.git && \
     echo "=== Checking Git LFS status ===" && \
     git lfs version && \
     echo "=== Checking LFS pointer files ===" && \
     file data/vectordb/chroma.sqlite3 2>/dev/null && \
     ls -lh data/vectordb/chroma.sqlite3 && \
+    echo "=== Adding files to git index for LFS tracking ===" && \
+    git add .gitattributes && \
+    git add data/ && \
     echo "=== Fetching LFS files from remote ===" && \
     git lfs fetch origin main && \
     git lfs checkout || \
@@ -64,8 +70,10 @@ RUN echo "=== Initializing git repository ===" && \
      git lfs fetch --all origin && \
      git lfs checkout) || \
     (echo "=== ERROR: Could not fetch LFS files ===" && \
+     echo "Checking LFS logs:" && \
+     git lfs logs last 2>/dev/null || echo "No LFS logs" && \
      echo "Current file:" && \
-     file data/vectordb/chroma.sqlite3 && \
+     file data/vectordb/chroma.sqlite3 2>/dev/null && \
      ls -lh data/vectordb/chroma.sqlite3 && \
      exit 1)
 
