@@ -1,21 +1,46 @@
 #!/bin/bash
-# Download LFS files if they're missing or pointer files
+# Download LFS files if they're missing, pointer files, or corrupted
 
 echo "=== Checking LFS files ==="
+
+NEED_DOWNLOAD=false
+NEED_VERIFY=true
 
 # Check if chroma.sqlite3 exists and is a real file (not pointer)
 if [ -f "data/vectordb/chroma.sqlite3" ]; then
     SIZE=$(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0)
+    SIZE_MB=$((SIZE / 1024 / 1024))
+    echo "chroma.sqlite3 exists, size: $SIZE bytes ($SIZE_MB MB)"
+    
     if [ "$SIZE" -lt 1000000 ]; then
-        echo "chroma.sqlite3 is a pointer file ($SIZE bytes), need to download..."
+        echo "File is a pointer file (too small), need to download..."
         NEED_DOWNLOAD=true
+    elif [ "$SIZE" -lt 150000000 ]; then
+        echo "WARNING: File is smaller than expected (~177MB). May be incomplete. Will verify integrity..."
+        NEED_VERIFY=true
     else
-        echo "chroma.sqlite3 exists and is large enough ($SIZE bytes)"
-        NEED_DOWNLOAD=false
+        echo "File size looks good, verifying integrity..."
+        NEED_VERIFY=true
     fi
 else
     echo "chroma.sqlite3 not found"
     NEED_DOWNLOAD=true
+fi
+
+# Always verify integrity if file exists
+if [ "$NEED_VERIFY" = true ] && [ -f "data/vectordb/chroma.sqlite3" ]; then
+    echo "=== Verifying SQLite database integrity ==="
+    sqlite3 data/vectordb/chroma.sqlite3 "PRAGMA integrity_check;" > /tmp/integrity_check.txt 2>&1
+    INTEGRITY_RESULT=$(cat /tmp/integrity_check.txt)
+    if echo "$INTEGRITY_RESULT" | grep -q "ok"; then
+        echo "SUCCESS: Database integrity check passed"
+    else
+        echo "ERROR: Database integrity check failed:"
+        echo "$INTEGRITY_RESULT"
+        echo "Database is corrupted. Will re-download..."
+        rm -f data/vectordb/chroma.sqlite3
+        NEED_DOWNLOAD=true
+    fi
 fi
 
 if [ "$NEED_DOWNLOAD" = true ]; then
