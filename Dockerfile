@@ -87,24 +87,30 @@ RUN echo "=== Initializing git repository ===" && \
     fi && \
     echo "=== Build complete - download_lfs.sh will handle LFS files at startup ==="
 
-# Verify LFS files were fetched (fail build if missing)
-RUN echo "=== Verifying LFS files after fetch ===" && \
-    if [ ! -f data/vectordb/chroma.sqlite3 ] || [ ! -s data/vectordb/chroma.sqlite3 ]; then \
-        echo "ERROR: chroma.sqlite3 is missing or empty!" && \
-        ls -lh data/vectordb/ 2>/dev/null || echo "vectordb folder missing" && \
-        exit 1; \
+# Verify LFS files (but don't fail build if missing - download_lfs.sh handles it)
+RUN echo "=== Checking LFS files status ===" && \
+    if [ -f "data/vectordb/chroma.sqlite3" ]; then \
+        SIZE=$(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0); \
+        if [ "$SIZE" -gt 1000000 ]; then \
+            echo "=== SUCCESS: chroma.sqlite3 downloaded during build ($(echo "scale=2; $SIZE/1024/1024" | bc) MB) ===" && \
+            file data/vectordb/chroma.sqlite3; \
+        else \
+            echo "=== INFO: chroma.sqlite3 is a pointer file (will be downloaded at runtime) ==="; \
+        fi; \
+    else \
+        echo "=== INFO: chroma.sqlite3 not found (will be downloaded at runtime) ==="; \
     fi && \
-    if [ ! -f data/deduplicated_terms/deduplicated_cache.json ] || [ ! -s data/deduplicated_terms/deduplicated_cache.json ]; then \
-        echo "ERROR: deduplicated_cache.json is missing or empty!" && \
-        exit 1; \
+    if [ -f "data/deduplicated_terms/deduplicated_cache.json" ]; then \
+        SIZE=$(stat -f%z data/deduplicated_terms/deduplicated_cache.json 2>/dev/null || stat -c%s data/deduplicated_terms/deduplicated_cache.json 2>/dev/null || echo 0); \
+        if [ "$SIZE" -gt 1000000 ]; then \
+            echo "=== SUCCESS: deduplicated_cache.json downloaded during build ==="; \
+        else \
+            echo "=== INFO: deduplicated_cache.json is a pointer file (will be downloaded at runtime) ==="; \
+        fi; \
+    else \
+        echo "=== INFO: deduplicated_cache.json not found (will be downloaded at runtime) ==="; \
     fi && \
-    echo "=== Verifying file types ===" && \
-    file data/vectordb/chroma.sqlite3 && \
-    file data/deduplicated_terms/deduplicated_cache.json && \
-    echo "=== File sizes ===" && \
-    ls -lh data/vectordb/chroma.sqlite3 && \
-    ls -lh data/deduplicated_terms/deduplicated_cache.json && \
-    echo "=== LFS files verified successfully ==="
+    echo "=== Build complete - download_lfs.sh will download LFS files at container startup ==="
 
 # Environment
 ENV PATH=/root/.local/bin:$PATH
