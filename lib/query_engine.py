@@ -131,9 +131,26 @@ class QueryEngine:
             # Use Gemini API key (priority: parameter > env var)
             api_key_raw = gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
             api_key = api_key_raw.strip() if api_key_raw else None
+            print(f"  [DEBUG] API key provided to QueryEngine: {bool(gemini_api_key)}")
+            print(f"  [DEBUG] API key from env GEMINI_API_KEY: {bool(os.getenv('GEMINI_API_KEY'))}")
+            print(f"  [DEBUG] API key from env GOOGLE_API_KEY: {bool(os.getenv('GOOGLE_API_KEY'))}")
+            print(f"  [DEBUG] Final API key to use: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
+            if api_key:
+                print(f"  [DEBUG] API key starts with: {api_key[:10]}...")
             self.llm = LLMAnswerGenerator(api_key=api_key)
+            if self.llm and self.llm.client:
+                print(f"  [OK] LLM initialized successfully")
+            else:
+                print(f"  [ERROR] LLM initialized but client is None!")
+                print(f"  [ERROR] This means LLM initialization failed silently")
+                print(f"  [ERROR] Check Railway logs for '[ERROR] Gemini setup failed' messages")
+                raise RuntimeError("LLM client is None - check Railway logs for initialization errors")
         except Exception as e:
-            print(f"  [WARNING] LLM initialization failed: {e}")
+            print(f"  [ERROR] LLM initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
+            import sys
+            sys.stdout.flush()
         
         # Initialize answer reviewer
         self.reviewer = AnswerReviewer()
