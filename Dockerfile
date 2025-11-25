@@ -65,33 +65,27 @@ RUN echo "=== Initializing git repository ===" && \
     git reset --hard origin/main && \
     echo "=== Checking Git LFS status ===" && \
     git lfs version && \
-    echo "=== Checking LFS pointer files after checkout ===" && \
-    file data/vectordb/chroma.sqlite3 2>/dev/null && \
-    ls -lh data/vectordb/chroma.sqlite3 && \
-    echo "=== Fetching LFS files from remote (using pull) ===" && \
-    git lfs pull origin main || \
-    (echo "=== Pull failed, trying fetch+checkout ===" && \
-     git lfs fetch origin main && \
-     echo "=== Checking LFS objects after fetch ===" && \
-     git lfs ls-files | head -5 && \
-     echo "=== Running LFS checkout ===" && \
-     git lfs checkout) || \
-    (echo "=== Trying to checkout specific files ===" && \
-     git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json) && \
-    echo "=== Verifying files after checkout ===" && \
-    file data/vectordb/chroma.sqlite3 && \
-    ls -lh data/vectordb/chroma.sqlite3 && \
-    if [ ! -s data/vectordb/chroma.sqlite3 ] || [ $(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0) -lt 1000000 ]; then \
-        echo "ERROR: chroma.sqlite3 is still a pointer file or too small!" && \
-        echo "File type:" && \
-        file data/vectordb/chroma.sqlite3 && \
-        echo "File size:" && \
-        ls -lh data/vectordb/chroma.sqlite3 && \
-        echo "LFS status:" && \
-        git lfs ls-files data/vectordb/chroma.sqlite3 && \
-        exit 1; \
+    echo "=== Attempting to fetch LFS files (will continue if quota exceeded) ===" && \
+    (git lfs pull origin main || \
+     (echo "=== LFS pull failed, trying fetch+checkout ===" && \
+      git lfs fetch origin main && \
+      git lfs checkout) || \
+     (echo "=== LFS fetch failed, trying specific files ===" && \
+      git lfs checkout data/vectordb/chroma.sqlite3 data/deduplicated_terms/deduplicated_cache.json) || \
+     echo "=== WARNING: LFS download failed (quota exceeded or network issue) ===" && \
+     echo "=== This is OK - download_lfs.sh will download files at runtime ===") && \
+    echo "=== Checking if LFS files were downloaded ===" && \
+    if [ -f "data/vectordb/chroma.sqlite3" ]; then \
+        SIZE=$(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0); \
+        if [ "$SIZE" -gt 1000000 ]; then \
+            echo "=== SUCCESS: LFS files downloaded during build ==="; \
+        else \
+            echo "=== INFO: LFS files are pointer files (will be downloaded at runtime) ==="; \
+        fi; \
+    else \
+        echo "=== INFO: LFS files not found (will be downloaded at runtime) ==="; \
     fi && \
-    echo "=== LFS files verified successfully ==="
+    echo "=== Build complete - download_lfs.sh will handle LFS files at startup ==="
 
 # Verify LFS files were fetched (fail build if missing)
 RUN echo "=== Verifying LFS files after fetch ===" && \
