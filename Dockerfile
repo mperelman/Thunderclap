@@ -68,11 +68,23 @@ RUN echo "=== Fetching LFS files ===" && \
      ls -lh data/vectordb/chroma.sqlite3 2>/dev/null || echo "chroma.sqlite3 missing" && \
      exit 1)
 
-# Verify LFS files were fetched
+# Verify LFS files were fetched (fail build if missing)
 RUN echo "=== Verifying LFS files after fetch ===" && \
+    if [ ! -f data/vectordb/chroma.sqlite3 ] || [ ! -s data/vectordb/chroma.sqlite3 ]; then \
+        echo "ERROR: chroma.sqlite3 is missing or empty!" && \
+        ls -lh data/vectordb/ 2>/dev/null || echo "vectordb folder missing" && \
+        exit 1; \
+    fi && \
+    if [ ! -f data/deduplicated_terms/deduplicated_cache.json ] || [ ! -s data/deduplicated_terms/deduplicated_cache.json ]; then \
+        echo "ERROR: deduplicated_cache.json is missing or empty!" && \
+        exit 1; \
+    fi && \
+    echo "=== Verifying file types ===" && \
     file data/vectordb/chroma.sqlite3 && \
     file data/deduplicated_terms/deduplicated_cache.json && \
+    echo "=== File sizes ===" && \
     ls -lh data/vectordb/chroma.sqlite3 && \
+    ls -lh data/deduplicated_terms/deduplicated_cache.json && \
     echo "=== LFS files verified successfully ==="
 
 # Environment
