@@ -49,6 +49,23 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     which git || (echo "ERROR: git not found!" && exit 1)
     which git-lfs || (echo "ERROR: git-lfs not found!" && exit 1)
     
+    echo "=== Checking disk space ==="
+    df -h /app
+    AVAILABLE=$(df /app | tail -1 | awk '{print $4}')
+    echo "Available space: $AVAILABLE KB"
+    # Need at least 250MB free (197MB data + overhead)
+    if [ "$AVAILABLE" -lt 250000 ]; then
+        echo "WARNING: Low disk space ($AVAILABLE KB). Cleaning up..."
+        # Remove git history to free space
+        rm -rf .git/objects/pack/* 2>/dev/null || true
+        rm -rf .git/lfs/tmp/* 2>/dev/null || true
+        # Remove any partial downloads
+        find data/vectordb -name "*.tmp" -delete 2>/dev/null || true
+        find data/vectordb -size -1M -delete 2>/dev/null || true
+        echo "After cleanup:"
+        df -h /app
+    fi
+    
     echo "Initializing git repo..."
     git init || (echo "ERROR: git init failed!" && exit 1)
     git config user.name "Railway" || true
@@ -59,6 +76,9 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     
     echo "Fetching main branch..."
     git fetch origin main:main || (echo "ERROR: git fetch failed!" && exit 1)
+    
+    echo "Removing corrupted/incomplete files before checkout..."
+    rm -rf data/vectordb/* 2>/dev/null || true
     
     echo "Checking out main..."
     git checkout -f main || (echo "ERROR: git checkout failed!" && exit 1)
