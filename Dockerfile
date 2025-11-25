@@ -63,22 +63,29 @@ RUN echo "=== Initializing git repository ===" && \
     git checkout -f main && \
     echo "=== Checking Git LFS status ===" && \
     git lfs version && \
-    echo "=== Checking LFS pointer files ===" && \
+    echo "=== Checking LFS pointer files after checkout ===" && \
     file data/vectordb/chroma.sqlite3 2>/dev/null && \
     ls -lh data/vectordb/chroma.sqlite3 && \
     echo "=== Fetching LFS files from remote ===" && \
     git lfs fetch origin main && \
-    git lfs checkout || \
-    (echo "=== Alternative: Fetching all LFS files ===" && \
-     git lfs fetch --all origin && \
-     git lfs checkout) || \
-    (echo "=== ERROR: Could not fetch LFS files ===" && \
-     echo "Checking LFS logs:" && \
-     git lfs logs last 2>/dev/null || echo "No LFS logs" && \
-     echo "Current file:" && \
-     file data/vectordb/chroma.sqlite3 2>/dev/null && \
-     ls -lh data/vectordb/chroma.sqlite3 && \
-     exit 1)
+    echo "=== Checking LFS objects after fetch ===" && \
+    git lfs ls-files | head -5 && \
+    echo "=== Running LFS checkout ===" && \
+    git lfs checkout && \
+    echo "=== Verifying files after checkout ===" && \
+    file data/vectordb/chroma.sqlite3 && \
+    ls -lh data/vectordb/chroma.sqlite3 && \
+    if [ ! -s data/vectordb/chroma.sqlite3 ] || [ $(stat -f%z data/vectordb/chroma.sqlite3 2>/dev/null || stat -c%s data/vectordb/chroma.sqlite3 2>/dev/null || echo 0) -lt 1000000 ]; then \
+        echo "ERROR: chroma.sqlite3 is still a pointer file or too small!" && \
+        echo "File type:" && \
+        file data/vectordb/chroma.sqlite3 && \
+        echo "File size:" && \
+        ls -lh data/vectordb/chroma.sqlite3 && \
+        echo "LFS status:" && \
+        git lfs ls-files data/vectordb/chroma.sqlite3 && \
+        exit 1; \
+    fi && \
+    echo "=== LFS files verified successfully ==="
 
 # Verify LFS files were fetched (fail build if missing)
 RUN echo "=== Verifying LFS files after fetch ===" && \
