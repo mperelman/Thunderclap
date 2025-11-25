@@ -80,8 +80,24 @@ class QueryEngine:
         self._token_rate_limit = MAX_TOKENS_PER_MINUTE
         
         # Connect to ChromaDB - simple approach matching archived versions
+        print(f"  [DEBUG] VECTORDB_DIR: {VECTORDB_DIR}")
+        print(f"  [DEBUG] VECTORDB_DIR exists: {os.path.exists(VECTORDB_DIR)}")
+        if os.path.exists(VECTORDB_DIR):
+            files = os.listdir(VECTORDB_DIR)
+            print(f"  [DEBUG] Files in vectordb dir: {files[:10]}")
+            chroma_file = os.path.join(VECTORDB_DIR, "chroma.sqlite3")
+            if os.path.exists(chroma_file):
+                size = os.path.getsize(chroma_file)
+                print(f"  [DEBUG] chroma.sqlite3 exists, size: {size} bytes ({size/(1024*1024):.2f} MB)")
+            else:
+                print(f"  [DEBUG] chroma.sqlite3 NOT FOUND in {VECTORDB_DIR}")
+        
         self.chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
         try:
+            # List all collections to see what's available
+            collections = self.chroma_client.list_collections()
+            print(f"  [DEBUG] Available collections: {[c.name for c in collections]}")
+            
             self.collection = self.chroma_client.get_collection(name=COLLECTION_NAME)
             doc_count = self.collection.count()
             coll_id = self.collection.id
@@ -89,7 +105,12 @@ class QueryEngine:
             print(f"  [OK] Collection ID: {coll_id}, Name: {self.collection.name}")
         except Exception as e:
             print(f"  [ERROR] Could not find collection '{COLLECTION_NAME}'")
-            print(f"    Error: {e}")
+            print(f"    Error type: {type(e).__name__}")
+            print(f"    Error message: {e}")
+            print(f"    VECTORDB_DIR: {VECTORDB_DIR}")
+            print(f"    VECTORDB_DIR exists: {os.path.exists(VECTORDB_DIR)}")
+            if os.path.exists(VECTORDB_DIR):
+                print(f"    Files in directory: {os.listdir(VECTORDB_DIR)}")
             print(f"    Run: python build_index.py")
             print(f"  [WARNING] Server will start but queries will fail until index is built")
             # Set collection to None - queries will fail gracefully with clear error
