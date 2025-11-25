@@ -295,6 +295,24 @@ class QueryEngine:
         from lib.config import QUERY_TIMEOUT_SECONDS
         query_start = time.time()
         
+        # Check if LLM is available when needed
+        if use_llm:
+            if not self.llm:
+                raise RuntimeError(
+                    "LLM not initialized. GEMINI_API_KEY environment variable not set or invalid.\n"
+                    "Check Railway Variables → GEMINI_API_KEY is set correctly and service has been restarted.\n"
+                    "Visit Railway logs to see '[ERROR] Gemini setup failed' messages for details."
+                )
+            if not self.llm.client:
+                raise RuntimeError(
+                    "LLM client is None. Gemini API initialization failed.\n"
+                    "Check Railway logs for '[ERROR] Gemini setup failed' messages.\n"
+                    "Possible causes:\n"
+                    "1. GEMINI_API_KEY is invalid or expired\n"
+                    "2. Railway service needs restart after setting variable\n"
+                    "3. API key test failed during initialization"
+                )
+        
         # Check if collection exists
         if self.collection is None:
             raise RuntimeError(
@@ -987,6 +1005,12 @@ class QueryEngine:
                 from lib.prompts import build_prompt
                 prompt = build_prompt(question, chunks, is_control_influence=True)
                 import time
+                # Check LLM is available before calling
+                if not self.llm:
+                    raise RuntimeError("LLM not initialized. Check Railway Variables → GEMINI_API_KEY is set and service has been restarted.")
+                if not self.llm.client:
+                    raise RuntimeError("LLM client is None. Check Railway logs for '[ERROR] Gemini setup failed' messages. GEMINI_API_KEY may be invalid or Railway service needs restart.")
+                
                 start_time = time.time()
                 
                 # Temporarily reduce retries for control queries (prevents long waits)
@@ -1026,6 +1050,9 @@ class QueryEngine:
                     except Exception as e:
                         pass  # Decade stratification optional
                     ideology_prompt = self._build_prompt_ideology(question, chunks)
+                    # Check LLM is available before calling
+                    if not self.llm or not self.llm.client:
+                        raise RuntimeError("LLM client is None. Check Railway logs for '[ERROR] Gemini setup failed' messages. GEMINI_API_KEY may be invalid or Railway service needs restart.")
                     answer = self.llm.call_api(ideology_prompt)
                 # Debug: print years in original_chunks
                 chunk_years = set()
