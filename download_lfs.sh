@@ -3,6 +3,17 @@
 
 echo "=== Checking LFS files ==="
 
+# Check if /app/data is on a volume (Railway volumes are mounted)
+if mountpoint -q /app/data 2>/dev/null; then
+    echo "SUCCESS: /app/data is mounted on a volume (persistent storage)"
+elif [ -d "/var/lib/containers/railwayapp/bind-mounts" ]; then
+    echo "WARNING: Railway volume detected but NOT mounted at /app/data"
+    echo "The volume is mounted elsewhere. /app/data is using container filesystem (limited space)."
+    echo "To fix: In Railway dashboard, mount the volume at /app/data"
+else
+    echo "INFO: No Railway volume detected. Using container filesystem (limited space)."
+fi
+
 NEED_DOWNLOAD=false
 NEED_VERIFY=true
 
@@ -87,13 +98,13 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     git remote add origin https://github.com/mperelman/Thunderclap.git || git remote set-url origin https://github.com/mperelman/Thunderclap.git
     
     echo "Fetching main branch..."
-    git fetch origin main:main || (echo "ERROR: git fetch failed!" && exit 1)
+    git fetch origin main || (echo "ERROR: git fetch failed!" && exit 1)
     
     echo "Removing corrupted/incomplete files before checkout..."
     rm -rf data/vectordb/* 2>/dev/null || true
     
     echo "Checking out main..."
-    git checkout -f main || (echo "ERROR: git checkout failed!" && exit 1)
+    git checkout -f origin/main || git checkout -f main || (echo "ERROR: git checkout failed!" && exit 1)
     
     echo "Pulling LFS files..."
     git lfs pull origin main || (echo "LFS pull failed, trying fetch+checkout..." && git lfs fetch origin main && git lfs checkout) || (echo "ERROR: LFS download failed!" && exit 1)
