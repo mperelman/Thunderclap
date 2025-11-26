@@ -9,6 +9,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, HTTPException
+import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from collections import defaultdict
@@ -45,6 +46,7 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     source: str = "Thunderclap AI"
+    request_id: str = ""  # Frontend needs this for status polling
 
 # Simple rate limiting
 request_counts = defaultdict(list)
@@ -82,8 +84,11 @@ async def health_check():
 
 @app.get("/query/{request_id}")
 async def get_query_status(request_id: str):
-    """Status endpoint for frontend polling - minimal implementation to stop polling loop."""
-    # Frontend polls with "undefined" - return complete to stop infinite polling
+    """Status endpoint for frontend polling."""
+    # Since queries are synchronous and return immediately, 
+    # this endpoint always returns complete
+    if request_id == "undefined":
+        return {"status": "complete", "request_id": "undefined"}
     return {"status": "complete", "request_id": request_id}
 
 @app.post("/query", response_model=QueryResponse)
@@ -105,6 +110,9 @@ async def query_endpoint(request: QueryRequest):
         raise HTTPException(status_code=400, detail="Question too long (maximum 500 characters)")
     
     try:
+        # Generate request_id for frontend polling
+        request_id = str(uuid.uuid4())
+        
         # Generate answer (all data access happens server-side)
         print(f"Processing query: {request.question}")
         
@@ -118,7 +126,7 @@ async def query_endpoint(request: QueryRequest):
         if len(answer) > request.max_length:
             answer = answer[:request.max_length] + "\n\n[Answer truncated for length]"
         
-        return QueryResponse(answer=answer)
+        return QueryResponse(answer=answer, request_id=request_id)
     
     except Exception as e:
         print(f"Error processing query: {e}")
