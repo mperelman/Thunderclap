@@ -17,32 +17,14 @@ class LLMAnswerGenerator:
         Args:
             api_key: Gemini API key (or set GEMINI_API_KEY env var)
         """
-        # Get API key with fallback chain, then trim whitespace
-        api_key_raw = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-        self.api_key = api_key_raw.strip() if api_key_raw else None
+        self.api_key = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
         self.client = None
-        
-        # Debug: Log API key status
-        print(f"  [LLM INIT] API key provided: {bool(api_key)}")
-        print(f"  [LLM INIT] API key from env: {bool(os.getenv('GEMINI_API_KEY'))}")
-        print(f"  [LLM INIT] Final API key present: {bool(self.api_key)}")
-        if self.api_key:
-            print(f"  [LLM INIT] API key length: {len(self.api_key)}")
-            print(f"  [LLM INIT] API key starts with: {self.api_key[:10]}...")
-            # Validate format
-            if len(self.api_key) != 39:
-                print(f"  [WARNING] API key length is {len(self.api_key)}, expected 39")
-            if not self.api_key.startswith('AIza'):
-                print(f"  [WARNING] API key doesn't start with 'AIza'")
         
         # Try Gemini first
         if self.api_key:
             try:
                 import google.generativeai as genai
-                print(f"  [LLM INIT] Configuring Gemini with API key...")
-                # Configure with trimmed key
                 genai.configure(api_key=self.api_key)
-                print(f"  [LLM INIT] Gemini configuration complete")
                 # Use low-variance generation to stabilize output length/structure
                 self._gen_config = {
                     "temperature": 0.2,
@@ -55,55 +37,12 @@ class LLMAnswerGenerator:
                     model_name='gemini-2.5-flash',
                     generation_config=self._gen_config,
                 )
-                # Test API key by making a minimal test call
-                print(f"  [LLM INIT] Testing API key with minimal call...")
-                try:
-                    test_response = self.client.generate_content("test", request_options={"timeout": 10})
-                    print(f"  [OK] API key test successful")
-                except Exception as test_err:
-                    error_msg = str(test_err)
-                    error_lower = error_msg.lower()
-                    print(f"  [ERROR] API key test failed: {error_msg}")
-                    print(f"  [ERROR] Full error type: {type(test_err).__name__}")
-                    
-                    # Check for specific error types
-                    if "api key" in error_lower or "api_key" in error_lower or "invalid" in error_lower:
-                        raise RuntimeError(f"Invalid or expired API key: {error_msg}\nCheck Railway Variables → GEMINI_API_KEY is correct and not expired.")
-                    elif "quota" in error_lower or "429" in error_msg or "rate limit" in error_lower:
-                        print(f"  [WARNING] API quota/rate limit hit during test, but API key is valid")
-                        print(f"  [WARNING] Continuing anyway - quota may reset or you may need to wait")
-                        # Don't fail - quota issues are temporary
-                    elif "timeout" in error_lower or "network" in error_lower:
-                        print(f"  [WARNING] Network/timeout issue during test, but API key format looks valid")
-                        print(f"  [WARNING] Continuing anyway - network issues are temporary")
-                        # Don't fail - network issues are temporary
-                    else:
-                        # Unknown error - still raise it but with context
-                        raise RuntimeError(f"API key test failed: {error_msg}\nCheck Railway logs for full error details.")
                 print("  [OK] Gemini API configured (2.5 Flash, 15 RPM / 1M TPM / 200 RPD)")
             except Exception as e:
-                error_msg = str(e)
-                print(f"  [ERROR] Gemini setup failed: {error_msg}")
-                print(f"  [ERROR] API key was present: {bool(self.api_key)}")
-                if self.api_key:
-                    print(f"  [ERROR] API key length: {len(self.api_key)}")
-                    print(f"  [ERROR] API key starts with: {self.api_key[:10]}...")
-                import traceback
-                traceback.print_exc()
-                import sys
-                sys.stdout.flush()
-                
-                # Store error for better error messages later
-                self._init_error = error_msg
+                print(f"  [ERROR] Gemini setup failed: {e}")
                 self.client = None
-                
-                # If it's an invalid API key error, raise it immediately
-                if "invalid" in error_msg.lower() or "api key" in error_msg.lower() or "api_key" in error_msg.lower():
-                    raise RuntimeError(f"Gemini API initialization failed: {error_msg}\nCheck Railway Variables → GEMINI_API_KEY is correct.")
-                # Otherwise, let it fail gracefully when used (might be quota/network issue)
         else:
-            print("  [ERROR] No Gemini API key found - cannot initialize LLM")
-            raise RuntimeError("GEMINI_API_KEY environment variable not set. Set it in Railway Variables tab.")
+            print("  [WARNING] No Gemini API key found")
     
     def _is_rate_limit_error(self, exc: Exception) -> bool:
         msg = str(exc).lower()
@@ -136,10 +75,7 @@ class LLMAnswerGenerator:
             Exception: If API call fails and no fallback available
         """
         if not self.client:
-            error_detail = ""
-            if hasattr(self, '_init_error'):
-                error_detail = f" Initialization error: {self._init_error}"
-            raise Exception(f"No LLM client available. Set GEMINI_API_KEY environment variable.{error_detail}")
+            raise Exception("No LLM client available. Set GEMINI_API_KEY environment variable.")
         
         backoff = 1.0
         attempts = 0
@@ -199,9 +135,9 @@ class LLMAnswerGenerator:
                     else:
                         wait_time = backoff
                         print(f"  [RETRY] Rate limited, backing off {backoff:.1f}s (attempt {attempts+1}/{max_attempts})")
-                        # Cap backoff to prevent long connection timeouts
-                        max_backoff = 15.0  # Maximum 15s wait to avoid connection drops
-                        backoff = min(backoff * 2, max_backoff)
+                        # For control queries with reduced retries, cap backoff lower to prevent long waits
+                        max_backoff = 30.0 if max_attempts <= 3 else 60.0
+                        backoff = min(backoff * 2, max_backoff)  # Cap at 30s for control queries, 60s otherwise
                     
                     import time
                     time.sleep(wait_time)
@@ -300,8 +236,7 @@ class LLMAnswerGenerator:
                     else:
                         wait_time = backoff
                         print(f"  [RETRY] Async rate limited, backing off {backoff:.1f}s (attempt {attempts+1}/{max_attempts})")
-                        max_backoff = 15.0  # Maximum 15s wait to avoid connection drops
-                        backoff = min(backoff * 2, max_backoff)
+                        backoff = min(backoff * 2, 60.0)  # Cap at 60 seconds
                     
                     import asyncio
                     await asyncio.sleep(wait_time)

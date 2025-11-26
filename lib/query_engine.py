@@ -32,6 +32,7 @@ from .engines.period_engine import PeriodEngine
 from .acronyms import ACRONYM_EXPANSIONS
 from .term_utils import canonicalize_term
 from .constants import YEAR_PREFIX_EXPANSIONS, STOP_WORDS
+from .economic_systems import format_definitions_for_prompt
 from .text_utils import split_into_sentences
 from .answer_reviewer import AnswerReviewer
 
@@ -80,29 +81,8 @@ class QueryEngine:
         self._token_rate_limit = MAX_TOKENS_PER_MINUTE
         
         # Connect to ChromaDB - simple approach matching archived versions
-        print(f"  [DEBUG] VECTORDB_DIR: {VECTORDB_DIR}")
-        print(f"  [DEBUG] VECTORDB_DIR exists: {os.path.exists(VECTORDB_DIR)}")
-        if os.path.exists(VECTORDB_DIR):
-            files = os.listdir(VECTORDB_DIR)
-            print(f"  [DEBUG] Files in vectordb dir: {files[:10]}")
-            chroma_file = os.path.join(VECTORDB_DIR, "chroma.sqlite3")
-            if os.path.exists(chroma_file):
-                size = os.path.getsize(chroma_file)
-                print(f"  [DEBUG] chroma.sqlite3 exists, size: {size} bytes ({size/(1024*1024):.2f} MB)")
-            else:
-                print(f"  [DEBUG] chroma.sqlite3 NOT FOUND in {VECTORDB_DIR}")
-        
-        # Initialize ChromaDB with explicit settings to avoid tenant errors
-        from chromadb.config import Settings
-        self.chroma_client = chromadb.PersistentClient(
-            path=VECTORDB_DIR,
-            settings=Settings(anonymized_telemetry=False)
-        )
+        self.chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
         try:
-            # List all collections to see what's available
-            collections = self.chroma_client.list_collections()
-            print(f"  [DEBUG] Available collections: {[c.name for c in collections]}")
-            
             self.collection = self.chroma_client.get_collection(name=COLLECTION_NAME)
             doc_count = self.collection.count()
             coll_id = self.collection.id
@@ -110,16 +90,9 @@ class QueryEngine:
             print(f"  [OK] Collection ID: {coll_id}, Name: {self.collection.name}")
         except Exception as e:
             print(f"  [ERROR] Could not find collection '{COLLECTION_NAME}'")
-            print(f"    Error type: {type(e).__name__}")
-            print(f"    Error message: {e}")
-            print(f"    VECTORDB_DIR: {VECTORDB_DIR}")
-            print(f"    VECTORDB_DIR exists: {os.path.exists(VECTORDB_DIR)}")
-            if os.path.exists(VECTORDB_DIR):
-                print(f"    Files in directory: {os.listdir(VECTORDB_DIR)}")
+            print(f"    Error: {e}")
             print(f"    Run: python build_index.py")
-            print(f"  [WARNING] Server will start but queries will fail until index is built")
-            # Set collection to None - queries will fail gracefully with clear error
-            self.collection = None
+            raise
         
         # Load pre-built indices
         self._load_indices()
@@ -129,28 +102,10 @@ class QueryEngine:
         self.llm = None
         try:
             # Use Gemini API key (priority: parameter > env var)
-            api_key_raw = gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-            api_key = api_key_raw.strip() if api_key_raw else None
-            print(f"  [DEBUG] API key provided to QueryEngine: {bool(gemini_api_key)}")
-            print(f"  [DEBUG] API key from env GEMINI_API_KEY: {bool(os.getenv('GEMINI_API_KEY'))}")
-            print(f"  [DEBUG] API key from env GOOGLE_API_KEY: {bool(os.getenv('GOOGLE_API_KEY'))}")
-            print(f"  [DEBUG] Final API key to use: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
-            if api_key:
-                print(f"  [DEBUG] API key starts with: {api_key[:10]}...")
+            api_key = gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
             self.llm = LLMAnswerGenerator(api_key=api_key)
-            if self.llm and self.llm.client:
-                print(f"  [OK] LLM initialized successfully")
-            else:
-                print(f"  [ERROR] LLM initialized but client is None!")
-                print(f"  [ERROR] This means LLM initialization failed silently")
-                print(f"  [ERROR] Check Railway logs for '[ERROR] Gemini setup failed' messages")
-                raise RuntimeError("LLM client is None - check Railway logs for initialization errors")
         except Exception as e:
-            print(f"  [ERROR] LLM initialization failed: {e}")
-            import traceback
-            traceback.print_exc()
-            import sys
-            sys.stdout.flush()
+            print(f"  [WARNING] LLM initialization failed: {e}")
         
         # Initialize answer reviewer
         self.reviewer = AnswerReviewer()
@@ -257,9 +212,6 @@ class QueryEngine:
         Returns:
             List of matching document chunks
         """
-        if self.collection is None:
-            raise RuntimeError("Database not initialized. Please run: python build_index.py")
-        
         term_lower = term.lower()
         # Canonicalize term to match TERM_GROUPS merges (e.g., "blacks" -> "black")
         canonical = canonicalize_term(term_lower)
@@ -294,33 +246,6 @@ class QueryEngine:
         import time
         from lib.config import QUERY_TIMEOUT_SECONDS
         query_start = time.time()
-        
-        # Check if LLM is available when needed
-        if use_llm:
-            if not self.llm:
-                raise RuntimeError(
-                    "LLM not initialized. GEMINI_API_KEY environment variable not set or invalid.\n"
-                    "Check Railway Variables → GEMINI_API_KEY is set correctly and service has been restarted.\n"
-                    "Visit Railway logs to see '[ERROR] Gemini setup failed' messages for details."
-                )
-            if not self.llm.client:
-                raise RuntimeError(
-                    "LLM client is None. Gemini API initialization failed.\n"
-                    "Check Railway logs for '[ERROR] Gemini setup failed' messages.\n"
-                    "Possible causes:\n"
-                    "1. GEMINI_API_KEY is invalid or expired\n"
-                    "2. Railway service needs restart after setting variable\n"
-                    "3. API key test failed during initialization"
-                )
-        
-        # Check if collection exists
-        if self.collection is None:
-            raise RuntimeError(
-                "Database not initialized. The ChromaDB collection 'historical_documents' is missing.\n"
-                "Please run: python build_index.py\n"
-                "This will create the required data/ folder with indices and vector database."
-            )
-        
         # CRITICAL: Always get fresh collection reference to avoid ChromaDB stale UUID caching
         try:
             print(f"  [QUERY_START] Processing: '{question[:60]}...'")
@@ -333,10 +258,6 @@ class QueryEngine:
             print(f"  [FATAL] Cannot get collection at query start: {e}")
             import traceback
             traceback.print_exc()
-            raise RuntimeError(
-                f"Database connection failed: {e}\n"
-                "Please ensure the index has been built: python build_index.py"
-            )
             raise
         """
         Query the documents and generate an answer.
@@ -1005,12 +926,6 @@ class QueryEngine:
                 from lib.prompts import build_prompt
                 prompt = build_prompt(question, chunks, is_control_influence=True)
                 import time
-                # Check LLM is available before calling
-                if not self.llm:
-                    raise RuntimeError("LLM not initialized. Check Railway Variables → GEMINI_API_KEY is set and service has been restarted.")
-                if not self.llm.client:
-                    raise RuntimeError("LLM client is None. Check Railway logs for '[ERROR] Gemini setup failed' messages. GEMINI_API_KEY may be invalid or Railway service needs restart.")
-                
                 start_time = time.time()
                 
                 # Temporarily reduce retries for control queries (prevents long waits)
@@ -1050,9 +965,6 @@ class QueryEngine:
                     except Exception as e:
                         pass  # Decade stratification optional
                     ideology_prompt = self._build_prompt_ideology(question, chunks)
-                    # Check LLM is available before calling
-                    if not self.llm or not self.llm.client:
-                        raise RuntimeError("LLM client is None. Check Railway logs for '[ERROR] Gemini setup failed' messages. GEMINI_API_KEY may be invalid or Railway service needs restart.")
                     answer = self.llm.call_api(ideology_prompt)
                 # Debug: print years in original_chunks
                 chunk_years = set()
@@ -1708,11 +1620,14 @@ MARKET/ASSET CLASS RULES:
     
     def _is_ideology_query(self, question: str) -> bool:
         q = (question or "").lower()
-        return any(k in q for k in ("marxism", "marxist", "socialism", "socialist", "communism", "communist", "collectivism", "collectivist"))
+        ideology_terms = ("marxism", "marxist", "socialism", "socialist", "communism", "communist", "collectivism", "collectivist")
+        economic_system_terms = ("free market", "free-market", "command economy", "command economies", "mixed model", "mixed economy", "mixed economies", "economic system", "economic systems")
+        return any(k in q for k in ideology_terms) or any(k in q for k in economic_system_terms)
     
     def _filter_chunks_for_ideology(self, chunks: list, question: str) -> list:
-        """Keep chunks that mention the ideology AND (banking/transition OR crisis); prefer identity-bearing chunks."""
+        """Keep chunks that mention the ideology/economic system AND (banking/transition OR crisis); prefer identity-bearing chunks."""
         ideology_terms = ["marxism", "marxist", "socialism", "socialist", "communism", "communist", "collectivism", "collectivist"]
+        economic_system_terms = ["free market", "free-market", "command economy", "command economies", "mixed model", "mixed economy", "mixed economies", "economic system", "economic systems"]
         finance_terms = [
             "bank", "banking", "credit", "money", "market", "securities", "bond", "equity",
             "stock", "capital", "liquidity", "exchange", "regulation", "balance sheet",
@@ -1734,11 +1649,12 @@ MARKET/ASSET CLASS RULES:
         for text, meta in chunks:
             tl = text.lower()
             has_ideology = any(t in tl for t in ideology_terms)
+            has_economic_system = any(t in tl for t in economic_system_terms)
             has_finance = any(f in tl for f in finance_terms)
             has_transition = any(t in tl for t in transition_terms)
             has_crisis = any(c in tl for c in crisis_terms)
             has_identity = any(i in tl for i in identity_terms)
-            if has_ideology and (has_finance or has_transition or has_crisis):
+            if (has_ideology or has_economic_system) and (has_finance or has_transition or has_crisis):
                 kept_primary.append((text, meta))
                 if has_identity:
                     kept_with_identity.append((text, meta))
@@ -1749,32 +1665,76 @@ MARKET/ASSET CLASS RULES:
         return chunks
     
     def _build_prompt_ideology(self, question: str, chunks: list) -> str:
-        """Prompt that constrains ideology topics to finance/banking mechanics, panics, and identity effects."""
+        """Prompt for evaluating economic systems through sociology, banking, and financial panics lens."""
         chunks_text = "\n\n".join([
             f"--- CHUNK {i+1} ---\n{text}"
             for i, (text, meta) in enumerate(chunks)
         ])
-        return f"""You are a banking historian. Answer this question through an IDEOLOGY → SOCIETY & FINANCE lens: {question}
+        definitions_text = format_definitions_for_prompt()
+        return f"""You are an expert analyst evaluating economic systems (free markets, socialism, Marxism, command economies, mixed models) using a lens of sociology, banking, and financial panics. Answer this question: {question}
+
+{definitions_text}
 
 DOCUMENT CHUNKS:
 {chunks_text}
 
-IDEOLOGY → FINANCE RULES:
-1) SUBJECT ACTIVE (ALWAYS): Keep the ideology as the subject in every sentence (e.g., "Marxism shaped bank nationalization...").
-2) SOCIETY & STATE (MANDATORY): Focus on nationalization/collectivization mechanics, property rights, redistribution, repression or protections, and how the state reallocated economic control.
-3) PANICS/CRISES (MANDATORY WHEN PRESENT): If sources mention panics/crises (1763, 1825, 1873, 1893, 1907, 1929, 1973–74, 1987, 1998, 2008), explain social effects: employment, credit access, expropriations, migration, class/caste conflict, and changes to who could access finance.
-4) IDENTITY (MANDATORY WHEN PRESENT): Explain effects on minorities and identity groups documented in the sources (e.g., exclusions or access for Jews, Quakers, Dalits, women/widows), and how those shaped roles (minority middlemen).
-5) STRICT RELEVANCE: Avoid unrelated event/name “laundry lists.” Do NOT jump across unrelated locales. Do NOT introduce new people unless the documents show a direct tie to the subject; when a person is named, state in 1 short clause why they matter to this ideology’s effect on banking/society.
-6) FINANCIAL MECHANICS (WHEN PRESENT): Banking structure, credit allocation, benchmarks, dealer/state balance sheets—only as they inform social outcomes.
-7) CHRONOLOGY WITH TRANSITIONS: Move forward in time (e.g., 1910s → 1930s → 1950s). Use explicit transitions that explain how one period leads to the next. Do not mix decades in the same paragraph.
-8) PARAGRAPHS: MAX 3 sentences per paragraph; MIN 5 paragraphs total.
-9) MECHANICS: Institutions italicized (e.g., *FRS*, *NYSE*, *Banque de France*); people normal. No platitudes.
-10) END: "Related Questions:" with 3–5 substantial, document-grounded items.
+Follow this checklist strictly:
+
+1. **System Definition**:
+   - Clearly define the economic system in theory.
+   - Distinguish between theoretical principles and real-world implementations.
+   - Identify where the system falls on the state vs market spectrum.
+
+2. **Sociological Perspective**:
+   - Describe impacts on social structures, class dynamics, labor relations, and social mobility.
+   - Tie social hierarchies or cultural norms to systemic features (e.g., dependency, inequality, incentives), rather than just historical narrative.
+   - Examine societal responses to economic policies and crises (strikes, protests, cohesion).
+
+3. **Banking & Financial Structures**:
+   - Explain the role of banking institutions, central banks, and commercial banks.
+   - Show how banking interacts with the system (state-controlled vs private, access to credit, regulation, liquidity).
+   - Explicitly connect banking structures to systemic outcomes and vulnerability to crises.
+
+4. **Financial Panics & Crises**:
+   - Identify systemic vulnerabilities (bank failures, credit crunches, housing busts, stock market crashes).
+   - Analyze how each system historically responded to crises, including social and economic consequences.
+   - Present events selectively, chronologically where helpful, but focus on illustrating system-level mechanisms and effects.
+   - Avoid assigning causes to ethnicity, religion, conspiracies, or moral character.
+
+5. **Evidence-Based Evaluation**:
+   - Prioritize empirical outcomes, measurable effects, or historical systemic performance.
+   - Avoid dense, multi-country narratives that don't illustrate systemic consequences.
+   - Link historical examples directly to system performance, banking, and social outcomes.
+
+6. **Trade-Offs & Systemic Analysis**:
+   - Explicitly compare strengths and weaknesses of each system across social, banking, and crisis dimensions.
+   - Discuss conditional scenarios under which each system performs well or poorly.
+   - Highlight trade-offs between efficiency, equity, stability, and societal impact.
+
+7. **Response Structure**:
+   1. System Definition & Theory
+   2. Sociological Impacts (class, social hierarchy, social mobility)
+   3. Banking & Financial Structures (bank types, access to credit, regulation)
+   4. Historical Financial Crises / Panics (chronological, selective, system-focused)
+   5. Trade-Offs & Interaction Effects (strengths, weaknesses, conditional performance)
+   6. Balanced Summary / Conditional Recommendations
+
+**Strict Rules**:
+- Avoid identity-based explanations (race, religion, ethnicity) for outcomes.
+- Avoid ideological framing, moral judgments, or cherry-picked political anecdotes.
+- Do not overwhelm with narrative history; prioritize causal links to systemic performance.
+- Always distinguish between theoretical models and historical implementations.
+- Present trade-offs and balanced analysis rather than declaring one system "better."
+- SUBJECT ACTIVE: Keep the economic system as the subject in every sentence (e.g., "Socialism shaped banking structures...").
+- MECHANICS: Institutions italicized (e.g., *FRS*, *NYSE*, *Banque de France*); people normal. No platitudes.
+- PARAGRAPHS: MAX 3 sentences per paragraph; MIN 5 paragraphs total.
+- CHRONOLOGY: Move forward in time with clear transitions. Do not mix decades in the same paragraph.
+- END: "Related Questions:" with 3–5 substantial, document-grounded items.
 
 ENTITY INTRODUCTIONS (MANDATORY):
 - Expand acronyms/institutions on first mention with role (e.g., "*Vneshtorg* (Soviet Bank for Foreign Trade)").
 - For each person first mentioned, add role + relevance to SUBJECT in one short clause; otherwise omit the name.
-- Do NOT use unknown acronyms (e.g., BSU) unless you define them from the provided chunks; if the chunks do not define, avoid using them.
+- Do NOT use unknown acronyms unless you define them from the provided chunks; if the chunks do not define, avoid using them.
 - For any non-subject entity mentioned (person or institution), explicitly state in the same sentence how they relate to the SUBJECT.
 """
     
@@ -3007,10 +2967,9 @@ Answer:"""
         # If adding this request would exceed limit, wait (but be more aggressive - use 95% of limit)
         if recent_tokens + request_tokens > self._token_rate_limit * 0.95:  # Use 95% of limit (more aggressive)
             tokens_over = (recent_tokens + request_tokens) - (self._token_rate_limit * 0.95)
-            # Wait until we can fit this request (cap at 15s to avoid connection drops)
+            # Wait until we can fit this request
             wait_time = (tokens_over / self._token_rate_limit) * 60  # Convert to seconds
-            wait_time = min(wait_time, 15.0)  # Cap at 15s maximum
-            if wait_time > 2:  # Only wait if more than 2 seconds
+            if wait_time > 2:  # Only wait if more than 2 seconds (reduced threshold)
                 print(f"  [RATE_LIMIT] Token limit: waiting {wait_time:.1f}s ({recent_tokens:,}/{self._token_rate_limit:,} tokens used)")
                 time.sleep(wait_time)
     

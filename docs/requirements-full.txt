@@ -1,0 +1,21 @@
+# Full requirements (for local development and indexing)
+# Includes all packages needed for build_index.py
+
+# Runtime requirements
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+google-generativeai>=0.3.0
+chromadb>=0.4.0
+numpy>=1.24.0
+
+# Indexing-only requirements (NOT needed at runtime)
+sentence-transformers>=2.2.0  # Only used during indexing
+python-docx>=1.1.0  # Only used for parsing documents
+tqdm>=4.65.0  # Only used for progress bars
+openai>=1.0.0  # Not used in production (kept for compatibility)
+
+
+
+
+
