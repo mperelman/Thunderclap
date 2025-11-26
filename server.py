@@ -50,7 +50,7 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    request_id: Optional[str] = None
+    source: str = "Thunderclap AI"
 
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
 request_counts = defaultdict(list)
@@ -170,19 +170,15 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         
         # Truncate if needed
         if len(answer) > req.max_length:
-            answer = answer[:req.max_length] + "\n\n[Truncated]"
+            answer = answer[:req.max_length] + "\n\n[Answer truncated for length]"
         
         duration = time.time() - query_start_time
         trace_event(request_id, "query_complete", duration=duration, answer_length=len(answer))
         print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
         sys.stdout.flush()
         
-        # Ensure response is always valid JSON with all fields
-        response_data = {
-            "answer": str(answer),
-            "request_id": str(request_id)
-        }
-        return QueryResponse(**response_data)
+        # Return exact format from archived working version
+        return QueryResponse(answer=answer)
     
     except Exception as e:
         duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
