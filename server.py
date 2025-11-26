@@ -178,7 +178,9 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         sys.stdout.flush()
         
         # Return exact format from archived working version
-        return QueryResponse(answer=answer)
+        # Explicitly return as dict to ensure proper JSON serialization
+        response_obj = QueryResponse(answer=answer)
+        return response_obj.model_dump()
     
     except Exception as e:
         duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
