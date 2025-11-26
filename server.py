@@ -80,6 +80,12 @@ async def root():
 async def health_check():
     return {"status": "ok", "service": "thunderclap-ai"}
 
+@app.get("/query/{request_id}")
+async def get_query_status(request_id: str):
+    """Status endpoint for frontend polling - minimal implementation to stop polling loop."""
+    # Frontend polls with "undefined" - return complete to stop infinite polling
+    return {"status": "complete", "request_id": request_id}
+
 @app.post("/query", response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest):
     """
