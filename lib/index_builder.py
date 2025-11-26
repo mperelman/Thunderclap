@@ -681,11 +681,14 @@ def build_indices(chunks, chunk_ids):
                 words.append(acro_lower)
         for word in words:
             canonical = canonicalize_term(word)
-            for target in filter(None, {word, canonical}):
-                term_counts[target] = term_counts.get(target, 0) + 1
-                if target not in term_to_chunks:
-                    term_to_chunks[target] = []
-                term_to_chunks[target].append(chunk_id)
+            # CRITICAL: Only index canonicalized version to merge plural/singular variants
+            # This ensures "court jews" and "court jew" both map to "court jew"
+            # and "hispanics" and "hispanic" both map to "hispanic"
+            target = canonical if canonical else word
+            term_counts[target] = term_counts.get(target, 0) + 1
+            if target not in term_to_chunks:
+                term_to_chunks[target] = []
+            term_to_chunks[target].append(chunk_id)
         
         # Store entities for co-occurrence
         if chunk_entity_list:
