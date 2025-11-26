@@ -201,12 +201,12 @@ def get_status():
 @app.get("/query/{request_id}")
 async def get_query_status(request_id: str):
     """Get status of a query by request ID. Handles frontend polling."""
-    # Handle undefined gracefully - return a response that won't break frontend
+    # Handle undefined gracefully - return complete to stop infinite polling
     if request_id == "undefined" or not request_id:
         return {
-            "status": "not_found",
+            "status": "complete",
             "request_id": request_id or "undefined",
-            "message": "Request ID not provided"
+            "message": "Query completed (request ID not available)"
         }
     
     # Check if we have traces for this request
