@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from collections import defaultdict, deque
 import time
 import uuid
@@ -49,7 +50,7 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    request_id: str
+    request_id: Optional[str] = None
 
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
 request_counts = defaultdict(list)
