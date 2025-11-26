@@ -25,8 +25,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Change to specific domain in production
     allow_credentials=True,
-    allow_methods=["POST", "GET"],
+    allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Store API key for creating QueryEngine instances
@@ -121,7 +122,10 @@ async def query_endpoint(request: QueryRequest):
         if len(answer) > request.max_length:
             answer = answer[:request.max_length] + "\n\n[Answer truncated for length]"
         
-        return QueryResponse(answer=answer)
+        # Ensure response is properly serialized
+        response = QueryResponse(answer=answer)
+        # Explicitly return as dict to ensure JSON serialization
+        return response.model_dump()
     
     except Exception as e:
         print(f"Error processing query: {e}")
