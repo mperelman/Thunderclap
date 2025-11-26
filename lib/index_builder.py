@@ -732,6 +732,23 @@ def build_indices(chunks, chunk_ids):
             if variant in term_to_chunks:
                 all_chunks.update(term_to_chunks[variant])
         
+        # CRITICAL: Also check underscore versions (from identity detector)
+        # Identity detector uses underscores (e.g., "court_jew") but TERM_GROUPS uses spaces
+        # Merge underscore versions with space versions
+        main_term_underscore = main_term.replace(' ', '_')
+        if main_term_underscore in term_to_chunks_filtered:
+            all_chunks.update(term_to_chunks_filtered[main_term_underscore])
+        if main_term_underscore in term_to_chunks:
+            all_chunks.update(term_to_chunks[main_term_underscore])
+        
+        # Also check underscore versions of variants
+        for variant in variants:
+            variant_underscore = variant.replace(' ', '_')
+            if variant_underscore in term_to_chunks_filtered:
+                all_chunks.update(term_to_chunks_filtered[variant_underscore])
+            if variant_underscore in term_to_chunks:
+                all_chunks.update(term_to_chunks[variant_underscore])
+        
         if all_chunks:
             merged_chunks_list = list(all_chunks)
             # Store under main term
@@ -740,6 +757,8 @@ def build_indices(chunks, chunk_ids):
             # This ensures queries for "blacks" or "jews" get the same results as "black" or "jewish"
             for variant in variants:
                 term_to_chunks_filtered[variant] = merged_chunks_list.copy()
+            # Also store underscore version pointing to same chunks
+            term_to_chunks_filtered[main_term_underscore] = merged_chunks_list.copy()
     
     # Top associations
     for entity, cooccur in entity_cooccurrence.items():
