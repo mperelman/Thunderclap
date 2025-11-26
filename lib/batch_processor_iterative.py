@@ -157,17 +157,18 @@ class IterativePeriodProcessor:
             batch_words = sum(len(chunk[0].split()) for chunk in pchunks)
             estimated_tokens = int(batch_words * TOKENS_PER_WORD)
             
-            # Rate limit: Gemini allows 15 RPM = 4s minimum between requests
-            # Use minimal wait to avoid connection timeouts while respecting API limits
+            # Rate limit based on both RPM (15/min) and TPM (1M/min)
+            # Reduced waits to speed up queries while still respecting limits
             if i > 1:
                 import time
-                # Minimal wait: 4 seconds (RPM limit), only increase for very large requests
-                if estimated_tokens > 200000:  # >200K tokens (rare)
-                    wait_time = 6
+                if estimated_tokens > 100000:  # >100K tokens
+                    wait_time = 12  # Reduced from 20s to 12s
+                elif estimated_tokens > 50000:  # >50K tokens
+                    wait_time = 8   # Reduced from 12s to 8s
                 else:
-                    wait_time = 4  # Standard RPM limit
+                    wait_time = 4   # Reduced from 6s to 4s
                 
-                print(f"    [Rate limit] Waiting {wait_time}s (~{int(estimated_tokens):,} tokens)...")
+                print(f"    [Rate limit] Waiting {wait_time} seconds (~{int(estimated_tokens):,} tokens)...")
                 time.sleep(wait_time)
             
             # Just use regular generate_answer (sync)
@@ -183,10 +184,11 @@ class IterativePeriodProcessor:
         import sys
         sys.stdout.flush()
         
-        # Wait before final API call (minimal wait for combining operation)
+        # Wait before final API call (shorter since this is just combining text)
         import time
-        wait_time = 4  # Standard RPM limit
-        print(f"  [Rate limit] Waiting {wait_time}s before combining...")
+        # Reduced wait: 8s → 4s for combine (combining is smaller operation)
+        wait_time = 4
+        print(f"  [Rate limit] Waiting {wait_time} seconds before combining...")
         sys.stdout.flush()
         time.sleep(wait_time)
         

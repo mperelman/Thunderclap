@@ -18,7 +18,7 @@ Added server health check in error handler to detect if server is running and sh
 
 ### Changes Made
 
-**File:** `index.html` (lines 1082-1112)
+**File:** `frontend.html` (lines 1082-1112)
 
 **Before:**
 ```javascript
@@ -88,6 +88,6 @@ Added server health check in error handler to detect if server is running and sh
 
 ## Related Files
 
-- `index.html` - Error handling with server health check
+- `frontend.html` - Error handling with server health check
 - `server.py` - Server health endpoint (`/health`)
 

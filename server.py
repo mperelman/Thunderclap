@@ -8,61 +8,19 @@ import os
 # Ensure lib is in path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from collections import defaultdict, deque
 import time
 import uuid
 import json
-import asyncio
-from typing import Optional, Dict
 
 # Import query engine
 from lib.query_engine import QueryEngine
-from lib.config import MAX_ANSWER_LENGTH, QUERY_TIMEOUT_SECONDS
+from lib.config import MAX_ANSWER_LENGTH
 
 app = FastAPI(title="Thunderclap AI")
-
-# Add global exception handler to catch ALL errors
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    import traceback
-    error_type = type(exc).__name__
-    error_msg = str(exc)
-    print(f"[GLOBAL ERROR HANDLER] {error_type}: {error_msg}")
-    print(f"[GLOBAL ERROR HANDLER] Full traceback:")
-    traceback.print_exc()
-    import sys
-    sys.stdout.flush()
-    
-    # Try to get request ID from headers
-    request_id = request.headers.get("X-Request-ID", "unknown")
-    
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": f"Server error: {error_msg}",
-            "error_type": error_type,
-            "request_id": request_id
-        }
-    )
-
-# Add validation error handler to see what's wrong
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    print(f"[DEBUG] Validation error: {exc.errors()}")
-    try:
-        body = await request.body()
-        print(f"[DEBUG] Request body: {body}")
-    except:
-        print(f"[DEBUG] Could not read request body")
-    return JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors()}
-    )
 
 # CORS
 app.add_middleware(
@@ -74,59 +32,14 @@ app.add_middleware(
     expose_headers=["*"],  # expose X-Request-ID to browser
 )
 
-# Add middleware to send keepalive headers and prevent proxy timeouts
-@app.middleware("http")
-async def add_timeout_headers(request: Request, call_next):
-    """Add headers to prevent proxy timeouts during long requests."""
-    response = await call_next(request)
-    # Add headers to prevent Railway proxy timeout
-    response.headers["X-Accel-Buffering"] = "no"  # Disable nginx buffering
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Connection"] = "keep-alive"
-    response.headers["Keep-Alive"] = "timeout=600"  # 10 minutes
-    return response
-
 # Store API key for creating QueryEngine instances
-gemini_key_raw = os.getenv('GEMINI_API_KEY')
-print("="*60)
-print("[STARTUP] Checking GEMINI_API_KEY environment variable...")
-print(f"[STARTUP] Raw value from os.getenv: {bool(gemini_key_raw)}")
-if gemini_key_raw:
-    print(f"[STARTUP] Raw value length: {len(gemini_key_raw)}")
-    print(f"[STARTUP] Raw value starts with: {gemini_key_raw[:10]}...")
-    print(f"[STARTUP] Raw value (first 20 chars): {gemini_key_raw[:20]}...")
-gemini_key = gemini_key_raw.strip() if gemini_key_raw else None
+gemini_key = os.getenv('GEMINI_API_KEY')
 if not gemini_key:
-    print("="*60)
     print("ERROR: GEMINI_API_KEY environment variable not set!")
-    print("="*60)
-    print("To fix:")
-    print("1. Go to Railway → Variables tab")
-    print("2. Add variable: GEMINI_API_KEY")
-    print("3. Value: Your Gemini API key (no quotes, no spaces)")
-    print("4. Railway will auto-redeploy")
-    print("="*60)
-elif len(gemini_key) != 39 or not gemini_key.startswith('AIza'):
-    print("="*60)
-    print(f"WARNING: GEMINI_API_KEY format looks incorrect!")
-    print(f"  Length: {len(gemini_key)} (expected 39)")
-    print(f"  Starts with: {gemini_key[:10]}... (expected 'AIza...')")
-    print("="*60)
-    print("Check Railway Variables → GEMINI_API_KEY")
-    print("="*60)
-    # Don't exit - let it try anyway, might still work
-else:
-    print(f"[STARTUP] ✓ GEMINI_API_KEY found and looks valid (length: {len(gemini_key)})")
-    print("="*60)
+    sys.exit(1)
 
-print("="*60)
-print("Initializing Thunderclap AI Server")
-print("="*60)
-print(f"API Key present: {bool(gemini_key)}")
-print(f"API Key length: {len(gemini_key) if gemini_key else 0}")
-print(f"API Key starts with: {gemini_key[:10] if gemini_key else 'N/A'}...")
-print("Server ready! (QueryEngine created per-request)")
-print("="*60)
+print("Initializing Thunderclap AI...")
+print("Server ready! (QueryEngine created per-request)\n")
 
 from lib.config import MAX_ANSWER_LENGTH
 
@@ -136,21 +49,6 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-
-class QueryJobResponse(BaseModel):
-    job_id: str
-    status: str
-    message: str
-
-class QueryStatusResponse(BaseModel):
-    job_id: str
-    status: str  # "pending", "processing", "complete", "error"
-    answer: Optional[str] = None
-    error: Optional[str] = None
-    elapsed: Optional[float] = None
-
-# In-memory job store (simple dict - for production use Redis or database)
-JOB_STORE: Dict[str, Dict] = {}
 
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
 request_counts = defaultdict(list)
@@ -187,196 +85,103 @@ async def root():
         }
     }
 
-@app.get("/debug/env")
-async def debug_env():
-    """Debug endpoint to check environment variables."""
-    import os
-    key_raw = os.getenv('GEMINI_API_KEY')
-    return {
-        "GEMINI_API_KEY_set": bool(key_raw),
-        "GEMINI_API_KEY_length": len(key_raw) if key_raw else 0,
-        "GEMINI_API_KEY_starts_with": key_raw[:10] + "..." if key_raw and len(key_raw) > 10 else "N/A",
-        "GEMINI_API_KEY_ends_with": "..." + key_raw[-5:] if key_raw and len(key_raw) > 5 else "N/A",
-        "server_gemini_key_set": bool(gemini_key),
-        "server_gemini_key_length": len(gemini_key) if gemini_key else 0,
-        "all_env_vars_with_gemini": [k for k in os.environ.keys() if 'GEMINI' in k.upper() or 'GOOGLE' in k.upper()],
-    }
-
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
-@app.get("/test")
-async def test():
-    """Test endpoint to verify server is working and check data files."""
-    try:
-        print("[TEST] Test endpoint called")
-        sys.stdout.flush()
-        
-        # Check data folder status
-        data_status = {}
-        chroma_path = "data/vectordb/chroma.sqlite3"
-        if os.path.exists(chroma_path):
-            size = os.path.getsize(chroma_path)
-            data_status["chroma_exists"] = True
-            data_status["chroma_size"] = size
-            data_status["chroma_size_mb"] = round(size / (1024 * 1024), 2)
-            data_status["is_pointer"] = size < 1000000
-        else:
-            data_status["chroma_exists"] = False
-        
-        indices_path = "data/indices.json"
-        data_status["indices_exists"] = os.path.exists(indices_path)
-        if os.path.exists(indices_path):
-            data_status["indices_size"] = os.path.getsize(indices_path)
-        
-        vectordb_dir = "data/vectordb"
-        if os.path.exists(vectordb_dir):
-            files = os.listdir(vectordb_dir)
-            data_status["vectordb_files"] = files[:10]  # First 10 files
-        
-        return {
-            "status": "ok",
-            "message": "Server is working",
-            "api_key_present": bool(gemini_key),
-            "api_key_length": len(gemini_key) if gemini_key else 0,
-            "data_status": data_status
-        }
-    except Exception as e:
-        print(f"[TEST] Error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.stdout.flush()
-        return {"status": "error", "error": str(e)}
-
-@app.get("/query")
-async def query_get():
-    """Handle GET requests to /query with helpful error message."""
-    return JSONResponse(
-        status_code=405,
-        content={
-            "error": "Method Not Allowed",
-            "message": "The /query endpoint requires a POST request with JSON body.",
-            "example": {
-                "method": "POST",
-                "url": "/query",
-                "headers": {"Content-Type": "application/json"},
-                "body": {"question": "Tell me about Rothschild", "max_length": 15000}
-            }
-        }
-    )
-
-async def process_query_job(job_id: str, question: str, max_length: int):
-    """Background task to process query."""
-    import sys
-    JOB_STORE[job_id]["status"] = "processing"
-    JOB_STORE[job_id]["start_time"] = time.time()
-    
-    try:
-        print(f"[JOB {job_id}] Starting query processing...")
-        sys.stdout.flush()
-        
-        # Check API key availability
-        api_key_to_use = gemini_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-        if not api_key_to_use:
-            raise Exception("GEMINI_API_KEY not found. Check Railway Variables → GEMINI_API_KEY is set and service has been restarted.")
-        
-        from lib.query_engine import QueryEngine
-        from lib.config import QUERY_TIMEOUT_SECONDS
-        
-        print(f"[JOB {job_id}] API key available: {bool(api_key_to_use)}, length: {len(api_key_to_use) if api_key_to_use else 0}")
-        sys.stdout.flush()
-        
-        qe = QueryEngine(gemini_api_key=api_key_to_use, use_async=False)
-        
-        loop = asyncio.get_event_loop()
-        answer = await asyncio.wait_for(
-            loop.run_in_executor(None, lambda: qe.query(question, use_llm=True)),
-            timeout=QUERY_TIMEOUT_SECONDS - 10
-        )
-        
-        # Truncate if needed
-        if len(answer) > max_length:
-            answer = answer[:max_length] + "\n\n[Truncated]"
-        
-        elapsed = time.time() - JOB_STORE[job_id]["start_time"]
-        JOB_STORE[job_id]["status"] = "complete"
-        JOB_STORE[job_id]["answer"] = answer
-        JOB_STORE[job_id]["elapsed"] = elapsed
-        
-        print(f"[JOB {job_id}] Completed in {elapsed:.1f}s")
-        sys.stdout.flush()
-        
-    except Exception as e:
-        error_type = type(e).__name__
-        error_msg = str(e)
-        elapsed = time.time() - JOB_STORE[job_id].get("start_time", time.time())
-        
-        JOB_STORE[job_id]["status"] = "error"
-        JOB_STORE[job_id]["error"] = f"{error_type}: {error_msg}"
-        JOB_STORE[job_id]["elapsed"] = elapsed
-        
-        print(f"[JOB {job_id}] Error: {error_type}: {error_msg}")
-        import traceback
-        traceback.print_exc()
-        sys.stdout.flush()
-
-@app.post("/query", response_model=QueryJobResponse)
-async def query(req: QueryRequest, http_req: Request, background_tasks: BackgroundTasks):
-    """Start query processing as background job - returns immediately to avoid Railway timeout."""
+@app.post("/query", response_model=QueryResponse)
+async def query(req: QueryRequest, http_req: Request, resp: Response):
+    """Handle query requests - matches archived working_api.py pattern exactly."""
     client_ip = http_req.client.host if http_req and http_req.client else "unknown"
-    job_id = str(uuid.uuid4())
+    request_id = str(uuid.uuid4())
+    resp.headers["X-Request-ID"] = request_id
     
-    # Validate input
-    if len(req.question) < 3:
-        raise HTTPException(status_code=400, detail="Question too short")
+    # Log request start IMMEDIATELY
+    trace_event(request_id, "request_start", ip=client_ip, question=req.question[:100])
+    print(f"[SERVER] Request {request_id} started: {req.question[:60]}...")
+    import sys
+    sys.stdout.flush()
     
     # Rate limiting
     try:
         check_rate_limit(client_ip)
     except HTTPException as rl_ex:
-        raise
+        trace_event(request_id, "rate_limit", detail=rl_ex.detail)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            content={"detail": rl_ex.detail, "request_id": request_id},
+            status_code=rl_ex.status_code,
+            headers={"X-Request-ID": request_id},
+        )
     
-    # Create job entry
-    JOB_STORE[job_id] = {
-        "status": "pending",
-        "question": req.question,
-        "max_length": req.max_length,
-        "created_at": time.time()
-    }
+    # Validate input
+    if len(req.question) < 3:
+        trace_event(request_id, "validation_error", detail="Question too short")
+        raise HTTPException(status_code=400, detail="Question too short")
     
-    # Start background task
-    background_tasks.add_task(process_query_job, job_id, req.question, req.max_length)
+    query_start_time = time.time()
+    init_start = time.time()
+    try:
+        # Generate answer (matches archived working_api.py pattern)
+        print(f"[SERVER] Processing query: {req.question}")
+        trace_event(request_id, "query_start", question=req.question[:100])
+        sys.stdout.flush()
+        
+        # Create query engine with async disabled for FastAPI compatibility
+        from lib.query_engine import QueryEngine
+        from lib.config import QUERY_TIMEOUT_SECONDS
+        qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
+        init_time = time.time() - init_start
+        print(f"[SERVER] QueryEngine initialization took {init_time:.1f}s")
+        trace_event(request_id, "engine_init", duration=init_time)
+        sys.stdout.flush()
+        
+        # Process query (uses sequential processing to avoid event loop conflicts)
+        # Run blocking query in executor to avoid blocking async event loop
+        # Add timeout wrapper to ensure we don't exceed QUERY_TIMEOUT_SECONDS
+        import asyncio
+        loop = asyncio.get_event_loop()
+        query_start = time.time()
+        
+        # Wrap query in timeout to prevent exceeding server timeout
+        try:
+            answer = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: qe.query(req.question, use_llm=True)),
+                timeout=QUERY_TIMEOUT_SECONDS - 10  # Leave 10s buffer for cleanup
+            )
+        except asyncio.TimeoutError:
+            query_time = time.time() - query_start
+            trace_event(request_id, "query_timeout", duration=query_time)
+            raise HTTPException(
+                status_code=504,
+                detail=f"Query timed out after {query_time:.1f}s (limit: {QUERY_TIMEOUT_SECONDS}s). Request ID: {request_id}"
+            )
+        
+        query_time = time.time() - query_start
+        print(f"[SERVER] Query processing took {query_time:.1f}s")
+        trace_event(request_id, "query_processing", duration=query_time)
+        sys.stdout.flush()
+        
+        # Truncate if needed
+        if len(answer) > req.max_length:
+            answer = answer[:req.max_length] + "\n\n[Truncated]"
+        
+        duration = time.time() - query_start_time
+        trace_event(request_id, "query_complete", duration=duration, answer_length=len(answer))
+        print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
+        sys.stdout.flush()
+        
+        return QueryResponse(answer=answer)
     
-    trace_event(job_id, "job_created", question=req.question[:100])
-    print(f"[SERVER] Job {job_id} created for: {req.question[:60]}...")
-    import sys
-    sys.stdout.flush()
-    
-    return QueryJobResponse(
-        job_id=job_id,
-        status="pending",
-        message="Query processing started. Poll /query/{job_id} for status."
-    )
-
-@app.get("/query/{job_id}", response_model=QueryStatusResponse)
-async def get_query_status(job_id: str):
-    """Get query job status and result."""
-    if job_id not in JOB_STORE:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    
-    job = JOB_STORE[job_id]
-    elapsed = None
-    if "start_time" in job:
-        elapsed = time.time() - job["start_time"]
-    
-    return QueryStatusResponse(
-        job_id=job_id,
-        status=job["status"],
-        answer=job.get("answer"),
-        error=job.get("error"),
-        elapsed=elapsed
-    )
+    except Exception as e:
+        duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
+        trace_event(request_id, "error", type=type(e).__name__, message=str(e), duration=duration)
+        print(f"[SERVER] Error processing query {request_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.stdout.flush()
+        # Include Request ID in error detail so it's visible even on timeout
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)} (Request ID: {request_id})")
 
 @app.get("/debug/last")
 def debug_last(n: int = 50):
@@ -389,35 +194,17 @@ def get_status():
     return {
         "status": "running",
         "last_traces": list(TRACE_BUFFER)[-20:],
-        "trace_count": len(TRACE_BUFFER),
-        "query_timeout_seconds": QUERY_TIMEOUT_SECONDS
+        "trace_count": len(TRACE_BUFFER)
     }
-
-@app.get("/test-timeout")
-async def test_timeout():
-    """Test endpoint to check Railway's proxy timeout."""
-    import asyncio
-    await asyncio.sleep(65)  # Sleep for 65 seconds to test if Railway times out
-    return {"message": "Timeout test passed - server is still alive after 65 seconds"}
 if __name__ == "__main__":
     import uvicorn
-    # Read PORT from environment (Railway/Render set this) or default to 8000
-    port = int(os.getenv("PORT", 8000))
     print("="*60)
     print("Starting Thunderclap AI Server")
     print("="*60)
-    print(f"Server: http://0.0.0.0:{port}")
+    print("Server: http://localhost:8000")
     print("Press Ctrl+C to stop")
     print("="*60)
-    # CRITICAL: Set very high timeout to prevent Railway proxy from timing out
-    # Railway proxy timeout is likely 60s, but we set uvicorn to 600s (10 min) to be safe
-    # This ensures the connection stays alive during long queries
-    uvicorn.run(
-        app, 
-        host="0.0.0.0", 
-        port=port, 
-        timeout_keep_alive=600,  # 10 minutes - exceeds Railway's likely 60s proxy timeout
-        timeout_graceful_shutdown=30,
-        log_level="info"
-    )
+    # Increase timeout for long-running queries (8 minutes to exceed frontend timeout of 7 minutes)
+    # timeout_keep_alive must exceed QUERY_TIMEOUT_SECONDS (420s = 7min) to prevent connection drops
+    uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=480)
 

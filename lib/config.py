@@ -37,7 +37,7 @@ LLM_TEMPERATURE = 0.3  # Lower = more factual
 MAX_SENTENCES_PER_PARAGRAPH = 3  # Hard limit for paragraph length
 MAX_REVIEW_ITERATIONS = 2  # Maximum iterations for answer review/fixing (reduced to prevent timeouts)
 BATCH_SIZE = 20  # Process chunks in batches of this size (DEPRECATED - use token-based batching)
-BATCH_PAUSE_SECONDS = 4  # Pause between batches (RPM limit: 15/min = 4s minimum)
+BATCH_PAUSE_SECONDS = 5  # Pause between batches to avoid rate limits (reduced from 15 to speed up queries)
 CHUNK_RETRIEVAL_BATCH_SIZE = 200  # Batch size for retrieving chunks from database
 MAX_ANSWER_LENGTH = 15000  # Maximum answer length in characters (for truncation)
 QUERY_TIMEOUT_SECONDS = 420  # Maximum time for query processing (7 minutes, leaving buffer for frontend timeout)

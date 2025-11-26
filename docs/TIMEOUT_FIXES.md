@@ -127,7 +127,7 @@ except asyncio.TimeoutError:
 - `server.py` - Server timeout configuration and async handling
 - `lib/config.py` - `QUERY_TIMEOUT_SECONDS` configuration
 - `lib/query_engine.py` - Query processing with timeout checks
-- `index.html` - Client-side timeout handling
+- `frontend.html` - Client-side timeout handling
 
 ## Notes
 

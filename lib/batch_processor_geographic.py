@@ -152,17 +152,18 @@ class GeographicProcessor:
             batch_words = sum(len(chunk[0].split()) for chunk in rchunks)
             estimated_tokens = int(batch_words * TOKENS_PER_WORD)
             
-            # Rate limit: Gemini allows 15 RPM = 4s minimum between requests
-            # Use minimal wait to avoid connection timeouts while respecting API limits
+            # Rate limit based on both RPM (15/min) and TPM (1M/min)
+            # Conservative: wait longer for larger requests to avoid TPM limit
             if i > 1:
                 import time
-                # Minimal wait: 4 seconds (RPM limit), only increase for very large requests
-                if estimated_tokens > 200000:  # >200K tokens (rare)
-                    wait_time = 6
+                if estimated_tokens > 100000:  # >100K tokens
+                    wait_time = 20  # Wait 20 seconds for very large requests
+                elif estimated_tokens > 50000:  # >50K tokens
+                    wait_time = 12  # Wait 12 seconds for large requests
                 else:
-                    wait_time = 4  # Standard RPM limit
+                    wait_time = 6   # Wait 6 seconds for normal requests
                 
-                print(f"    [Rate limit] Waiting {wait_time}s (~{int(estimated_tokens):,} tokens)...")
+                print(f"    [Rate limit] Waiting {wait_time} seconds (~{int(estimated_tokens):,} tokens)...")
                 time.sleep(wait_time)
             
             # Use sync generate_answer
@@ -172,11 +173,10 @@ class GeographicProcessor:
         # Combine regional narratives
         print(f"\n[STEP 3] Combining {len(region_narratives)} regional narratives...")
         
-        # Wait before final API call (minimal wait for combining operation)
+        # Wait before final API call (shorter since this is just combining text)
         import time
-        wait_time = 4  # Standard RPM limit
-        print(f"  [Rate limit] Waiting {wait_time}s before combining...")
-        time.sleep(wait_time)
+        print(f"  [Rate limit] Waiting 8 seconds before combining...")
+        time.sleep(8)
         
         from lib.prompts import build_merge_prompt
         # Use proper merge prompt with full Thunderclap rules
