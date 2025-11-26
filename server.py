@@ -49,6 +49,7 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
+    request_id: str
 
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
 request_counts = defaultdict(list)
@@ -193,7 +194,7 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
         sys.stdout.flush()
         
-        return QueryResponse(answer=answer)
+        return QueryResponse(answer=answer, request_id=request_id)
     
     except Exception as e:
         duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
