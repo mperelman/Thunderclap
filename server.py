@@ -49,6 +49,7 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
+    request_id: str
 
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
 request_counts = defaultdict(list)
@@ -171,7 +172,7 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
         sys.stdout.flush()
         
-        return QueryResponse(answer=answer)
+        return QueryResponse(answer=answer, request_id=request_id)
     
     except Exception as e:
         duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
@@ -200,16 +201,23 @@ def get_status():
 @app.get("/query/{request_id}")
 async def get_query_status(request_id: str):
     """Get status of a query by request ID. Handles frontend polling."""
-    # Since queries are synchronous and return immediately, 
-    # this endpoint is mainly for frontend compatibility
+    # Handle undefined gracefully - return a response that won't break frontend
     if request_id == "undefined" or not request_id:
-        raise HTTPException(status_code=400, detail="Invalid request ID")
+        return {
+            "status": "not_found",
+            "request_id": request_id or "undefined",
+            "message": "Request ID not provided"
+        }
     
     # Check if we have traces for this request
     matching_traces = [t for t in TRACE_BUFFER if t.get("request_id") == request_id]
     
     if not matching_traces:
-        raise HTTPException(status_code=404, detail=f"Request ID not found: {request_id}")
+        return {
+            "status": "not_found",
+            "request_id": request_id,
+            "message": "Request ID not found in trace buffer"
+        }
     
     # Find the latest event for this request
     latest_trace = matching_traces[-1]
