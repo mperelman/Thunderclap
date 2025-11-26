@@ -65,6 +65,7 @@ def check_rate_limit(ip: str):
     request_counts[ip].append(now)
 
 TRACE_BUFFER = deque(maxlen=200)
+ANSWER_STORE = {}  # Store completed answers by request_id
 
 def trace_event(request_id: str, event: str, **fields):
     entry = {
@@ -107,6 +108,10 @@ async def get_query_status(request_id: str):
     
     # Determine status based on event
     if event == "query_complete":
+        # Return answer if we have it stored
+        answer = ANSWER_STORE.get(request_id)
+        if answer:
+            return {"status": "complete", "request_id": request_id, "answer": answer}
         return {"status": "complete", "request_id": request_id}
     elif event in ["query_timeout", "error"]:
         return {"status": "error", "request_id": request_id}
@@ -194,6 +199,9 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         trace_event(request_id, "query_complete", duration=duration, answer_length=len(answer))
         print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
         sys.stdout.flush()
+        
+        # Store answer for status endpoint
+        ANSWER_STORE[request_id] = answer
         
         return QueryResponse(answer=answer, request_id=request_id, job_id=request_id)
     
