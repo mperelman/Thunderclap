@@ -163,6 +163,10 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         trace_event(request_id, "query_processing", duration=query_time)
         sys.stdout.flush()
         
+        # Ensure answer is always a valid string
+        if not answer or not isinstance(answer, str):
+            answer = "Error: No answer generated"
+        
         # Truncate if needed
         if len(answer) > req.max_length:
             answer = answer[:req.max_length] + "\n\n[Truncated]"
@@ -172,7 +176,12 @@ async def query(req: QueryRequest, http_req: Request, resp: Response):
         print(f"[SERVER] Request {request_id} completed in {duration:.1f}s")
         sys.stdout.flush()
         
-        return QueryResponse(answer=answer, request_id=request_id)
+        # Ensure response is always valid JSON with all fields
+        response_data = {
+            "answer": str(answer),
+            "request_id": str(request_id)
+        }
+        return QueryResponse(**response_data)
     
     except Exception as e:
         duration = time.time() - query_start_time if 'query_start_time' in locals() else 0
