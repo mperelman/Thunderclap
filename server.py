@@ -196,6 +196,44 @@ def get_status():
         "last_traces": list(TRACE_BUFFER)[-20:],
         "trace_count": len(TRACE_BUFFER)
     }
+
+@app.get("/query/{request_id}")
+async def get_query_status(request_id: str):
+    """Get status of a query by request ID. Handles frontend polling."""
+    # Since queries are synchronous and return immediately, 
+    # this endpoint is mainly for frontend compatibility
+    if request_id == "undefined" or not request_id:
+        raise HTTPException(status_code=400, detail="Invalid request ID")
+    
+    # Check if we have traces for this request
+    matching_traces = [t for t in TRACE_BUFFER if t.get("request_id") == request_id]
+    
+    if not matching_traces:
+        raise HTTPException(status_code=404, detail=f"Request ID not found: {request_id}")
+    
+    # Find the latest event for this request
+    latest_trace = matching_traces[-1]
+    event = latest_trace.get("event", "unknown")
+    
+    # Determine status based on event
+    if event == "query_complete":
+        return {
+            "status": "complete",
+            "request_id": request_id,
+            "event": event
+        }
+    elif event in ["query_timeout", "error"]:
+        return {
+            "status": "error",
+            "request_id": request_id,
+            "event": event
+        }
+    else:
+        return {
+            "status": "processing",
+            "request_id": request_id,
+            "event": event
+        }
 if __name__ == "__main__":
     import uvicorn
     print("="*60)
