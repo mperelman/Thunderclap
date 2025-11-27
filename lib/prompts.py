@@ -608,21 +608,32 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    - For EACH potential question, ask yourself: "Could I write 3+ paragraphs answering this from what the documents ACTUALLY say?"
    - If answer is NO → DELETE that question
    
-   CRITICAL FORMATTING (MANDATORY):
+   CRITICAL: COMPOSE COMPLETE, GRAMMATICALLY CORRECT QUESTIONS (MANDATORY):
+   - Each question MUST be a complete, grammatically correct sentence that can stand alone
+   - Each question MUST end with "?" 
+   - Each question MUST start with a question word (What, How, When, Where, Why, Who, Tell me)
+   - CRITICAL: Every question must have a SUBJECT and a COMPLETE PREDICATE - never cut off mid-sentence
+   - CRITICAL: Questions must complete their thought - if you start "How did X affect...", you MUST finish with "...Y?" (e.g., "How did X affect Y?")
+   - CRITICAL: Questions must complete their thought - if you start "What were the circumstances surrounding...", you MUST finish with "...Z?" (e.g., "What were the circumstances surrounding Z?")
+   - NEVER write incomplete questions that end with verbs, gerunds, or prepositions without completing the thought
+   - BEFORE writing each question, ask yourself: "Is this a complete, grammatically correct question that can be answered?" If NO → rewrite it to be complete
+   
+   FORMATTING (MANDATORY):
    - Format as: "Related Questions:\n* Question 1?\n* Question 2?\n* Question 3?"
    - Each question MUST be on its own line starting with "* " (bullet format)
-   - Each question MUST end with "?" (CRITICAL - incomplete questions will be rejected)
-   - Each question MUST be complete and grammatically correct (not cut off mid-sentence)
-   - Each question MUST start with a question word (What, How, When, Where, Why, Who, Tell me)
-   - CRITICAL: Questions that end with verbs, gerunds, or prepositions are INCOMPLETE - they must complete the thought
-   - CRITICAL: Questions ending with words like "affect", "impact", "influence", "change", "shape", "surrounding", "involving", "relating" are INCOMPLETE - they must complete the thought with the object and end with "?"
-   - BAD: "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect" (incomplete - missing the object and question mark)
-   - BAD: "What were the circumstances surrounding" (incomplete - missing the object and question mark)
-   - GOOD: "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect First National Bank of Boston?"
-   - GOOD: "What were the circumstances surrounding the Clayton Antitrust Act's impact on First National Bank of Boston?"
    - BAD: "Related Questions\n1. Question?2. Question?3. Question?" (all on one line, numbered)
    - BAD: "Related Questions\nQuestion 1? Question 2? Question 3?" (all on one line, no bullets)
    - GOOD: "Related Questions:\n* What was the role of X?\n* How did Y evolve?\n* What were the circumstances surrounding Z?"
+   
+   EXAMPLES OF INCOMPLETE QUESTIONS (NEVER WRITE THESE):
+   - "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect" → INCOMPLETE (missing object and question mark)
+   - "What were the circumstances surrounding" → INCOMPLETE (missing object and question mark)
+   - "How did the Panic of 1907 impact" → INCOMPLETE (missing object and question mark)
+   
+   EXAMPLES OF COMPLETE QUESTIONS (ALWAYS WRITE THESE):
+   - "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect First National Bank of Boston?"
+   - "What were the circumstances surrounding the Clayton Antitrust Act's impact on First National Bank of Boston?"
+   - "How did the Panic of 1907 impact First National Bank of Boston's operations?"
    
    DO NOT SUGGEST QUESTIONS ABOUT:
    ✗ Sociological dynamics (religious barriers, identity impact) UNLESS documents explicitly discuss those dynamics for the subject
@@ -852,10 +863,13 @@ FINAL SELF-CHECK BEFORE SUBMITTING (MANDATORY):
    - Verify all institution names are italicized - scan every bank/firm/company name
    - Ensure smooth transitions - every paragraph should connect to the previous one with explicit transition phrases
 
-6. CRITICAL: Verify Related Questions formatting and completeness:
+6. CRITICAL: Verify Related Questions are COMPLETE and PROPERLY FORMATTED:
+   - Read each question out loud - does it sound like a complete question? If it sounds cut off or incomplete, rewrite it
+   - Each question MUST be a complete, grammatically correct sentence that can stand alone
    - Each question MUST be on its own line starting with "* " (bullet), each ending with "?", NOT numbered (1., 2., 3.), NOT all on one line
-   - CRITICAL: Check that NO question ends with incomplete words like "affect", "impact", "surrounding", "involving", "relating" - these are INCOMPLETE
-   - CRITICAL: Every question MUST end with "?" - if any question doesn't end with "?", it's INCOMPLETE and must be deleted or completed
+   - CRITICAL: Every question MUST end with "?" - if any question doesn't end with "?", it's INCOMPLETE and must be completed
+   - CRITICAL: Every question MUST have both a subject and a complete predicate - if a question ends with a verb, gerund, or preposition without completing the thought, it's INCOMPLETE
+   - BEFORE submitting, read each question and ask: "Is this a complete, grammatically correct question that can be answered?" If NO → rewrite it
    - BAD: "What were the circumstances surrounding" (incomplete - missing object and question mark)
    - BAD: "How did regulatory changes affect" (incomplete - missing object and question mark)
    - GOOD: "What were the circumstances surrounding the Clayton Antitrust Act's impact on First National Bank of Boston?"
