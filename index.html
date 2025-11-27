@@ -751,18 +751,30 @@
                         questions.push(currentQuestion.trim());
                     }
                     
-                    // Basic validation - only filter obviously broken questions
-                    // The LLM should generate complete questions, so we only catch clear errors
+                    // Basic validation - filter incomplete questions
+                    // The LLM should generate complete questions, but we catch incomplete ones
                     questions = questions.filter(q => {
                         const cleaned = q.trim();
                         // Remove questions that are just numbers or very short
                         if (cleaned.length < 15) return false;
                         // Remove questions that are just fragments
                         if (cleaned.match(/^[\d\s\.\?]+$/)) return false;
-                        // Basic check: questions should end with "?"
+                        // CRITICAL: Questions must end with "?"
                         if (!cleaned.endsWith('?')) {
                             console.warn('Question missing question mark:', cleaned);
                             return false;
+                        }
+                        // CRITICAL: Filter incomplete questions that end with verbs/prepositions
+                        // These are incomplete thoughts that the LLM didn't finish
+                        const incompletePatterns = [
+                            /\b(between|affect|surrounding|involving|regarding|concerning|about|with|for|to|from|of|in|on|at|by)\s*\?$/i,
+                            /\b(connect|link|relate|associate|involve|affect|impact|influence|shape|drive|create|establish|form|build|develop|expand|grow|change|transform|evolve|emerge|arise|occur|happen|take|make|do|be|have|get|give|go|come|see|know|think|say|tell|ask|find|use|work|call|try|need|want|like|look|help|turn|start|show|move|play|run|live|believe|bring|happen|write|provide|sit|stand|lose|pay|meet|include|continue|set|learn|change|lead|understand|watch|follow|stop|create|speak|read|allow|add|spend|grow|open|walk|win|offer|remember|love|consider|appear|buy|wait|serve|die|send|build|stay|fall|cut|reach|kill|remain|suggest|raise|pass|sell|decide|return|require|report|join|effect|carry|break|receive|agree|support|hit|produce|pick|wear|cover|catch|kill|act|meet|accept|check|enjoy|handle|attend|prove|express|fail|protect|remove|visit|vote|increase|reduce|establish|maintain|achieve|recognize|determine|prepare|operate|discover|seek|obtain|perform|influence|reflect|identify|represent|indicate|demonstrate|illustrate|examine|analyze|evaluate|assess|compare|contrast|explain|describe|discuss|define|summarize|interpret|synthesize|apply|create|design|develop|implement|execute|manage|coordinate|organize|plan|strategize|formulate|construct|build|generate|produce|deliver|accomplish|complete|finish|finalize|conclude|resolve|solve|address|tackle|handle|manage|deal|overcome|conquer|defeat|beat|win|succeed|achieve|attain|reach|accomplish|obtain|acquire|gain|secure|earn|receive|get|take|grab|seize|capture|catch|collect|gather|accumulate|amass|build|develop|grow|expand|increase|enhance|improve|strengthen|reinforce|support|back|endorse|approve|authorize|sanction|permit|allow|enable|facilitate|promote|encourage|foster|nurture|cultivate|stimulate|motivate|inspire|drive|push|propel|advance|progress|forward|accelerate|speed|hasten|quicken|expedite|rush|hurry|dash|sprint|run|race|compete|contend|vie|struggle|fight|battle|combat|conflict|clash|collide|confront|challenge|oppose|resist|defy|reject|refuse|deny|decline|dismiss|ignore|overlook|neglect|abandon|forsake|desert|leave|depart|exit|withdraw|retreat|retire|resign|quit|stop|cease|end|finish|conclude|terminate|discontinue|halt|pause|suspend|interrupt|break|cut|split|divide|separate|isolate|segregate|exclude|remove|eliminate|delete|erase|destroy|demolish|ruin|wreck|devastate|damage|harm|hurt|injure|wound|impair|weaken|undermine|sabotage|subvert|disrupt|disturb|interfere|intervene|meddle|tamper|manipulate|control|dominate|govern|rule|regulate|manage|direct|guide|lead|command|order|instruct|teach|educate|train|coach|mentor|advise|counsel|consult|recommend|suggest|propose|recommend|recommend|recommend|recommend)\s*\?$/i
+                        ];
+                        for (const pattern of incompletePatterns) {
+                            if (pattern.test(cleaned)) {
+                                console.warn('Incomplete question detected (ends with verb/preposition):', cleaned);
+                                return false;
+                            }
                         }
                         return true;
                     });

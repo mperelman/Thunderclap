@@ -608,15 +608,31 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    - For EACH potential question, ask yourself: "Could I write 3+ paragraphs answering this from what the documents ACTUALLY say?"
    - If answer is NO → DELETE that question
    
-   CRITICAL: COMPOSE COMPLETE, GRAMMATICALLY CORRECT QUESTIONS (MANDATORY):
+   CRITICAL: COMPOSE COMPLETE, GRAMMATICALLY CORRECT QUESTIONS (MANDATORY - ABSOLUTE REQUIREMENT):
    - Each question MUST be a complete, grammatically correct sentence that can stand alone
-   - Each question MUST end with "?" 
+   - Each question MUST end with "?" (NO EXCEPTIONS)
    - Each question MUST start with a question word (What, How, When, Where, Why, Who, Tell me)
    - CRITICAL: Every question must have a SUBJECT and a COMPLETE PREDICATE - never cut off mid-sentence
    - CRITICAL: Questions must complete their thought - if you start "How did X affect...", you MUST finish with "...Y?" (e.g., "How did X affect Y?")
    - CRITICAL: Questions must complete their thought - if you start "What were the circumstances surrounding...", you MUST finish with "...Z?" (e.g., "What were the circumstances surrounding Z?")
+   - CRITICAL: Questions must complete their thought - if you start "What were the connections between...", you MUST finish with "...X and Y?" (e.g., "What were the connections between X and Y?")
    - NEVER write incomplete questions that end with verbs, gerunds, or prepositions without completing the thought
+   - ABSOLUTELY FORBIDDEN: "What were the connections between" (INCOMPLETE - missing the entities and question mark)
+   - ABSOLUTELY FORBIDDEN: "How did regulatory changes affect" (INCOMPLETE - missing the object and question mark)
+   - ABSOLUTELY FORBIDDEN: "What were the circumstances surrounding" (INCOMPLETE - missing the object and question mark)
    - BEFORE writing each question, ask yourself: "Is this a complete, grammatically correct question that can be answered?" If NO → rewrite it to be complete
+   - MANDATORY SELF-CHECK: After writing each question, read it aloud and verify:
+     * Does it end with "?"? If NO → ADD IT
+     * Does it have both a subject AND a complete predicate? If NO → COMPLETE IT
+     * Can someone answer this question without guessing what you meant? If NO → REWRITE IT
+   - EXAMPLES OF INCOMPLETE QUESTIONS (DO NOT WRITE THESE):
+     * "What were the connections between" (INCOMPLETE - missing entities and question mark)
+     * "How did regulatory changes affect" (INCOMPLETE - missing object and question mark)
+     * "What were the circumstances surrounding" (INCOMPLETE - missing object and question mark)
+   - EXAMPLES OF COMPLETE QUESTIONS (WRITE THESE):
+     * "What were the connections between First National Bank of Boston and the Warburg banking family?"
+     * "How did regulatory changes, such as the Clayton Antitrust Act of 1914, affect First National Bank of Boston?"
+     * "What were the circumstances surrounding the Clayton Antitrust Act's impact on First National Bank of Boston?"
    
    FORMATTING (MANDATORY):
    - Format as: "Related Questions:\n* Question 1?\n* Question 2?\n* Question 3?"
