@@ -80,9 +80,20 @@ class LLMAnswerGenerator:
         backoff = 1.0
         attempts = 0
         last_err = None
+        import time
+        start_time = time.time()
+        max_total_time = 300  # 5 minutes maximum total wait time
         # Allow temporary override for control queries (reduces retries to prevent timeout)
         max_attempts = getattr(self, '_temp_max_attempts', 20)  # Default 20, override for control queries
+        quota_error_count = 0  # Track consecutive quota errors
+        max_quota_retries = 3  # Only retry quota errors 3 times max
+        
         while attempts < max_attempts:
+            # Check total timeout
+            elapsed = time.time() - start_time
+            if elapsed > max_total_time:
+                raise Exception(f"API call timed out after {elapsed:.1f}s (max {max_total_time}s). Quota may be exhausted.")
+            
             try:
                 response = self.client.generate_content(prompt)
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
@@ -127,19 +138,23 @@ class LLMAnswerGenerator:
             except Exception as e:
                 last_err = e
                 if self._is_rate_limit_error(e):
+                    quota_error_count += 1
+                    # Fail fast if we've hit quota errors too many times
+                    if quota_error_count > max_quota_retries:
+                        raise Exception(f"API quota exhausted after {quota_error_count} attempts. Please try again later or check your API quota limits.")
+                    
                     # Try to extract retry delay from error message
                     retry_delay = self._extract_retry_delay(e)
                     if retry_delay:
-                        wait_time = retry_delay + 1  # Add 1 second buffer
-                        print(f"  [RETRY] Quota exceeded, waiting {wait_time:.1f}s (from API) (attempt {attempts+1}/{max_attempts})")
+                        wait_time = min(retry_delay + 1, 60)  # Cap at 60s, add 1 second buffer
+                        print(f"  [RETRY] Quota exceeded, waiting {wait_time:.1f}s (from API) (attempt {quota_error_count}/{max_quota_retries})")
                     else:
-                        wait_time = backoff
-                        print(f"  [RETRY] Rate limited, backing off {backoff:.1f}s (attempt {attempts+1}/{max_attempts})")
+                        wait_time = min(backoff, 30)  # Cap at 30s for quota errors
+                        print(f"  [RETRY] Rate limited, backing off {wait_time:.1f}s (attempt {quota_error_count}/{max_quota_retries})")
                         # For control queries with reduced retries, cap backoff lower to prevent long waits
                         max_backoff = 30.0 if max_attempts <= 3 else 60.0
                         backoff = min(backoff * 2, max_backoff)  # Cap at 30s for control queries, 60s otherwise
                     
-                    import time
                     time.sleep(wait_time)
                     attempts += 1
                     continue
