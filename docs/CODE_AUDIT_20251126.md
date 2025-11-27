@@ -51,8 +51,10 @@ All temporary test/debug scripts have been moved to `temp/archived_temp_20251126
 
 **Archived (Confirmed Unused):**
 - ✅ `deduplicate_index.py` - Post-indexing deduplication utility - not imported anywhere → Archived to `docs/archive/lib_code/archived_unused_20251126/`
-- ✅ `identity_terms.py` - Identity terms list - not imported anywhere → Archived to `docs/archive/lib_code/archived_unused_20251126/`
 - ✅ `identity_detector_v3.py` - Identity detector v3 - not imported anywhere → Archived to `docs/archive/lib_code/archived_unused_20251126/`
+
+**Restored (Actually Used):**
+- ✅ `identity_terms.py` - Identity terms list - **RESTORED** - Actually imported by `query_engine.py` in 3 places (firm name detection, control/influence queries, broad identity queries)
 
 ### Scripts Directory
 
