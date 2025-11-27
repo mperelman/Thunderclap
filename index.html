@@ -1220,8 +1220,13 @@
                     document.getElementById('suggested-questions-container').style.display = 'none';
                     document.getElementById('result').classList.add('show', 'error');
                     return; // Exit early to prevent default error display below
-                } else if (errorMsg.includes('quota exhausted') || (errorMsg.includes('quota') && errorMsg.includes('exhausted'))) {
-                    errorMsg = '⚠️ API quota exhausted. Please wait and try again later, or check your API quota limits.\n\n' +
+                } else if (errorMsg.includes('Token quota') || errorMsg.includes('token quota') || errorMsg.includes('250,000 tokens')) {
+                    errorMsg = '⚠️ Token quota exceeded (250,000 tokens/minute). Your query uses too many tokens.\n\n' +
+                               'Please wait 1-2 minutes and try again, or simplify your question to use fewer chunks.\n\n' +
+                               'Your question is preserved above - just click "Ask Thunderclap" when ready.';
+                } else if (errorMsg.includes('quota exhausted') || (errorMsg.includes('quota') && errorMsg.includes('exhausted') && errorMsg.includes('daily'))) {
+                    errorMsg = '⚠️ API daily quota exhausted. Please wait and try again later, or check your API quota limits.\n\n' +
+                               'Your question is preserved above - just click "Ask Thunderclap" when ready.';
                 } else if (errorMsg.includes('rate limit') || errorMsg.includes('429') || (errorMsg.includes('quota') && !errorMsg.includes('exhausted'))) {
                     errorMsg = '⚠️ API rate limit reached. Please wait 30-60 seconds and try again.\n\n' +
                                'Your question is preserved above - just click "Ask Thunderclap" when ready.';
