@@ -1095,6 +1095,22 @@
             // Update loading message (simplified - timer/estimate shows in loading-tip)
             const loadingDetails = document.getElementById('loading-details');
             loadingDetails.textContent = 'Searching database...';
+            
+            // Initialize timer and estimate immediately
+            const timerEl = document.getElementById('elapsed-timer');
+            const estimateEl = document.getElementById('time-estimate');
+            if (timerEl) timerEl.textContent = '0s';
+            if (estimateEl) estimateEl.textContent = '~15-30s';
+            
+            // Start timer immediately
+            let timerStart = Date.now();
+            const timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+                if (timerEl) {
+                    timerEl.textContent = `${elapsed}s`;
+                }
+            }, 1000);
+            
             setProgress(15, 'Collecting terms...');
             
             // Show progress update after 15 seconds
@@ -1164,22 +1180,8 @@
                 
                 setProgress(40, 'Processing query...');
                 
-                // Start live timer immediately
-                let timerStart = Date.now();
-                let timerInterval = null;
-                timerInterval = setInterval(() => {
-                    const elapsed = Math.floor((Date.now() - timerStart) / 1000);
-                    const timerEl = document.getElementById('elapsed-timer');
-                    if (timerEl) {
-                        timerEl.textContent = `${elapsed}s`;
-                    }
-                }, 1000);
-                
-                // Initialize time estimate display
-                const estimateEl = document.getElementById('time-estimate');
-                if (estimateEl) {
-                    estimateEl.textContent = '~15-30s';
-                }
+                // Timer is already started above, just continue it
+                // (timerInterval is already defined in outer scope)
                 
                 // Poll for completion every 2 seconds
                 const pollInterval = 2000; // 2 seconds
