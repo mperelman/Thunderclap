@@ -999,16 +999,24 @@ CRITICAL MERGE INSTRUCTIONS:
    - For EACH potential question, ask yourself: "Could I write 3+ paragraphs answering this from what the documents ACTUALLY say?"
    - If answer is NO → DELETE that question
    
-   MANDATORY FORMATTING (CRITICAL - MUST FOLLOW EXACTLY):
+   CRITICAL: COMPOSE COMPLETE, GRAMMATICALLY CORRECT QUESTIONS (MANDATORY):
+   - Each question MUST be a complete, grammatically correct sentence that can stand alone
+   - Each question MUST have both a SUBJECT and a COMPLETE PREDICATE - never cut off mid-sentence
+   - Each question MUST end with "?" 
+   - Each question MUST start with a question word (What, How, When, Where, Why, Who, Tell me)
+   - CRITICAL: Questions must complete their thought - if you start "How did X affect...", you MUST finish with "...Y?" (e.g., "How did X affect Y?")
+   - CRITICAL: Questions must complete their thought - if you start "What were the circumstances surrounding...", you MUST finish with "...Z?" (e.g., "What were the circumstances surrounding Z?")
+   - NEVER write incomplete questions that end with verbs, gerunds, or prepositions without completing the thought
+   - BEFORE writing each question, ask yourself: "Is this a complete, grammatically correct question that can be answered?" If NO → rewrite it to be complete
+   
+   FORMATTING (MANDATORY - MUST FOLLOW EXACTLY):
    - Format as: "Related Questions:\n* Question 1?\n* Question 2?\n* Question 3?"
    - Each question MUST be on its own line starting with "* " (bullet format, NOT numbered)
-   - Each question MUST end with "?"
-   - Each question MUST be complete and start with a question word (What, How, When, Where, Why, Who)
+   - CRITICAL: Put each question on a SEPARATE line with a line break (\n) between them
    - BAD: "Related Questions\n1. Question?2. Question?3. Question?" (numbered, all on one line)
    - BAD: "Related Questions\nQuestion 1? Question 2? Question 3?" (all on one line, no bullets)
    - BAD: "Related Questions\n* Question 1?* Question 2?* Question 3?" (bullets but all on one line)
    - GOOD: "Related Questions:\n* What was the role of X?\n* How did Y evolve?\n* What were the circumstances surrounding Z?"
-   - CRITICAL: Put each question on a SEPARATE line with a line break (\n) between them
    
    DO NOT SUGGEST QUESTIONS ABOUT:
    ✗ Hyper-specific details (tax concessions, specific deals, one-time events) UNLESS documents provide extensive detail
