@@ -829,19 +829,27 @@
             const validQuestions = questions.filter(q => {
                 const cleaned = q.trim();
                 // Must be at least 15 chars
-                if (cleaned.length < 15) return false;
+                if (cleaned.length < 15) {
+                    console.log('Filtered out (too short):', cleaned);
+                    return false;
+                }
                 // Must start with question word or capital letter
                 const questionStartPattern = /^(What|Who|How|When|Where|Why|Tell me|Describe|Explain|What was|What were|What is|What are|How did|How does|How do|When did|When does|Where did|Where does|Why did|Why does)/i;
                 if (!questionStartPattern.test(cleaned) && !cleaned.match(/^[A-Z]/)) {
+                    console.log('Filtered out (bad start):', cleaned);
                     return false;
                 }
                 // Must not end with incomplete words
                 const incompletePattern = /\b(with|of|to|for|in|on|at|by|from|about|into|onto|upon|the|a|an)\s*$/i;
                 if (incompletePattern.test(cleaned) && !cleaned.endsWith('?')) {
+                    console.log('Filtered out (incomplete ending):', cleaned);
                     return false;
                 }
                 return true;
             });
+            
+            console.log('Valid questions after filtering:', validQuestions.length);
+            console.log('Valid questions:', validQuestions);
             
             let html = '<div class="suggested-questions"><h3>Related Questions</h3><ul>';
             for (let i = 0; i < validQuestions.length; i++) {
