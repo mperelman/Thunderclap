@@ -1039,18 +1039,27 @@
                 
                 setProgress(40, 'Processing query...');
                 
-                // Poll for completion every 2 seconds
-                const pollInterval = 2000; // 2 seconds
-                const maxPolls = 210; // 7 minutes max (210 * 2s = 420s)
-                let pollCount = 0;
-                
-                // Start live timer
+                // Start live timer immediately
                 let timerStart = Date.now();
                 let timerInterval = null;
                 timerInterval = setInterval(() => {
                     const elapsed = Math.floor((Date.now() - timerStart) / 1000);
-                    document.getElementById('elapsed-timer').textContent = `${elapsed}s`;
+                    const timerEl = document.getElementById('elapsed-timer');
+                    if (timerEl) {
+                        timerEl.textContent = `${elapsed}s`;
+                    }
                 }, 1000);
+                
+                // Initialize time estimate display
+                const estimateEl = document.getElementById('time-estimate');
+                if (estimateEl) {
+                    estimateEl.textContent = '~15-30s';
+                }
+                
+                // Poll for completion every 2 seconds
+                const pollInterval = 2000; // 2 seconds
+                const maxPolls = 210; // 7 minutes max (210 * 2s = 420s)
+                let pollCount = 0;
                 
                 // Function to calculate time estimate based on chunk count
                 function calculateTimeEstimate(chunkCount) {
