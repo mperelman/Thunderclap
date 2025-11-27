@@ -277,14 +277,24 @@ class LLMAnswerGenerator:
             except Exception as e:
                 last_err = e
                 if self._is_rate_limit_error(e):
+                    quota_error_count += 1
+                    # Fail fast if we've hit quota errors too many times
+                    if quota_error_count > max_quota_retries:
+                        # Distinguish between actual quota exhaustion vs temporary rate limiting
+                        if self._is_actual_quota_exhaustion(e):
+                            raise Exception(f"API quota exhausted after {quota_error_count} attempts. Please try again later or check your API quota limits.")
+                        else:
+                            # This is likely a temporary rate limit, not quota exhaustion
+                            raise Exception(f"Rate limit errors persisted after {quota_error_count} retry attempts. The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
+                    
                     # Try to extract retry delay from error message
                     retry_delay = self._extract_retry_delay(e)
                     if retry_delay:
                         wait_time = retry_delay + 1  # Add 1 second buffer
-                        print(f"  [RETRY] Async quota exceeded, waiting {wait_time:.1f}s (from API) (attempt {attempts+1}/{max_attempts})")
+                        print(f"  [RETRY] Async quota exceeded, waiting {wait_time:.1f}s (from API) (attempt {quota_error_count}/{max_quota_retries})")
                     else:
                         wait_time = backoff
-                        print(f"  [RETRY] Async rate limited, backing off {backoff:.1f}s (attempt {attempts+1}/{max_attempts})")
+                        print(f"  [RETRY] Async rate limited, backing off {backoff:.1f}s (attempt {quota_error_count}/{max_quota_retries})")
                         backoff = min(backoff * 2, 60.0)  # Cap at 60 seconds
                     
                     import asyncio
