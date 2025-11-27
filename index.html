@@ -6,8 +6,22 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <!-- Version: 2025-01-22-15:30 - Timer/Estimate Fix -->
+    <!-- Version: 2025-01-22-17:00 - Timer/Estimate/Tabs Fix v4 - CACHE BUST -->
     <title>Thunderclap AI - Banking History</title>
+    <script>
+        // AGGRESSIVE cache busting - force reload if no version param
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has('v') || urlParams.get('v') !== '4') {
+                urlParams.set('v', '4');
+                urlParams.set('_t', Date.now());
+                const newUrl = window.location.pathname + '?' + urlParams.toString();
+                if (window.location.href !== newUrl) {
+                    window.location.replace(newUrl);
+                }
+            }
+        })();
+    </script>
     <style>
         * {
             margin: 0;
