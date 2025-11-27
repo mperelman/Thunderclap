@@ -750,11 +750,47 @@ CRITICAL ITALICS REQUIREMENT (MANDATORY - CHECK EVERY INSTITUTION NAME):
 - People remain regular text (no italics): Henry Hope, J.P. Morgan, Allan Pope
 
 CRITICAL CLARITY REQUIREMENTS:
-- OPENING: Start with ONE clear framing sentence establishing origin, branches, and significance
-- DISTINGUISH individuals from firms: Use italics for firms (*Goldsmid*), regular text for people (Abraham Goldsmid)
-- MANDATORY ITALICS: ALL institution names (banks, firms, companies, trusts, holding companies) MUST be italicized - check EVERY institution name in your answer
-- Examples: *First National Bank of Boston*, *Massachusetts National Bank*, *Shawmut National Bank*, *Old Colony Trust*, *International Acceptance IHC*, *Stone Webster*, *First Boston*, *Wang Laboratories*, *Bank of New England*, *Bank of America*
-- DISTINGUISH family branches: Specify locations/branches (Frankfurt Goldschmidt vs London Goldsmid vs Amsterdam Goldsmid)
+
+NARRATIVE CLARITY AND STRUCTURE (MANDATORY):
+1. EXPLICIT CONTEXT ESTABLISHMENT:
+   - Don't assume unstated context - explicitly establish relationships between institutions and individuals before referencing them
+   - Avoid skipping steps - don't imply prior knowledge or jump to conclusions
+   - Explain terms - when citing obscure or nonstandard terms, provide brief explanation
+
+2. CHRONOLOGICAL FLOW:
+   - Avoid abrupt timeline jumps - when moving to a new year, acquisition, or regulatory change, include short bridging context
+   - Use transitions - phrases like "Following this acquisition…" or "As a result of the legislation…" help readers follow the narrative
+   - Maintain forward flow - move chronologically through time periods without jumping backwards
+
+3. RELATIONSHIP CLARITY:
+   - Clarify mechanisms - when citing affiliations or control, specify whether relationships are through:
+     * Ownership
+     * Regulatory oversight
+     * Deposit concentration
+     * Cross-directorships
+     * Mergers
+   - Explicit cause-and-effect - when stating an outcome (e.g., directors resigning), explicitly state how/why the event triggered that outcome
+   - Don't conflate entities - when institutions did not merge, note "cooperated" or "held similar deposit strategies" rather than implying consolidation
+
+4. INDIVIDUAL ROLES:
+   - Tie roles to institutions - when referencing an individual (e.g., Forbes, Macomber, Pope), first state their formal role at the bank, then explain impact
+   - Keep context clear - don't reference individuals without establishing their relationship to the subject institution
+
+5. SENTENCE STRUCTURE:
+   - Limit sentence stacking - don't pack multiple cross-institutional events into one sentence
+   - Break up complex events - split multi-clause sentences that blend institutions, people, and regulatory shifts
+   - Avoid jargon-heavy summarization - use concise factual transitions, not compressed historical summaries
+
+6. UNCERTAINTY AND PRECISION:
+   - Flag uncertainty - when uncertain or historically debated, flag it instead of asserting
+   - Use qualifiers - prefer "likely influenced," "records suggest," or "positioned itself to" instead of definitive causal statements that lack clear sourcing
+   - Be precise - better to be incomplete than inaccurate
+
+OPENING: Start with ONE clear framing sentence establishing origin, branches, and significance
+DISTINGUISH individuals from firms: Use italics for firms (*Goldsmid*), regular text for people (Abraham Goldsmid)
+MANDATORY ITALICS: ALL institution names (banks, firms, companies, trusts, holding companies) MUST be italicized - check EVERY institution name in your answer
+Examples: *First National Bank of Boston*, *Massachusetts National Bank*, *Shawmut National Bank*, *Old Colony Trust*, *International Acceptance IHC*, *Stone Webster*, *First Boston*, *Wang Laboratories*, *Bank of New England*, *Bank of America*
+DISTINGUISH family branches: Specify locations/branches (Frankfurt Goldschmidt vs London Goldsmid vs Amsterdam Goldsmid)
 
 CRITICAL: AVOID ABRUPT TRANSITIONS AND COMPRESSED INFORMATION:
 - BAD: Abrupt mentions without context: "with Jews also contributing" → Provide context with SPECIFIC ROLES: "Jewish investors and directors, including members of the David and Hart families, participated in..."
