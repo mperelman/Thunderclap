@@ -744,29 +744,8 @@
                     const questionsSection = match[1];
                     const questions = [];
                     
-                    // First try: Extract questions separated by asterisks on same line
-                    // Pattern: "Question1*   Question2*   Question3?"
-                    // Handle both "*   " separator and just "*" separator
-                    // Split by asterisk (with optional spaces around it)
-                    const asteriskSeparated = questionsSection.split(/\s*\*\s*/);
-                    if (asteriskSeparated.length > 1) {
-                        const asteriskMatches = [];
-                        for (const part of asteriskSeparated) {
-                            const q = part.trim();
-                            // Check if it looks like a question (ends with ? or starts with question words)
-                            if (q.length > 10 && (q.includes('?') || q.match(/^(Tell me|What|Who|How|When|Where|Why)/i))) {
-                                // Remove trailing asterisks if any
-                                const cleaned = q.replace(/\*+$/, '').trim();
-                                if (cleaned.length > 10) {
-                                    asteriskMatches.push(cleaned);
-                                }
-                            }
-                        }
-                        if (asteriskMatches.length > 0) {
-                            const cleanText = text.substring(0, match.index).trim();
-                            return { text: cleanText, questions: asteriskMatches };
-                        }
-                    }
+                    // Skip asterisk splitting - it breaks questions incorrectly
+                    // Instead, parse line by line which handles bullet format better
                     
                     // Also try: Questions on same line separated by multiple spaces and asterisks
                     // Pattern: "Question1*   Question2*   Question3?"
@@ -1500,14 +1479,17 @@
                 function updateTimeEstimate(chunkCount, elapsed) {
                     const estimateEl = document.getElementById('time-estimate');
                     if (!estimateEl) {
-                        console.warn('time-estimate element not found');
+                        console.warn('[TIME] time-estimate element not found');
                         return;
                     }
+                    
+                    console.log('[TIME] updateTimeEstimate called:', { chunkCount, elapsed });
                     
                     const estimate = calculateTimeEstimate(chunkCount);
                     
                     if (chunkCount && estimate) {
                         estimateEl.textContent = `${chunkCount} chunks: ${estimate}`;
+                        console.log('[TIME] Updated with chunk count:', estimateEl.textContent);
                     } else if (elapsed > 0) {
                         // Fallback estimate based on elapsed time
                         if (elapsed < 15) {
@@ -1519,9 +1501,11 @@
                         } else {
                             estimateEl.textContent = '~2-3min remaining';
                         }
+                        console.log('[TIME] Updated with elapsed time:', estimateEl.textContent);
                     } else {
                         // Even with no elapsed time, show initial estimate
                         estimateEl.textContent = '~15-30s';
+                        console.log('[TIME] Set initial estimate:', estimateEl.textContent);
                     }
                 }
                 
