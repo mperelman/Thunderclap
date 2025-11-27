@@ -1094,8 +1094,13 @@
                         setProgress(50, `Processing... (${elapsed}s elapsed)`);
                         // Continue polling
                     } else {
-                        // pending - continue polling
-                        setProgress(45, 'Waiting to start...');
+                        // pending - continue polling, but show elapsed if available
+                        const elapsed = Math.floor(statusData.elapsed || 0);
+                        if (elapsed > 0) {
+                            setProgress(45, `Waiting to start... (${elapsed}s elapsed)`);
+                        } else {
+                            setProgress(45, 'Waiting to start...');
+                        }
                     }
                 }
                 
