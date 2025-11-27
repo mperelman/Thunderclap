@@ -88,6 +88,16 @@ def build_complete_index():
                         variants_to_update.extend(variants)
                         variants_to_update.append(main_term)
                 
+                # CRITICAL: Also add space/underscore versions for multi-word identities
+                # Identity detector uses underscores (e.g., "court_jew") but TERM_GROUPS uses spaces
+                # Add both versions to ensure merging
+                if '_' in identity_lower:
+                    space_version = identity_lower.replace('_', ' ')
+                    variants_to_update.append(space_version)
+                elif ' ' in identity_lower:
+                    underscore_version = identity_lower.replace(' ', '_')
+                    variants_to_update.append(underscore_version)
+                
                 # Deduplicate variants
                 variants_to_update = list(set(variants_to_update))
                 
@@ -103,6 +113,32 @@ def build_complete_index():
                     else:
                         indices['term_to_chunks'][variant] = chunk_ids_str.copy()
                         augmentation_count += len(chunk_ids_str)
+            
+            # CRITICAL: After identity augmentation, re-merge TERM_GROUPS to include underscore versions
+            # Identity detector creates underscore versions (e.g., "court_jew") AFTER TERM_GROUPS merging
+            # So we need to merge them again now that identity augmentation has added them
+            print("  Re-merging TERM_GROUPS to include identity-augmented underscore versions...")
+            for main_term, variants in TERM_GROUPS.items():
+                all_chunks = set()
+                # Collect from all space variants
+                for variant in variants:
+                    if variant in indices['term_to_chunks']:
+                        all_chunks.update(indices['term_to_chunks'][variant])
+                # Collect from underscore versions
+                main_term_underscore = main_term.replace(' ', '_')
+                if main_term_underscore in indices['term_to_chunks']:
+                    all_chunks.update(indices['term_to_chunks'][main_term_underscore])
+                for variant in variants:
+                    variant_underscore = variant.replace(' ', '_')
+                    if variant_underscore in indices['term_to_chunks']:
+                        all_chunks.update(indices['term_to_chunks'][variant_underscore])
+                
+                if all_chunks:
+                    merged_list = list(all_chunks)
+                    indices['term_to_chunks'][main_term] = merged_list
+                    for variant in variants:
+                        indices['term_to_chunks'][variant] = merged_list.copy()
+                    indices['term_to_chunks'][main_term_underscore] = merged_list.copy()
             
             print(f"  [OK] Augmented {len(identity_data['identities'])} identities")
             print(f"  [OK] Added {augmentation_count} new chunk mappings\n")
