@@ -621,6 +621,7 @@
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'tab-content active';
+            contentDiv.id = `tab-content-${tab.id}`;
             
             if (tab.status === 'loading') {
                 contentDiv.innerHTML = '<p style="color: #666; padding: 20px; text-align: center;">Loading...</p>';
