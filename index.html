@@ -1312,6 +1312,9 @@
                     const statusData = await statusResponse.json();
                     const elapsed = Math.floor(statusData.elapsed || 0);
                     
+                    // Debug logging
+                    console.log(`[POLL ${pollCount}] Status: ${statusData.status}, Elapsed: ${elapsed}s`);
+                    
                     // Update time estimate if chunk count is available
                     if (statusData.chunk_count) {
                         updateTimeEstimate(statusData.chunk_count, elapsed);
