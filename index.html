@@ -6,20 +6,28 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <!-- Version: 2025-01-22-17:00 - Timer/Estimate/Tabs Fix v4 - CACHE BUST -->
+    <!-- Version: 2025-01-22-17:15 - Timer/Estimate/Tabs Fix v5 - FORCE CACHE BUST -->
     <title>Thunderclap AI - Banking History</title>
     <script>
         // AGGRESSIVE cache busting - force reload if no version param
         (function() {
+            const CURRENT_VERSION = '5';
             const urlParams = new URLSearchParams(window.location.search);
-            if (!urlParams.has('v') || urlParams.get('v') !== '4') {
-                urlParams.set('v', '4');
+            const currentVersion = urlParams.get('v');
+            
+            // If version doesn't match or missing, force reload
+            if (currentVersion !== CURRENT_VERSION) {
+                urlParams.set('v', CURRENT_VERSION);
                 urlParams.set('_t', Date.now());
-                const newUrl = window.location.pathname + '?' + urlParams.toString();
-                if (window.location.href !== newUrl) {
-                    window.location.replace(newUrl);
-                }
+                const newUrl = window.location.pathname + '?' + urlParams.toString() + window.location.hash;
+                console.log('Cache bust: redirecting to', newUrl);
+                window.location.replace(newUrl);
+                return; // Stop execution
             }
+            
+            // Version matches - log for debugging
+            console.log('✅ Running version', CURRENT_VERSION, '- All features enabled');
+            window.THUNDERCLAP_VERSION = CURRENT_VERSION;
         })();
     </script>
     <style>
@@ -1676,6 +1684,20 @@
         // Debug: Log when page loads
         console.log('Thunderclap AI loaded. API URL:', API_URL);
         console.log('askQuestion function defined:', typeof askQuestion);
+        console.log('Version:', window.THUNDERCLAP_VERSION || 'UNKNOWN - OLD VERSION DETECTED!');
+        
+        // Visual indicator that new version is loaded
+        if (window.THUNDERCLAP_VERSION === '5') {
+            console.log('✅ NEW VERSION LOADED - Timer, Tabs, and Filtering enabled');
+        } else {
+            console.error('❌ OLD VERSION DETECTED - Please clear cache and reload!');
+            // Show alert if old version
+            setTimeout(() => {
+                if (!window.THUNDERCLAP_VERSION) {
+                    alert('⚠️ Old cached version detected!\n\nPlease:\n1. Press Ctrl+Shift+R (hard refresh)\n2. Or clear browser cache\n3. Or wait 2-3 minutes for GitHub Pages to update');
+                }
+            }, 2000);
+        }
     </script>
 </body>
 </html>
