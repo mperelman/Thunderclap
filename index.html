@@ -15,8 +15,8 @@
     <script>
         // AGGRESSIVE cache busting - force reload if no version param
         (function() {
-            const CURRENT_VERSION = '6';
-            const BUILD_ID = '8cbb7ad-2025-01-22-17:30';
+            const CURRENT_VERSION = '7';
+            const BUILD_ID = 'a44ac52-2025-01-22-17:45-platinum';
             const urlParams = new URLSearchParams(window.location.search);
             const currentVersion = urlParams.get('v');
             
@@ -51,7 +51,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #f0d38a 0%, #c9a227 50%, #8a6e1e 100%);
+            background: linear-gradient(135deg, #E5E4E2 0%, #C0C0C0 50%, #A8A8A8 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -74,7 +74,7 @@
             object-fit: contain;
             image-rendering: -webkit-optimize-contrast;
         }
-        .brand h1 { color: #c9a227; }
+        .brand h1 { color: #C0C0C0; }
         
         .container {
             background: white;
@@ -117,7 +117,7 @@
         }
         
         h1 {
-            color: #c9a227;
+            color: #C0C0C0;
             margin-bottom: 10px;
             font-size: 2.5em;
         }
@@ -143,14 +143,14 @@
         
         input[type="text"]:focus {
             outline: none;
-            border-color: #c9a227;
+            border-color: #C0C0C0;
         }
         
         button {
             width: 100%;
             padding: 15px;
             font-size: 1.1em;
-            background: linear-gradient(135deg, #e0c15c 0%, #b38728 100%);
+            background: linear-gradient(135deg, #D3D3D3 0%, #A8A8A8 100%);
             color: white;
             border: none;
             border-radius: 10px;
@@ -212,7 +212,7 @@
         }
         
         .tabs-bar::-webkit-scrollbar-thumb {
-            background: #c9a227;
+            background: #C0C0C0;
             border-radius: 3px;
         }
         
@@ -238,8 +238,8 @@
         .tab.active {
             background: #fff;
             border-bottom: 2px solid #fff;
-            border-color: #c9a227;
-            color: #c9a227;
+            border-color: #C0C0C0;
+            color: #C0C0C0;
             font-weight: 600;
             margin-bottom: -2px;
         }
@@ -260,7 +260,7 @@
         }
         
         .tab-close:hover {
-            color: #c9a227;
+            color: #C0C0C0;
         }
         
         .tab-content {
@@ -272,7 +272,7 @@
         }
         
         .result h2 {
-            color: #c9a227;
+            color: #C0C0C0;
             margin-bottom: 20px;
             font-size: 1.8em;
             border-bottom: 2px solid #f0f0f0;
@@ -286,7 +286,7 @@
         }
         
         #answer h2 {
-            color: #c9a227;
+            color: #C0C0C0;
             margin-top: 25px;
             margin-bottom: 15px;
             font-weight: 600;
@@ -323,11 +323,11 @@
             padding: 25px;
             background: #fbf3cf;
             border-radius: 12px;
-            border-left: 4px solid #c9a227;
+            border-left: 4px solid #C0C0C0;
         }
         
         .suggested-questions h3 {
-            color: #c9a227;
+            color: #C0C0C0;
             font-size: 1.2em;
             margin-bottom: 15px;
             font-weight: 600;
@@ -352,16 +352,16 @@
         
         .suggested-questions li:before {
             content: "→ ";
-            color: #c9a227;
+            color: #C0C0C0;
             font-weight: bold;
             margin-right: 5px;
         }
         
         .suggested-questions li:hover {
-            background: #c9a227;
+            background: #C0C0C0;
             color: white;
             transform: translateX(5px);
-            border-color: #c9a227;
+            border-color: #C0C0C0;
         }
         
         .suggested-questions li:hover:before {
@@ -380,7 +380,7 @@
         
         .loading-details {
             margin-top: 15px;
-            color: #c9a227;
+            color: #C0C0C0;
             font-size: 0.95em;
             line-height: 1.6;
         }
@@ -396,7 +396,7 @@
         
         .spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #c9a227;
+            border-top: 4px solid #C0C0C0;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -449,7 +449,7 @@
         
         .quick-query {
             background: white;
-            border: 2px solid #e0c15c;
+            border: 2px solid #D3D3D3;
             color: #5a4a12;
             padding: 10px 14px;
             border-radius: 999px;
@@ -462,8 +462,8 @@
         }
         
         .quick-query:hover {
-            border-color: #c9a227;
-            color: #c9a227;
+            border-color: #C0C0C0;
+            color: #C0C0C0;
             transform: translateY(-2px);
         }
         
@@ -472,8 +472,8 @@
             padding: 12px;
             font-size: 1em;
             background: white;
-            color: #c9a227;
-            border: 2px solid #c9a227;
+            color: #C0C0C0;
+            border: 2px solid #C0C0C0;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
@@ -482,7 +482,7 @@
         }
         
         .secondary-btn:hover {
-            background: #c9a227;
+            background: #C0C0C0;
             color: white;
         }
         
@@ -516,12 +516,12 @@
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="margin-top: 10px; color: #c9a227; font-weight: 600;">Researching historical documents...</p>
+            <p style="margin-top: 10px; color: #C0C0C0; font-weight: 600;">Researching historical documents...</p>
             <div class="loading-details" id="loading-details">
                 Analyzing your query...
             </div>
             <div id="progress-container" style="margin-top:12px; width:100%; background:#eee; border-radius:8px; overflow:hidden; height:10px; display:none;">
-                <div id="progress-bar" style="height:100%; width:0%; background:#c9a227; transition: width 0.3s ease;"></div>
+                <div id="progress-bar" style="height:100%; width:0%; background:#C0C0C0; transition: width 0.3s ease;"></div>
             </div>
             <div class="loading-tip" id="loading-tip" style="display: block; visibility: visible; opacity: 1;">
                 ⏱️ <span id="time-estimate">Estimating time...</span> | <span id="elapsed-timer">0s</span>
@@ -682,7 +682,7 @@
                 debugDiv.style.color = '#666';
                 debugDiv.innerHTML = `
                     <div>Request ID: ${tab.jobId}</div>
-                    <div><a href="http://localhost:8000/debug/last?n=50" target="_blank" style="color:#c9a227;">View server trace</a></div>
+                    <div><a href="http://localhost:8000/debug/last?n=50" target="_blank" style="color:#C0C0C0;">View server trace</a></div>
                 `;
                 contentDiv.appendChild(debugDiv);
             }
@@ -1240,44 +1240,44 @@
             
             const modal = `
                 <div id="indexed-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 900px; max-height: 85vh; overflow-y: auto; border:2px solid #c9a227;" onclick="event.stopPropagation()">
-                        <h2 style="color: #c9a227; margin-top: 0;">Sample Terms</h2>
+                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 900px; max-height: 85vh; overflow-y: auto; border:2px solid #C0C0C0;" onclick="event.stopPropagation()">
+                        <h2 style="color: #C0C0C0; margin-top: 0;">Sample Terms</h2>
                         <p style="color: #444; font-size: 0.95em; margin-bottom: 12px;">Tap any topic below to auto-fill the search bar, or type your own term.</p>
                         <p style="color: #777; font-size: 0.85em; margin-bottom: 18px;">
                             Showing highlighted topics. Type any other term directly in the search bar if you don’t see it listed here.
                         </p>
                         
-                        <h3 style="color: #c9a227;">Banking Families & Houses</h3>
+                        <h3 style="color: #C0C0C0;">Banking Families & Houses</h3>
                         <div class="search-categories" style="margin-bottom: 15px;">
                             ${renderChips(families)}
                         </div>
                         
-                        <h3 style="color: #c9a227;">Identities & Cousinhoods</h3>
+                        <h3 style="color: #C0C0C0;">Identities & Cousinhoods</h3>
                         <div class="search-categories" style="margin-bottom: 15px;">
                             ${renderChips(identities)}
                         </div>
                         
-                        <h3 style="color: #c9a227;">Markets & Asset Classes</h3>
+                        <h3 style="color: #C0C0C0;">Markets & Asset Classes</h3>
                         <div class="search-categories" style="margin-bottom: 15px;">
                             ${renderChips(markets)}
                         </div>
                         
-                        <h3 style="color: #c9a227;">Concepts & Themes</h3>
+                        <h3 style="color: #C0C0C0;">Concepts & Themes</h3>
                         <div class="search-categories" style="margin-bottom: 15px;">
                             ${renderChips(concepts)}
                         </div>
                         
-                        <h3 style="color: #c9a227;">Financial Panics & Crises</h3>
+                        <h3 style="color: #C0C0C0;">Financial Panics & Crises</h3>
                         <div class="search-categories" style="margin-bottom: 15px;">
                             ${renderChips(panics)}
                         </div>
                         
-                        <h3 style="color: #c9a227;">Geographies</h3>
+                        <h3 style="color: #C0C0C0;">Geographies</h3>
                         <div class="search-categories" style="margin-bottom: 15px;">
                             ${renderChips(geographies)}
                         </div>
                         
-                        <button style="margin-top: 20px; padding: 10px 20px; background: linear-gradient(135deg, #e0c15c 0%, #b38728 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1em;" onclick="this.closest('div').parentElement.remove()">Close</button>
+                        <button style="margin-top: 20px; padding: 10px 20px; background: linear-gradient(135deg, #D3D3D3 0%, #A8A8A8 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1em;" onclick="this.closest('div').parentElement.remove()">Close</button>
                     </div>
                 </div>
             `;
