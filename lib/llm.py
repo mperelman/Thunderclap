@@ -197,8 +197,18 @@ class LLMAnswerGenerator:
         backoff = 1.0
         attempts = 0
         last_err = None
+        import asyncio
+        start_time = asyncio.get_event_loop().time()
+        max_total_time = 300  # 5 minutes maximum total wait time
         max_attempts = 20  # Increased for quota errors
+        quota_error_count = 0  # Track consecutive quota errors
+        max_quota_retries = 3  # Only retry quota errors 3 times max
+        
         while attempts < max_attempts:
+            # Check total timeout
+            elapsed = asyncio.get_event_loop().time() - start_time
+            if elapsed > max_total_time:
+                raise Exception(f"Async API call timed out after {elapsed:.1f}s (max {max_total_time}s). Quota may be exhausted.")
             try:
                 response = await self.client.generate_content_async(prompt)
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
