@@ -406,14 +406,10 @@
         </div>
         
         <div class="result" id="result">
-            <h2>Answer</h2>
-            <div id="answer"></div>
-            <div id="debug-info" style="margin-top:12px; font-size:0.85em; color:#666; display:none;">
-                <div>Request ID: <span id="debug-request-id">—</span></div>
-                <div>Status: <span id="debug-status">—</span></div>
-                <div><a id="debug-link" href="#" target="_blank" style="color:#c9a227; display:none;">View server trace</a></div>
+            <div class="tabs-container" id="tabs-container" style="display: none;">
+                <div class="tabs-bar" id="tabs-bar"></div>
             </div>
-            <div id="suggested-questions-container" style="display: none;"></div>
+            <div id="tabs-content"></div>
         </div>
         
         <div class="attribution">
@@ -422,6 +418,140 @@
     </div>
 
     <script>
+        // Tab management system
+        let tabs = [];
+        let activeTabId = null;
+        let tabCounter = 0;
+        
+        function createTab(question, jobId) {
+            const tabId = `tab-${++tabCounter}`;
+            const tab = {
+                id: tabId,
+                question: question,
+                jobId: jobId,
+                answer: null,
+                questions: [],
+                error: null,
+                status: 'loading',
+                createdAt: Date.now()
+            };
+            tabs.push(tab);
+            activeTabId = tabId;
+            renderTabs();
+            return tabId;
+        }
+        
+        function closeTab(tabId, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            tabs = tabs.filter(t => t.id !== tabId);
+            if (activeTabId === tabId) {
+                activeTabId = tabs.length > 0 ? tabs[tabs.length - 1].id : null;
+            }
+            renderTabs();
+            renderTabContent();
+        }
+        
+        function switchTab(tabId) {
+            activeTabId = tabId;
+            renderTabs();
+            renderTabContent();
+        }
+        
+        function updateTab(tabId, updates) {
+            const tab = tabs.find(t => t.id === tabId);
+            if (tab) {
+                Object.assign(tab, updates);
+                renderTabs();
+                if (activeTabId === tabId) {
+                    renderTabContent();
+                }
+            }
+        }
+        
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            const tabsBar = document.getElementById('tabs-bar');
+            
+            if (tabs.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            tabsBar.innerHTML = '';
+            
+            tabs.forEach(tab => {
+                const tabEl = document.createElement('div');
+                tabEl.className = `tab ${tab.id === activeTabId ? 'active' : ''}`;
+                tabEl.onclick = () => switchTab(tab.id);
+                
+                const title = document.createElement('span');
+                title.className = 'tab-title';
+                title.textContent = tab.question.length > 30 ? tab.question.substring(0, 30) + '...' : tab.question;
+                title.title = tab.question;
+                
+                const close = document.createElement('span');
+                close.className = 'tab-close';
+                close.innerHTML = '×';
+                close.onclick = (e) => closeTab(tab.id, e);
+                
+                tabEl.appendChild(title);
+                tabEl.appendChild(close);
+                tabsBar.appendChild(tabEl);
+            });
+        }
+        
+        function renderTabContent() {
+            const contentContainer = document.getElementById('tabs-content');
+            contentContainer.innerHTML = '';
+            
+            if (!activeTabId) {
+                return;
+            }
+            
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab) {
+                return;
+            }
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'tab-content active';
+            
+            if (tab.status === 'loading') {
+                contentDiv.innerHTML = '<p style="color: #666; padding: 20px; text-align: center;">Loading...</p>';
+            } else if (tab.error) {
+                contentDiv.innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">${tab.error}</p>`;
+            } else if (tab.answer) {
+                const answerDiv = document.createElement('div');
+                answerDiv.innerHTML = formatMarkdown(tab.answer);
+                contentDiv.appendChild(answerDiv);
+                
+                if (tab.questions && tab.questions.length > 0) {
+                    const questionsContainer = document.createElement('div');
+                    questionsContainer.id = `suggested-questions-${tab.id}`;
+                    displaySuggestedQuestions(tab.questions, questionsContainer);
+                    contentDiv.appendChild(questionsContainer);
+                }
+            }
+            
+            // Add debug info if available
+            if (tab.jobId) {
+                const debugDiv = document.createElement('div');
+                debugDiv.style.marginTop = '12px';
+                debugDiv.style.fontSize = '0.85em';
+                debugDiv.style.color = '#666';
+                debugDiv.innerHTML = `
+                    <div>Request ID: ${tab.jobId}</div>
+                    <div><a href="http://localhost:8000/debug/last?n=50" target="_blank" style="color:#c9a227;">View server trace</a></div>
+                `;
+                contentDiv.appendChild(debugDiv);
+            }
+            
+            contentContainer.appendChild(contentDiv);
+        }
+        
         // IMPORTANT: Change this to your deployed API URL
         // API URL - defaults to localhost, but can be overridden via URL parameter or environment
         const API_URL = (() => {
