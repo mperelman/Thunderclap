@@ -611,8 +611,12 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    CRITICAL FORMATTING (MANDATORY):
    - Format as: "Related Questions:\n* Question 1?\n* Question 2?\n* Question 3?"
    - Each question MUST be on its own line starting with "* " (bullet format)
-   - Each question MUST end with "?"
-   - Each question MUST be complete and start with a question word (What, How, When, Where, Why, Who)
+   - Each question MUST end with "?" (CRITICAL - incomplete questions will be rejected)
+   - Each question MUST be complete and grammatically correct (not cut off mid-sentence)
+   - Each question MUST start with a question word (What, How, When, Where, Why, Who, Tell me)
+   - CRITICAL: Questions that end with verbs like "affect", "impact", "influence", "change", "shape" are INCOMPLETE - they must complete the thought (e.g., "affect First National Bank of Boston?" not just "affect")
+   - BAD: "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect" (incomplete - missing the object and question mark)
+   - GOOD: "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect First National Bank of Boston?"
    - BAD: "Related Questions\n1. Question?2. Question?3. Question?" (all on one line, numbered)
    - BAD: "Related Questions\nQuestion 1? Question 2? Question 3?" (all on one line, no bullets)
    - GOOD: "Related Questions:\n* What was the role of X?\n* How did Y evolve?\n* What were the circumstances surrounding Z?"
