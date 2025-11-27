@@ -501,7 +501,7 @@
         
         <div class="search-guide">
             <p style="margin-bottom: 15px; color: #555;">Use the search box below or open the sampler to pick a topic.</p>
-            <button class="secondary-btn" onclick="showIndexed()">View Sample Terms</button>
+            <button class="secondary-btn" id="view-sample-terms-btn">View Sample Terms</button>
         </div>
         
         <div class="input-group">
@@ -513,7 +513,7 @@
             >
         </div>
         
-        <button onclick="askQuestion()">Ask Thunderclap</button>
+        <button id="ask-thunderclap-btn">Ask Thunderclap</button>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -1687,16 +1687,59 @@
             setProgress(Math.min(95, current + delta));
         }
         
-        // Allow Enter key to submit
-        document.getElementById('question').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                askQuestion();
+        // Attach event listeners when DOM is ready
+        function attachEventListeners() {
+            // Ask Thunderclap button
+            const askBtn = document.getElementById('ask-thunderclap-btn');
+            if (askBtn) {
+                askBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Ask Thunderclap button clicked');
+                    askQuestion();
+                });
+                console.log('✅ Ask Thunderclap button listener attached');
+            } else {
+                console.error('❌ Ask Thunderclap button not found!');
             }
-        });
+            
+            // View Sample Terms button
+            const sampleBtn = document.getElementById('view-sample-terms-btn');
+            if (sampleBtn) {
+                sampleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('View Sample Terms button clicked');
+                    showIndexed();
+                });
+                console.log('✅ View Sample Terms button listener attached');
+            } else {
+                console.error('❌ View Sample Terms button not found!');
+            }
+            
+            // Allow Enter key to submit
+            const questionInput = document.getElementById('question');
+            if (questionInput) {
+                questionInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        askQuestion();
+                    }
+                });
+                console.log('✅ Enter key listener attached');
+            }
+        }
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', attachEventListeners);
+        } else {
+            // DOM already loaded
+            attachEventListeners();
+        }
         
         // Debug: Log when page loads
         console.log('Thunderclap AI loaded. API URL:', API_URL);
         console.log('askQuestion function defined:', typeof askQuestion);
+        console.log('showIndexed function defined:', typeof showIndexed);
         console.log('Version:', window.THUNDERCLAP_VERSION || 'UNKNOWN - OLD VERSION DETECTED!');
         
         // Visual indicator that new version is loaded
@@ -1708,10 +1751,10 @@
             console.warn('⚠️ Version not detected - may be cached');
         }
         
-        // Ensure functions are globally accessible
+        // Ensure functions are globally accessible (for backward compatibility)
         window.askQuestion = askQuestion;
         window.showIndexed = showIndexed;
-        console.log('Functions registered:', { askQuestion: typeof askQuestion, showIndexed: typeof showIndexed });
+        console.log('Functions registered globally:', { askQuestion: typeof askQuestion, showIndexed: typeof showIndexed });
     </script>
 </body>
 </html>
