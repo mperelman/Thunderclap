@@ -45,8 +45,27 @@ class LLMAnswerGenerator:
             print("  [WARNING] No Gemini API key found")
     
     def _is_rate_limit_error(self, exc: Exception) -> bool:
+        """Check if exception is a rate limit or quota error."""
         msg = str(exc).lower()
-        return ("rate limit" in msg) or ("429" in msg) or ("resource has been exhausted" in msg) or ("quota" in msg)
+        # Be more specific - only match actual rate limit/quota errors
+        # "quota" alone is too broad - could match other errors
+        return (
+            "rate limit" in msg or 
+            "429" in msg or 
+            "resource has been exhausted" in msg or 
+            ("quota" in msg and ("exceeded" in msg or "exhausted" in msg or "limit" in msg)) or
+            "too many requests" in msg
+        )
+    
+    def _is_actual_quota_exhaustion(self, exc: Exception) -> bool:
+        """Check if this is actual quota exhaustion (not just rate limiting)."""
+        msg = str(exc).lower()
+        # Actual quota exhaustion has specific indicators
+        return (
+            ("quota" in msg and "exhausted" in msg) or
+            "resource has been exhausted" in msg or
+            ("quota" in msg and "limit" in msg and ("daily" in msg or "per day" in msg))
+        )
     
     def _extract_retry_delay(self, exc: Exception) -> float:
         """Extract retry delay from error message, or return default."""
@@ -141,7 +160,12 @@ class LLMAnswerGenerator:
                     quota_error_count += 1
                     # Fail fast if we've hit quota errors too many times
                     if quota_error_count > max_quota_retries:
-                        raise Exception(f"API quota exhausted after {quota_error_count} attempts. Please try again later or check your API quota limits.")
+                        # Distinguish between actual quota exhaustion vs temporary rate limiting
+                        if self._is_actual_quota_exhaustion(e):
+                            raise Exception(f"API quota exhausted after {quota_error_count} attempts. Please try again later or check your API quota limits.")
+                        else:
+                            # This is likely a temporary rate limit, not quota exhaustion
+                            raise Exception(f"Rate limit errors persisted after {quota_error_count} retry attempts. The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
                     
                     # Try to extract retry delay from error message
                     retry_delay = self._extract_retry_delay(e)
