@@ -1287,14 +1287,13 @@
         
         async function askQuestion() {
             console.log('askQuestion() called');
-            try {
-                const question = document.getElementById('question').value.trim();
-                console.log('Question:', question);
-                
-                if (!question || question.length < 3) {
-                    alert('Please enter a question (at least 3 characters)');
-                    return;
-                }
+            const question = document.getElementById('question').value.trim();
+            console.log('Question:', question);
+            
+            if (!question || question.length < 3) {
+                alert('Please enter a question (at least 3 characters)');
+                return;
+            }
             
             // Show loading with progress updates (Google principle #5: Show progress and status)
             document.getElementById('loading').classList.add('show');
@@ -1666,6 +1665,13 @@
                     document.getElementById('progress-container').style.display = 'none';
                 }, 600);
                 document.querySelector('button').disabled = false;
+                // Ensure timer is cleared
+                if (typeof timerInterval !== 'undefined' && timerInterval) {
+                    clearInterval(timerInterval);
+                }
+                if (window.currentTimerInterval) {
+                    clearInterval(window.currentTimerInterval);
+                }
             }
         }
         
