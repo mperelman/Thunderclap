@@ -767,9 +767,14 @@
                         // CRITICAL: Filter incomplete questions that end with prepositions/verbs
                         // These are incomplete thoughts that the LLM didn't finish
                         // Check for common incomplete patterns: ends with preposition + question mark
-                        const incompletePrepositions = /\b(between|affect|surrounding|involving|regarding|concerning|about|with|for|to|from|of|in|on|at|by|during|through|across|among|within|without|against|toward|towards|into|onto|upon|under|over|above|below|beside|besides|beyond|behind|before|after|since|until|while|during)\s*\?$/i;
+                        const incompletePrepositions = /\b(between|affect|surrounding|involving|regarding|concerning|about|with|for|to|from|of|in|on|at|by|during|through|across|among|within|without|against|toward|towards|into|onto|upon|under|over|above|below|beside|besides|beyond|behind|before|after|since|until|while)\s*\?$/i;
                         if (incompletePrepositions.test(cleaned)) {
                             console.warn('Incomplete question detected (ends with preposition):', cleaned);
+                            return false;
+                        }
+                        // CRITICAL: Check for questions ending with "surrounding" specifically (common incomplete pattern)
+                        if (cleaned.match(/\bsurrounding\s*\?$/i)) {
+                            console.warn('Incomplete question detected (ends with "surrounding"):', cleaned);
                             return false;
                         }
                         // Check for questions that are clearly incomplete (very short after removing common question starters)
@@ -779,6 +784,11 @@
                             // If what remains is very short or ends with a preposition, it's likely incomplete
                             if (afterStarter.length < 20 || incompletePrepositions.test(afterStarter)) {
                                 console.warn('Incomplete question detected (too short or ends with preposition):', cleaned);
+                                return false;
+                            }
+                            // Additional check: if the question ends with "surrounding" (even without question mark, it might be incomplete)
+                            if (afterStarter.match(/\bsurrounding\s*$/i)) {
+                                console.warn('Incomplete question detected (ends with "surrounding"):', cleaned);
                                 return false;
                             }
                         }
