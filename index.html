@@ -1672,58 +1672,75 @@
                                'Your question is still in the box above - try simplifying it or breaking it into smaller parts.\n\n' +
                                'Check server console logs for Request ID, or visit http://localhost:8000/status to see recent requests.';
                 } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
-                    // Try to check if server is running (async check)
-                    const checkServer = async () => {
-                        try {
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 2000);
-                            const healthCheck = await fetch('http://localhost:8000/health', { 
-                                method: 'GET',
-                                signal: controller.signal
-                            });
-                            clearTimeout(timeoutId);
-                            if (healthCheck.ok) {
-                                // Server is running - likely a timeout or processing issue
-                                return '⚠️ Connection lost. The query might be taking too long (large queries take 30-90 seconds).\n\n' +
-                                       'Your question is still in the box above - just click "Ask Thunderclap" to try again, or simplify your question.\n\n' +
-                                       'Check server console logs for Request ID, or visit http://localhost:8000/status to see recent requests.';
-                            }
-                        } catch (e) {
-                            // Server is not running or not accessible
-                            return '⚠️ Server is not running.\n\n' +
-                                   'Please start the server by running: python server.py\n\n' +
-                                   'Then try your query again.';
-                        }
-                        return '⚠️ Connection lost. Please check if the server is running: python server.py';
-                    };
+                    // Check if we're using Railway server or localhost
+                    const isLocalhost = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
                     
-                    // Show checking message immediately, then update when check completes
-                    errorMsg = '⚠️ Connection lost. Checking server status...';
-                    // Update tab with error (if tab exists)
-                    if (typeof tabId !== 'undefined' && tabId) {
-                        updateTab(tabId, {
-                            status: 'error',
-                            error: errorMsg
+                    if (isLocalhost) {
+                        // Try to check if local server is running (async check)
+                        const checkServer = async () => {
+                            try {
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 2000);
+                                const healthCheck = await fetch('http://localhost:8000/health', { 
+                                    method: 'GET',
+                                    signal: controller.signal
+                                });
+                                clearTimeout(timeoutId);
+                                if (healthCheck.ok) {
+                                    // Server is running - likely a timeout or processing issue
+                                    return '⚠️ Connection lost. The query might be taking too long (large queries take 30-90 seconds).\n\n' +
+                                           'Your question is still in the box above - just click "Ask Thunderclap" to try again, or simplify your question.\n\n' +
+                                           'Check server console logs for Request ID, or visit http://localhost:8000/status to see recent requests.';
+                                }
+                            } catch (e) {
+                                // Server is not running or not accessible
+                                return '⚠️ Server is not running.\n\n' +
+                                       'Please start the server by running: python server.py\n\n' +
+                                       'Then try your query again.';
+                            }
+                            return '⚠️ Connection lost. Please check if the server is running: python server.py';
+                        };
+                        
+                        // Show checking message immediately, then update when check completes
+                        errorMsg = '⚠️ Connection lost. Checking server status...';
+                        // Update tab with error (if tab exists)
+                        if (typeof tabId !== 'undefined' && tabId) {
+                            updateTab(tabId, {
+                                status: 'error',
+                                error: errorMsg
+                            });
+                        }
+                        checkServer().then(msg => {
+                            // Update tab with final error message
+                            if (typeof tabId !== 'undefined' && tabId) {
+                                updateTab(tabId, {
+                                    status: 'error',
+                                    error: msg
+                                });
+                            }
+                        }).catch(() => {
+                            // If check fails, show server not running message
+                            if (typeof tabId !== 'undefined' && tabId) {
+                                updateTab(tabId, {
+                                    status: 'error',
+                                    error: '⚠️ Server is not running.\n\nPlease start the server by running: python server.py\n\nThen try your query again.'
+                                });
+                            }
                         });
+                    } else {
+                        // Using Railway server - show generic connection error
+                        errorMsg = '⚠️ Connection lost. The server might be temporarily unavailable or the query is taking too long.\n\n' +
+                                   'Your question is preserved above - just click "Ask Thunderclap" to try again, or wait a moment and retry.\n\n' +
+                                   'If this persists, the Railway server may be experiencing issues.';
+                        // Update tab with error (if tab exists)
+                        if (typeof tabId !== 'undefined' && tabId) {
+                            updateTab(tabId, {
+                                status: 'error',
+                                error: errorMsg
+                            });
+                        }
                     }
-                    checkServer().then(msg => {
-                        // Update tab with final error message
-                        if (typeof tabId !== 'undefined' && tabId) {
-                            updateTab(tabId, {
-                                status: 'error',
-                                error: msg
-                            });
-                        }
-                    }).catch(() => {
-                        // If check fails, show server not running message
-                        if (typeof tabId !== 'undefined' && tabId) {
-                            updateTab(tabId, {
-                                status: 'error',
-                                error: '⚠️ Server is not running.\n\nPlease start the server by running: python server.py\n\nThen try your query again.'
-                            });
-                        }
-                    });
-                    // Skip default error display - we handle it above with async check
+                    // Skip default error display - we handle it above
                     document.getElementById('result').classList.add('show', 'error');
                     return; // Exit early to prevent default error display below
                 } else if (errorMsg.includes('Token quota') || errorMsg.includes('token quota') || errorMsg.includes('250,000 tokens')) {
