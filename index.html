@@ -1330,12 +1330,14 @@
                     }
                     
                     if (statusData.status === 'complete') {
+                        console.log('[SUCCESS] Query completed! Answer length:', statusData.answer?.length || 0);
                         if (timerInterval) clearInterval(timerInterval);
                         if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
                         setProgress(85, 'Formatting...');
                         
                         // Extract suggested questions
                         const parsed = extractSuggestedQuestions(statusData.answer);
+                        console.log('[SUCCESS] Extracted answer and', parsed.questions?.length || 0, 'questions');
                         
                         // Update tab with results
                         updateTab(tabId, {
@@ -1345,6 +1347,7 @@
                             error: null
                         });
                         
+                        console.log('[SUCCESS] Tab updated, showing results');
                         document.getElementById('result').classList.add('show');
                         document.getElementById('result').classList.remove('error');
                         setProgress(100, 'Done');
