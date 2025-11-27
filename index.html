@@ -1049,8 +1049,12 @@
                 return;
             }
             
-            container.innerHTML = html;
-            container.style.display = 'block';
+            try {
+                container.innerHTML = html;
+                container.style.display = 'block';
+            } catch (e) {
+                console.error('Error setting innerHTML on container:', e, 'Container:', container);
+            }
         }
         
         function askSuggestedQuestion(question) {
