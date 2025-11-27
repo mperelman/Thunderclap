@@ -1129,18 +1129,20 @@
             const estimateEl = document.getElementById('time-estimate');
             const loadingTip = document.getElementById('loading-tip');
             
-            // Ensure loading-tip is visible and initialized
+            // Ensure loading-tip is visible and initialized (CRITICAL: Show immediately)
             if (loadingTip) {
                 loadingTip.style.display = 'block';
+                loadingTip.style.visibility = 'visible';
+                loadingTip.style.opacity = '1';
             }
             if (timerEl) {
                 timerEl.textContent = '0s';
             }
             if (estimateEl) {
-                estimateEl.textContent = '~15-30s';
+                estimateEl.textContent = 'Estimating...';
             }
             
-            // Start timer immediately
+            // Start timer immediately (update every second)
             let timerStart = Date.now();
             let timerInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - timerStart) / 1000);
@@ -1148,6 +1150,9 @@
                     timerEl.textContent = `${elapsed}s`;
                 }
             }, 1000);
+            
+            // Store interval so we can clear it later
+            window.currentTimerInterval = timerInterval;
             
             setProgress(15, 'Collecting terms...');
             
@@ -1283,12 +1288,14 @@
                     try {
                         statusResponse = await fetch(`${API_URL}/${jobId}`);
                     } catch (fetchError) {
-                        clearInterval(timerInterval);
+                        if (timerInterval) clearInterval(timerInterval);
+                        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
                         // Network error - server might be down or unreachable
                         throw new Error(`NETWORK ERROR: Cannot connect to server. Error: ${fetchError.message}`);
                     }
                     if (!statusResponse.ok) {
-                        clearInterval(timerInterval);
+                        if (timerInterval) clearInterval(timerInterval);
+                        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
                         throw new Error(`Failed to check status. HTTP ${statusResponse.status}`);
                     }
                     
@@ -1310,7 +1317,8 @@
                     }
                     
                     if (statusData.status === 'complete') {
-                        clearInterval(timerInterval);
+                        if (timerInterval) clearInterval(timerInterval);
+                        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
                         setProgress(85, 'Formatting...');
                         
                         // Extract suggested questions
@@ -1330,7 +1338,8 @@
                         return; // Success!
                         
                     } else if (statusData.status === 'error') {
-                        clearInterval(timerInterval);
+                        if (timerInterval) clearInterval(timerInterval);
+                        if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
                         
                         // Update tab with error
                         updateTab(tabId, {
@@ -1353,7 +1362,8 @@
                     }
                 }
                 
-                clearInterval(timerInterval);
+                if (timerInterval) clearInterval(timerInterval);
+                if (window.currentTimerInterval) clearInterval(window.currentTimerInterval);
                 
                 // Timeout after max polls
                 throw new Error('Query is taking too long. Please try again or simplify your question.');
@@ -1362,6 +1372,9 @@
                 // Clear timer on error (timerInterval is in outer scope)
                 if (typeof timerInterval !== 'undefined' && timerInterval) {
                     clearInterval(timerInterval);
+                }
+                if (window.currentTimerInterval) {
+                    clearInterval(window.currentTimerInterval);
                 }
                 // Google principle #8: Make errors recoverable, not punishing
                 // Update tab with error (if tab exists)
