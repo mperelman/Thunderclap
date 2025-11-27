@@ -105,7 +105,7 @@ class LLMAnswerGenerator:
         # Allow temporary override for control queries (reduces retries to prevent timeout)
         max_attempts = getattr(self, '_temp_max_attempts', 20)  # Default 20, override for control queries
         quota_error_count = 0  # Track consecutive quota errors
-        max_quota_retries = 3  # Only retry quota errors 3 times max
+        max_quota_retries = 5  # Retry rate limit errors up to 5 times (was 3)
         
         while attempts < max_attempts:
             # Check total timeout
@@ -170,7 +170,9 @@ class LLMAnswerGenerator:
                             # This is likely a temporary rate limit, not quota exhaustion
                             # Log the actual error for debugging
                             print(f"  [DEBUG] Rate limit error details: {error_msg}")
-                            raise Exception(f"Rate limit errors persisted after {quota_error_count} failures ({max_quota_retries} retries). The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
+                            # Include a snippet of the actual error in the message (first 100 chars)
+                            error_snippet = error_msg[:100] if len(error_msg) > 100 else error_msg
+                            raise Exception(f"Rate limit errors persisted after {quota_error_count} failures ({max_quota_retries} retries). The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.\n\nAPI Error: {error_snippet}")
                     
                     # Try to extract retry delay from error message
                     retry_delay = self._extract_retry_delay(e)
@@ -232,7 +234,7 @@ class LLMAnswerGenerator:
         max_total_time = 300  # 5 minutes maximum total wait time
         max_attempts = 20  # Increased for quota errors
         quota_error_count = 0  # Track consecutive quota errors
-        max_quota_retries = 3  # Only retry quota errors 3 times max
+        max_quota_retries = 5  # Retry rate limit errors up to 5 times (was 3)
         
         while attempts < max_attempts:
             # Check total timeout
@@ -296,7 +298,9 @@ class LLMAnswerGenerator:
                             # This is likely a temporary rate limit, not quota exhaustion
                             # Log the actual error for debugging
                             print(f"  [DEBUG] Async rate limit error details: {error_msg}")
-                            raise Exception(f"Rate limit errors persisted after {quota_error_count} failures ({max_quota_retries} retries). The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
+                            # Include a snippet of the actual error in the message (first 100 chars)
+                            error_snippet = error_msg[:100] if len(error_msg) > 100 else error_msg
+                            raise Exception(f"Rate limit errors persisted after {quota_error_count} failures ({max_quota_retries} retries). The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.\n\nAPI Error: {error_snippet}")
                     
                     # Try to extract retry delay from error message
                     retry_delay = self._extract_retry_delay(e)
