@@ -1117,12 +1117,22 @@
             // Initialize timer and estimate immediately
             const timerEl = document.getElementById('elapsed-timer');
             const estimateEl = document.getElementById('time-estimate');
-            if (timerEl) timerEl.textContent = '0s';
-            if (estimateEl) estimateEl.textContent = '~15-30s';
+            const loadingTip = document.getElementById('loading-tip');
+            
+            // Ensure loading-tip is visible and initialized
+            if (loadingTip) {
+                loadingTip.style.display = 'block';
+            }
+            if (timerEl) {
+                timerEl.textContent = '0s';
+            }
+            if (estimateEl) {
+                estimateEl.textContent = '~15-30s';
+            }
             
             // Start timer immediately
             let timerStart = Date.now();
-            const timerInterval = setInterval(() => {
+            let timerInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - timerStart) / 1000);
                 if (timerEl) {
                     timerEl.textContent = `${elapsed}s`;
