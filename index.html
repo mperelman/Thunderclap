@@ -1051,7 +1051,8 @@
                 
                 // Start live timer
                 let timerStart = Date.now();
-                const timerInterval = setInterval(() => {
+                let timerInterval = null;
+                timerInterval = setInterval(() => {
                     const elapsed = Math.floor((Date.now() - timerStart) / 1000);
                     document.getElementById('elapsed-timer').textContent = `${elapsed}s`;
                 }, 1000);
@@ -1157,8 +1158,8 @@
                 throw new Error('Query is taking too long. Please try again or simplify your question.');
                 
             } catch (error) {
-                // Clear timer on error
-                if (typeof timerInterval !== 'undefined') {
+                // Clear timer on error (timerInterval is in outer scope)
+                if (timerInterval) {
                     clearInterval(timerInterval);
                 }
                 // Google principle #8: Make errors recoverable, not punishing
