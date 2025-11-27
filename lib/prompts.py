@@ -620,6 +620,9 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    - ABSOLUTELY FORBIDDEN: "What were the connections between" (INCOMPLETE - missing the entities and question mark)
    - ABSOLUTELY FORBIDDEN: "How did regulatory changes affect" (INCOMPLETE - missing the object and question mark)
    - ABSOLUTELY FORBIDDEN: "What were the circumstances surrounding" (INCOMPLETE - missing the object and question mark)
+   - ABSOLUTELY FORBIDDEN: "What were the circumstances surrounding?" (INCOMPLETE - has question mark but missing the object/subject)
+   - CRITICAL: If you write "What were the circumstances surrounding", you MUST complete it with a specific subject (e.g., "...the Panic of 1907?" or "...the merger?")
+   - CRITICAL: NEVER end a question with just "surrounding?" or "between?" - these are INCOMPLETE and FORBIDDEN
    - BEFORE writing each question, ask yourself: "Is this a complete, grammatically correct question that can be answered?" If NO → rewrite it to be complete
    - MANDATORY SELF-CHECK: After writing each question, read it aloud and verify:
      * Does it end with "?"? If NO → ADD IT
