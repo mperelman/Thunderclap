@@ -960,19 +960,14 @@
             document.getElementById('suggested-questions-container').style.display = 'none';
             document.querySelector('button').disabled = true;
             
-            // Update loading message based on query size
+            // Update loading message (simplified - timer/estimate shows in loading-tip)
             const loadingDetails = document.getElementById('loading-details');
-            const queryWords = question.split(' ').length;
-            if (queryWords < 5) {
-                loadingDetails.textContent = 'Searching database... (usually 10-15 seconds)';
-            } else {
-                loadingDetails.textContent = 'Processing comprehensive query... (may take 30-60 seconds)';
-            }
+            loadingDetails.textContent = 'Searching database...';
             setProgress(15, 'Collecting terms...');
             
             // Show progress update after 15 seconds
             const progressTimeout = setTimeout(() => {
-                loadingDetails.textContent = 'Still processing... analyzing historical documents';
+                loadingDetails.textContent = 'Processing documents...';
                 bumpProgress(10);
             }, 15000);
             // Gentle periodic bumps so users see progress
@@ -1118,6 +1113,13 @@
                         updateTimeEstimate(statusData.chunk_count, elapsed);
                     } else if (elapsed > 0) {
                         updateTimeEstimate(null, elapsed);
+                    }
+                    
+                    // Update loading details based on status
+                    if (statusData.status === 'processing') {
+                        loadingDetails.textContent = 'Generating answer...';
+                    } else if (statusData.status === 'pending') {
+                        loadingDetails.textContent = 'Preparing query...';
                     }
                     
                     if (statusData.status === 'complete') {
