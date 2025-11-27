@@ -1086,9 +1086,11 @@
             // Ensure spinner and progress are visible
             document.getElementById('progress-container').style.display = 'block';
             setProgress(8, 'Starting...');
-            document.getElementById('result').classList.remove('show');
-            document.getElementById('suggested-questions-container').style.display = 'none';
+            document.getElementById('result').classList.add('show');
             document.querySelector('button').disabled = true;
+            
+            // Create new tab for this query
+            let tabId = createTab(question, null);
             
             // Update loading message (simplified - timer/estimate shows in loading-tip)
             const loadingDetails = document.getElementById('loading-details');
@@ -1157,15 +1159,8 @@
                 const jobData = await startResponse.json();
                 const jobId = jobData.job_id;
                 
-                const debugInfo = document.getElementById('debug-info');
-                const debugReq = document.getElementById('debug-request-id');
-                const debugStatus = document.getElementById('debug-status');
-                const debugLink = document.getElementById('debug-link');
-                debugReq.textContent = jobId;
-                debugStatus.textContent = '202 Accepted';
-                debugLink.href = 'http://localhost:8000/debug/last?n=50';
-                debugLink.style.display = 'inline';
-                debugInfo.style.display = 'block';
+                // Update tab with job ID
+                updateTab(tabId, { jobId: jobId });
                 
                 setProgress(40, 'Processing query...');
                 
@@ -1305,10 +1300,18 @@
                 
             } catch (error) {
                 // Clear timer on error (timerInterval is in outer scope)
-                if (timerInterval) {
+                if (typeof timerInterval !== 'undefined' && timerInterval) {
                     clearInterval(timerInterval);
                 }
                 // Google principle #8: Make errors recoverable, not punishing
+                // Update tab with error (if tab exists)
+                if (typeof tabId !== 'undefined' && tabId) {
+                    updateTab(tabId, {
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+                
                 // Preserve the query in the input field so user can try again
                 let errorMsg = error.message;
                 let reqId = 'n/a';
