@@ -621,36 +621,17 @@
                         questions.push(currentQuestion.trim());
                     }
                     
-                    // Clean up questions - remove any that are too short or incomplete
+                    // Basic validation - only filter obviously broken questions
+                    // The LLM should generate complete questions, so we only catch clear errors
                     questions = questions.filter(q => {
                         const cleaned = q.trim();
                         // Remove questions that are just numbers or very short
                         if (cleaned.length < 15) return false;
                         // Remove questions that are just fragments
                         if (cleaned.match(/^[\d\s\.\?]+$/)) return false;
-                        // CRITICAL: Remove questions that don't end with "?" (incomplete)
+                        // Basic check: questions should end with "?"
                         if (!cleaned.endsWith('?')) {
-                            console.warn('Filtering incomplete question (missing question mark):', cleaned);
-                            return false;
-                        }
-                        // Remove incomplete questions that start mid-sentence (don't start with question words or capital letter)
-                        const questionStartPattern = /^(What|Who|How|When|Where|Why|Tell me|Describe|Explain|What was|What were|What is|What are|How did|How does|How do|When did|When does|Where did|Where does|Why did|Why does)/i;
-                        if (!questionStartPattern.test(cleaned) && !cleaned.match(/^[A-Z]/)) {
-                            console.warn('Filtering incomplete question (starts mid-sentence):', cleaned);
-                            return false;
-                        }
-                        // Remove incomplete questions that end with prepositions/articles/verbs/gerunds (likely truncated)
-                        // Common prepositions/articles that shouldn't end a question: with, of, to, for, in, on, at, by, the, a, an
-                        // Also catch verbs that indicate incomplete questions: affect, impact, influence, change, shape, lead, cause
-                        // Also catch gerunds/participles: surrounding, involving, relating, concerning
-                        const incompletePattern = /\b(with|of|to|for|in|on|at|by|from|about|into|onto|upon|the|a|an|affect|impact|influence|change|shape|lead|cause|result|contribute|relate|connect|link|surrounding|involving|relating|concerning|regarding)\s*$/i;
-                        if (incompletePattern.test(cleaned)) {
-                            console.warn('Filtering incomplete question (ends with incomplete word):', cleaned);
-                            return false;
-                        }
-                        // Remove questions that don't end with ? and are clearly incomplete
-                        if (!cleaned.endsWith('?') && cleaned.length < 30) {
-                            console.warn('Filtering incomplete question (too short without ?):', cleaned);
+                            console.warn('Question missing question mark:', cleaned);
                             return false;
                         }
                         return true;
