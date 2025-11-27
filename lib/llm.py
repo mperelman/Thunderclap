@@ -156,33 +156,39 @@ class LLMAnswerGenerator:
                     raise
             except Exception as e:
                 last_err = e
+                error_msg = str(e)
+                print(f"  [ERROR] API call failed: {error_msg}")
+                
                 if self._is_rate_limit_error(e):
                     quota_error_count += 1
                     # Fail fast if we've hit quota errors too many times
                     if quota_error_count > max_quota_retries:
                         # Distinguish between actual quota exhaustion vs temporary rate limiting
                         if self._is_actual_quota_exhaustion(e):
-                            raise Exception(f"API quota exhausted after {quota_error_count} attempts. Please try again later or check your API quota limits.")
+                            raise Exception(f"API quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
                         else:
                             # This is likely a temporary rate limit, not quota exhaustion
-                            raise Exception(f"Rate limit errors persisted after {quota_error_count} retry attempts. The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
+                            # Log the actual error for debugging
+                            print(f"  [DEBUG] Rate limit error details: {error_msg}")
+                            raise Exception(f"Rate limit errors persisted after {quota_error_count} failures ({max_quota_retries} retries). The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
                     
                     # Try to extract retry delay from error message
                     retry_delay = self._extract_retry_delay(e)
                     if retry_delay:
                         wait_time = min(retry_delay + 1, 60)  # Cap at 60s, add 1 second buffer
-                        print(f"  [RETRY] Quota exceeded, waiting {wait_time:.1f}s (from API) (attempt {quota_error_count}/{max_quota_retries})")
+                        print(f"  [RETRY] Rate limit detected, waiting {wait_time:.1f}s (from API) (attempt {quota_error_count}/{max_quota_retries})")
                     else:
-                        wait_time = min(backoff, 30)  # Cap at 30s for quota errors
-                        print(f"  [RETRY] Rate limited, backing off {wait_time:.1f}s (attempt {quota_error_count}/{max_quota_retries})")
-                        # For control queries with reduced retries, cap backoff lower to prevent long waits
-                        max_backoff = 30.0 if max_attempts <= 3 else 60.0
-                        backoff = min(backoff * 2, max_backoff)  # Cap at 30s for control queries, 60s otherwise
+                        # For rate limits, use longer backoff - start with 5s, cap at 60s
+                        wait_time = min(backoff, 60)  # Cap at 60s for rate limits
+                        print(f"  [RETRY] Rate limit detected, backing off {wait_time:.1f}s (attempt {quota_error_count}/{max_quota_retries})")
+                        # Exponential backoff: 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 60s (capped)
+                        max_backoff = 60.0
+                        backoff = min(backoff * 2, max_backoff)
                     
                     time.sleep(wait_time)
                     attempts += 1
                     continue
-                print(f"  [ERROR] API call failed: {e}")
+                print(f"  [ERROR] Non-rate-limit API call failed: {e}")
                 raise
         raise last_err or Exception(f"API call failed after {max_attempts} retries")
     
@@ -218,7 +224,7 @@ class LLMAnswerGenerator:
         if not self.client:
             raise Exception("No LLM client available. Set GEMINI_API_KEY environment variable.")
         
-        backoff = 1.0
+        backoff = 5.0  # Start with 5s for rate limits (more conservative)
         attempts = 0
         last_err = None
         import asyncio
