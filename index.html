@@ -617,7 +617,9 @@
                 resultDiv.classList.add('show');
             }
             
-            tabsBar.innerHTML = '';
+            if (tabsBar) {
+                tabsBar.innerHTML = '';
+            }
             console.log('Rendering', tabs.length, 'tabs');
             
             tabs.forEach(tab => {
@@ -643,6 +645,11 @@
         
         function renderTabContent() {
             const contentContainer = document.getElementById('tabs-content');
+            if (!contentContainer) {
+                console.error('Tabs content container not found!');
+                return;
+            }
+            
             contentContainer.innerHTML = '';
             
             if (!activeTabId) {
@@ -950,9 +957,15 @@
             return { text: text, questions: [] };
         }
         
-        function displaySuggestedQuestions(questions) {
-            const container = document.getElementById('suggested-questions-container');
-            if (questions.length === 0) {
+        function displaySuggestedQuestions(questions, containerElement) {
+            // Use provided container or fall back to default
+            const container = containerElement || document.getElementById('suggested-questions-container');
+            if (!container) {
+                console.error('Suggested questions container not found!');
+                return;
+            }
+            
+            if (!questions || questions.length === 0) {
                 container.style.display = 'none';
                 return;
             }
@@ -1030,6 +1043,11 @@
                 html += `<li onclick="askSuggestedQuestion('${escaped}')">${displayText}</li>`;
             }
             html += '</ul></div>';
+            
+            if (!container) {
+                console.error('Suggested questions container not found!');
+                return;
+            }
             
             container.innerHTML = html;
             container.style.display = 'block';
