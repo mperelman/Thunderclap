@@ -57,6 +57,7 @@ class QueryStatusResponse(BaseModel):
     job_id: str
     status: str  # "pending", "processing", "complete", "error"
     answer: Optional[str] = None
+    error: Optional[str] = None
     elapsed: Optional[float] = None
 
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
@@ -152,6 +153,7 @@ async def get_query_status(job_id: str):
         job_id=job_id,
         status=job.get("status", "pending"),
         answer=job.get("answer"),
+        error=job.get("error"),
         elapsed=elapsed
     )
 
