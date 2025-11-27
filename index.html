@@ -1109,12 +1109,15 @@
         }
         
         async function askQuestion() {
-            const question = document.getElementById('question').value.trim();
-            
-            if (!question || question.length < 3) {
-                alert('Please enter a question (at least 3 characters)');
-                return;
-            }
+            console.log('askQuestion() called');
+            try {
+                const question = document.getElementById('question').value.trim();
+                console.log('Question:', question);
+                
+                if (!question || question.length < 3) {
+                    alert('Please enter a question (at least 3 characters)');
+                    return;
+                }
             
             // Show loading with progress updates (Google principle #5: Show progress and status)
             document.getElementById('loading').classList.add('show');
@@ -1506,6 +1509,10 @@
                 askQuestion();
             }
         });
+        
+        // Debug: Log when page loads
+        console.log('Thunderclap AI loaded. API URL:', API_URL);
+        console.log('askQuestion function defined:', typeof askQuestion);
     </script>
 </body>
 </html>
