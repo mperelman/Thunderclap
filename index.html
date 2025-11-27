@@ -744,10 +744,31 @@
                     const questionsSection = match[1];
                     const questions = [];
                     
-                    // Skip asterisk splitting - it breaks questions incorrectly
-                    // Instead, parse line by line which handles bullet format better
+                    // First: Parse line by line - this handles bullet format correctly
+                    // Format: "* Question 1?\n* Question 2?\n* Question 3?"
+                    const lines = questionsSection.split('\n');
+                    const lineMatches = [];
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        // Match bullet format: "* Question?" or "- Question?" or "• Question?"
+                        const bulletMatch = trimmed.match(/^[-•→*]\s*(.+)$/);
+                        if (bulletMatch) {
+                            const q = bulletMatch[1].trim();
+                            if (q.length > 10 && q.endsWith('?')) {
+                                lineMatches.push(q);
+                            }
+                        } else if (trimmed.length > 10 && trimmed.endsWith('?') && !trimmed.match(/^\d+\./)) {
+                            // Standalone question without bullet
+                            lineMatches.push(trimmed);
+                        }
+                    }
+                    if (lineMatches.length > 0) {
+                        const cleanText = text.substring(0, match.index).trim();
+                        console.log('[EXTRACT] Found', lineMatches.length, 'questions from line-by-line parsing:', lineMatches);
+                        return { text: cleanText, questions: lineMatches };
+                    }
                     
-                    // Also try: Questions on same line separated by multiple spaces and asterisks
+                    // Fallback: Also try: Questions on same line separated by multiple spaces and asterisks
                     // Pattern: "Question1*   Question2*   Question3?"
                     const inlineAsteriskPattern = /([^*?]+(?:[?]|Tell me|What|Who|How|When|Where|Why)[^*]*)/gi;
                     const inlineMatches = [];
