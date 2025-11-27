@@ -1278,6 +1278,13 @@
                         
                     } else if (statusData.status === 'error') {
                         clearInterval(timerInterval);
+                        
+                        // Update tab with error
+                        updateTab(tabId, {
+                            status: 'error',
+                            error: statusData.error || 'Query processing failed'
+                        });
+                        
                         throw new Error(statusData.error || 'Query processing failed');
                         
                     } else if (statusData.status === 'processing') {
