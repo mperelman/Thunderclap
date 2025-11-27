@@ -49,10 +49,10 @@ All temporary test/debug scripts have been moved to `temp/archived_temp_20251126
 - ⚠️ `identity_prefilter.py` - Used by identity detection scripts
 - ⚠️ `panic_indexer.py` - May be used by scripts
 
-**Potentially Unused (Need Verification):**
-- ❓ `deduplicate_index.py` - Post-indexing deduplication utility - not imported anywhere
-- ❓ `identity_terms.py` - Identity terms list - not imported anywhere (may be legacy)
-- ❓ `identity_detector_v3.py` - Identity detector v3 - imports identity_prefilter and llm_identity_detector, but not imported itself
+**Archived (Confirmed Unused):**
+- ✅ `deduplicate_index.py` - Post-indexing deduplication utility - not imported anywhere → Archived to `docs/archive/lib_code/archived_unused_20251126/`
+- ✅ `identity_terms.py` - Identity terms list - not imported anywhere → Archived to `docs/archive/lib_code/archived_unused_20251126/`
+- ✅ `identity_detector_v3.py` - Identity detector v3 - not imported anywhere → Archived to `docs/archive/lib_code/archived_unused_20251126/`
 
 ### Scripts Directory
 
