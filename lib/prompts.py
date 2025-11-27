@@ -641,14 +641,20 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    - BAD: "Related Questions\nQuestion 1? Question 2? Question 3?" (all on one line, no bullets)
    - GOOD: "Related Questions:\n* What was the role of X?\n* How did Y evolve?\n* What were the circumstances surrounding Z?"
    
-   EXAMPLES OF INCOMPLETE QUESTIONS (NEVER WRITE THESE):
-   - "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect" → INCOMPLETE (missing object and question mark)
-   - "What were the circumstances surrounding" → INCOMPLETE (missing object and question mark)
-   - "How did the Panic of 1907 impact" → INCOMPLETE (missing object and question mark)
+   EXAMPLES OF INCOMPLETE QUESTIONS (NEVER WRITE THESE - ABSOLUTELY FORBIDDEN):
+   - "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect" → INCOMPLETE (missing object and question mark) - FORBIDDEN
+   - "What were the circumstances surrounding" → INCOMPLETE (missing object and question mark) - FORBIDDEN
+   - "What were the connections between" → INCOMPLETE (missing entities and question mark) - FORBIDDEN
+   - "How did the Panic of 1907 impact" → INCOMPLETE (missing object and question mark) - FORBIDDEN
+   - ANY question ending with "surrounding" without completing the thought → FORBIDDEN
+   - ANY question ending with "between" without completing the thought → FORBIDDEN
+   - ANY question ending with "affect" without completing the thought → FORBIDDEN
    
    EXAMPLES OF COMPLETE QUESTIONS (ALWAYS WRITE THESE):
    - "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect First National Bank of Boston?"
    - "What were the circumstances surrounding the Clayton Antitrust Act's impact on First National Bank of Boston?"
+   - "What were the connections between First National Bank of Boston and the Warburg banking family?"
+   - "What were the circumstances surrounding the Panic of 1907's impact on Canadian banking institutions?"
    - "How did the Panic of 1907 impact First National Bank of Boston's operations?"
    
    DO NOT SUGGEST QUESTIONS ABOUT:
