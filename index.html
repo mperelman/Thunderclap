@@ -558,11 +558,11 @@
             const urlParams = new URLSearchParams(window.location.search);
             const apiParam = urlParams.get('api');
             if (apiParam) return apiParam;
-            // Try to detect if we're on GitHub Pages and use a default remote server if needed
+            // If on GitHub Pages, use Railway server
             if (window.location.hostname.includes('github.io')) {
-                // Default to localhost fallback - user should set ?api=YOUR_SERVER_URL
-                return 'http://localhost:8000/query';
+                return 'https://web-production-c4223.up.railway.app/query';
             }
+            // Default to localhost for local development
             return 'http://localhost:8000/query';
         })();
         
