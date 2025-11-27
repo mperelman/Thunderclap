@@ -24,6 +24,8 @@ from lib.config import MAX_ANSWER_LENGTH
 app = FastAPI(title="Thunderclap AI")
 
 # CORS - Allow requests from GitHub Pages and localhost
+# Note: When allow_credentials=True, you cannot use allow_origins=["*"]
+# Must specify origins explicitly
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -32,7 +34,6 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:8000",
         "http://127.0.0.1:3000",
-        "*"  # Fallback for development
     ],
     allow_credentials=True,
     allow_methods=["*"],
