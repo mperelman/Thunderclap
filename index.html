@@ -400,8 +400,8 @@
             <div id="progress-container" style="margin-top:12px; width:100%; background:#eee; border-radius:8px; overflow:hidden; height:10px; display:none;">
                 <div id="progress-bar" style="height:100%; width:0%; background:#c9a227; transition: width 0.3s ease;"></div>
             </div>
-            <div class="loading-tip">
-                ⏱️ Most queries complete in 10-30 seconds
+            <div class="loading-tip" id="loading-tip">
+                ⏱️ <span id="time-estimate">Estimating time...</span> | <span id="elapsed-timer">0s</span>
             </div>
         </div>
         
@@ -1049,18 +1049,78 @@
                 const maxPolls = 210; // 7 minutes max (210 * 2s = 420s)
                 let pollCount = 0;
                 
+                // Start live timer
+                let timerStart = Date.now();
+                const timerInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+                    document.getElementById('elapsed-timer').textContent = `${elapsed}s`;
+                }, 1000);
+                
+                // Function to calculate time estimate based on chunk count
+                function calculateTimeEstimate(chunkCount) {
+                    if (!chunkCount) return null;
+                    
+                    // Base time: 5-8 seconds for setup and retrieval
+                    // Per chunk: ~2-3 seconds for LLM processing (varies with chunk size)
+                    // More chunks = longer processing, but not strictly linear
+                    const baseTime = 8;
+                    const perChunkTime = chunkCount <= 20 ? 2.5 : (chunkCount <= 50 ? 2.0 : 1.8);
+                    const estimatedSeconds = Math.ceil(baseTime + (chunkCount * perChunkTime));
+                    
+                    if (estimatedSeconds < 30) {
+                        return `~${estimatedSeconds}s`;
+                    } else if (estimatedSeconds < 60) {
+                        return `~${estimatedSeconds}s`;
+                    } else {
+                        const minutes = Math.floor(estimatedSeconds / 60);
+                        const seconds = estimatedSeconds % 60;
+                        return seconds > 0 ? `~${minutes}m ${seconds}s` : `~${minutes}m`;
+                    }
+                }
+                
+                // Function to update time estimate display
+                function updateTimeEstimate(chunkCount, elapsed) {
+                    const estimateEl = document.getElementById('time-estimate');
+                    const estimate = calculateTimeEstimate(chunkCount);
+                    
+                    if (estimate) {
+                        estimateEl.textContent = `${chunkCount} chunks: ${estimate}`;
+                    } else if (elapsed > 0) {
+                        // Fallback estimate based on elapsed time
+                        if (elapsed < 15) {
+                            estimateEl.textContent = '~15-30s';
+                        } else if (elapsed < 45) {
+                            estimateEl.textContent = '~30-60s';
+                        } else {
+                            estimateEl.textContent = '~1-2min';
+                        }
+                    } else {
+                        estimateEl.textContent = '~15-30s';
+                    }
+                }
+                
                 while (pollCount < maxPolls) {
                     await new Promise(r => setTimeout(r, pollInterval));
                     pollCount++;
                     
                     const statusResponse = await fetch(`${API_URL}/${jobId}`);
                     if (!statusResponse.ok) {
+                        clearInterval(timerInterval);
                         throw new Error(`Failed to check status. HTTP ${statusResponse.status}`);
                     }
                     
                     const statusData = await statusResponse.json();
+                    const elapsed = Math.floor(statusData.elapsed || 0);
+                    
+                    // Update time estimate if chunk count is available
+                    if (statusData.chunk_count) {
+                        updateTimeEstimate(statusData.chunk_count, elapsed);
+                    } else if (elapsed > 0) {
+                        updateTimeEstimate(null, elapsed);
+                    }
                     
                     if (statusData.status === 'complete') {
+                        clearInterval(timerInterval);
                         setProgress(85, 'Formatting...');
                         
                         // Extract suggested questions
@@ -1075,15 +1135,14 @@
                         return; // Success!
                         
                     } else if (statusData.status === 'error') {
+                        clearInterval(timerInterval);
                         throw new Error(statusData.error || 'Query processing failed');
                         
                     } else if (statusData.status === 'processing') {
-                        const elapsed = Math.floor(statusData.elapsed || 0);
                         setProgress(50, `Processing... (${elapsed}s elapsed)`);
                         // Continue polling
                     } else {
                         // pending - continue polling, but show elapsed if available
-                        const elapsed = Math.floor(statusData.elapsed || 0);
                         if (elapsed > 0) {
                             setProgress(45, `Waiting to start... (${elapsed}s elapsed)`);
                         } else {
@@ -1092,10 +1151,16 @@
                     }
                 }
                 
+                clearInterval(timerInterval);
+                
                 // Timeout after max polls
                 throw new Error('Query is taking too long. Please try again or simplify your question.');
                 
             } catch (error) {
+                // Clear timer on error
+                if (typeof timerInterval !== 'undefined') {
+                    clearInterval(timerInterval);
+                }
                 // Google principle #8: Make errors recoverable, not punishing
                 // Preserve the query in the input field so user can try again
                 let errorMsg = error.message;

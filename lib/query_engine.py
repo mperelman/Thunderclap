@@ -726,6 +726,8 @@ class QueryEngine:
             print(f"    [RECONNECT] New collection ID: {self.collection.id}")
         data = self.collection.get(ids=chunk_ids_list)
         
+        # Store chunk count for external access (e.g., time estimation)
+        self.last_chunk_count = len(chunk_ids_list)
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
         # Augment with endnotes if results are sparse

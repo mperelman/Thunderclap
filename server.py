@@ -59,6 +59,7 @@ class QueryStatusResponse(BaseModel):
     answer: Optional[str] = None
     error: Optional[str] = None
     elapsed: Optional[float] = None
+    chunk_count: Optional[int] = None  # Number of chunks being processed
 
 # Rate limiting (per-IP, highly relaxed to avoid local dev throttling)
 request_counts = defaultdict(list)
@@ -114,6 +115,10 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
         answer = qe.query(question, use_llm=True)
         
+        # Store chunk count for time estimation (if available)
+        if hasattr(qe, 'last_chunk_count'):
+            JOB_STORE[job_id]["chunk_count"] = qe.last_chunk_count
+        
         if len(answer) > max_length:
             answer = answer[:max_length] + "\n\n[Truncated]"
         
@@ -154,7 +159,8 @@ async def get_query_status(job_id: str):
         status=job.get("status", "pending"),
         answer=job.get("answer"),
         error=job.get("error"),
-        elapsed=elapsed
+        elapsed=elapsed,
+        chunk_count=job.get("chunk_count")
     )
 
 @app.post("/query", response_model=QueryJobResponse)
