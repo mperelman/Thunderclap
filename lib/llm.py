@@ -57,14 +57,27 @@ class LLMAnswerGenerator:
             "too many requests" in msg
         )
     
-    def _is_actual_quota_exhaustion(self, exc: Exception) -> bool:
-        """Check if this is actual quota exhaustion (not just rate limiting)."""
+    def _is_token_quota_error(self, exc: Exception) -> bool:
+        """Check if this is a token quota error (TPM - tokens per minute), not request quota."""
         msg = str(exc).lower()
-        # Actual quota exhaustion has specific indicators
+        # Token quota errors mention "input_token" or "output_token" or "token_count"
         return (
-            ("quota" in msg and "exhausted" in msg) or
-            "resource has been exhausted" in msg or
-            ("quota" in msg and "limit" in msg and ("daily" in msg or "per day" in msg))
+            "token" in msg and ("quota" in msg or "exceeded" in msg or "limit" in msg) or
+            "input_token" in msg or
+            "output_token" in msg or
+            "token_count" in msg
+        )
+    
+    def _is_actual_quota_exhaustion(self, exc: Exception) -> bool:
+        """Check if this is actual daily quota exhaustion (not just rate limiting or token quota)."""
+        msg = str(exc).lower()
+        # Actual daily quota exhaustion has specific indicators
+        # Token quota (TPM) is different from daily quota (RPD)
+        return (
+            ("quota" in msg and "exhausted" in msg and "daily" in msg) or
+            ("quota" in msg and "exhausted" in msg and "per day" in msg) or
+            ("quota" in msg and "exhausted" in msg and "200" in msg and "rpd" in msg) or
+            ("resource has been exhausted" in msg and "daily" in msg)
         )
     
     def _extract_retry_delay(self, exc: Exception) -> float:
@@ -163,11 +176,16 @@ class LLMAnswerGenerator:
                     quota_error_count += 1
                     # Fail fast if we've hit quota errors too many times
                     if quota_error_count > max_quota_retries:
-                        # Distinguish between actual quota exhaustion vs temporary rate limiting
-                        if self._is_actual_quota_exhaustion(e):
-                            raise Exception(f"API quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
+                        # Distinguish between different types of quota/rate limit errors
+                        if self._is_token_quota_error(e):
+                            # Token quota (TPM) - need to wait longer, usually 1-2 minutes
+                            print(f"  [DEBUG] Token quota error details: {error_msg}")
+                            error_snippet = error_msg[:150] if len(error_msg) > 150 else error_msg
+                            raise Exception(f"Token quota exceeded (250,000 tokens/minute limit). Your query uses too many tokens. Please wait 1-2 minutes and try again, or simplify your question.\n\nAPI Error: {error_snippet}")
+                        elif self._is_actual_quota_exhaustion(e):
+                            raise Exception(f"API daily quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
                         else:
-                            # This is likely a temporary rate limit, not quota exhaustion
+                            # This is likely a temporary rate limit (RPM), not quota exhaustion
                             # Log the actual error for debugging
                             print(f"  [DEBUG] Rate limit error details: {error_msg}")
                             # Include a snippet of the actual error in the message (first 100 chars)
@@ -291,11 +309,16 @@ class LLMAnswerGenerator:
                     quota_error_count += 1
                     # Fail fast if we've hit quota errors too many times
                     if quota_error_count > max_quota_retries:
-                        # Distinguish between actual quota exhaustion vs temporary rate limiting
-                        if self._is_actual_quota_exhaustion(e):
-                            raise Exception(f"API quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
+                        # Distinguish between different types of quota/rate limit errors
+                        if self._is_token_quota_error(e):
+                            # Token quota (TPM) - need to wait longer, usually 1-2 minutes
+                            print(f"  [DEBUG] Async token quota error details: {error_msg}")
+                            error_snippet = error_msg[:150] if len(error_msg) > 150 else error_msg
+                            raise Exception(f"Token quota exceeded (250,000 tokens/minute limit). Your query uses too many tokens. Please wait 1-2 minutes and try again, or simplify your question.\n\nAPI Error: {error_snippet}")
+                        elif self._is_actual_quota_exhaustion(e):
+                            raise Exception(f"API daily quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
                         else:
-                            # This is likely a temporary rate limit, not quota exhaustion
+                            # This is likely a temporary rate limit (RPM), not quota exhaustion
                             # Log the actual error for debugging
                             print(f"  [DEBUG] Async rate limit error details: {error_msg}")
                             # Include a snippet of the actual error in the message (first 100 chars)
