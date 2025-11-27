@@ -1520,7 +1520,8 @@
                             estimateEl.textContent = '~2-3min remaining';
                         }
                     } else {
-                        estimateEl.textContent = 'Estimating...';
+                        // Even with no elapsed time, show initial estimate
+                        estimateEl.textContent = '~15-30s';
                     }
                 }
                 
@@ -1549,11 +1550,12 @@
                     // Debug logging
                     console.log(`[POLL ${pollCount}] Status: ${statusData.status}, Elapsed: ${elapsed}s`);
                     
-                    // Update time estimate - always update if we have elapsed time or chunk count
+                    // Update time estimate - always update on every poll
+                    // Use chunk_count if available, otherwise use elapsed time
                     if (statusData.chunk_count) {
                         updateTimeEstimate(statusData.chunk_count, elapsed);
-                    } else if (elapsed > 0) {
-                        // Update based on elapsed time even if chunk_count not available yet
+                    } else {
+                        // Update based on elapsed time (even if 0, show initial estimate)
                         updateTimeEstimate(null, elapsed);
                     }
                     
