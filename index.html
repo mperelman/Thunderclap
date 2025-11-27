@@ -1448,21 +1448,28 @@
                 // Function to update time estimate display
                 function updateTimeEstimate(chunkCount, elapsed) {
                     const estimateEl = document.getElementById('time-estimate');
+                    if (!estimateEl) {
+                        console.warn('time-estimate element not found');
+                        return;
+                    }
+                    
                     const estimate = calculateTimeEstimate(chunkCount);
                     
-                    if (estimate) {
+                    if (chunkCount && estimate) {
                         estimateEl.textContent = `${chunkCount} chunks: ${estimate}`;
                     } else if (elapsed > 0) {
                         // Fallback estimate based on elapsed time
                         if (elapsed < 15) {
-                            estimateEl.textContent = '~15-30s';
+                            estimateEl.textContent = '~15-30s remaining';
                         } else if (elapsed < 45) {
-                            estimateEl.textContent = '~30-60s';
+                            estimateEl.textContent = '~30-60s remaining';
+                        } else if (elapsed < 90) {
+                            estimateEl.textContent = '~1-2min remaining';
                         } else {
-                            estimateEl.textContent = '~1-2min';
+                            estimateEl.textContent = '~2-3min remaining';
                         }
                     } else {
-                        estimateEl.textContent = '~15-30s';
+                        estimateEl.textContent = 'Estimating...';
                     }
                 }
                 
@@ -1491,10 +1498,11 @@
                     // Debug logging
                     console.log(`[POLL ${pollCount}] Status: ${statusData.status}, Elapsed: ${elapsed}s`);
                     
-                    // Update time estimate if chunk count is available
+                    // Update time estimate - always update if we have elapsed time or chunk count
                     if (statusData.chunk_count) {
                         updateTimeEstimate(statusData.chunk_count, elapsed);
                     } else if (elapsed > 0) {
+                        // Update based on elapsed time even if chunk_count not available yet
                         updateTimeEstimate(null, elapsed);
                     }
                     
@@ -1624,15 +1632,31 @@
                     
                     // Show checking message immediately, then update when check completes
                     errorMsg = '⚠️ Connection lost. Checking server status...';
-                    document.getElementById('answer').innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">${errorMsg}</p>`;
+                    // Update tab with error (if tab exists)
+                    if (typeof tabId !== 'undefined' && tabId) {
+                        updateTab(tabId, {
+                            status: 'error',
+                            error: errorMsg
+                        });
+                    }
                     checkServer().then(msg => {
-                        document.getElementById('answer').innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">${msg}</p>`;
+                        // Update tab with final error message
+                        if (typeof tabId !== 'undefined' && tabId) {
+                            updateTab(tabId, {
+                                status: 'error',
+                                error: msg
+                            });
+                        }
                     }).catch(() => {
                         // If check fails, show server not running message
-                        document.getElementById('answer').innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">⚠️ Server is not running.\n\nPlease start the server by running: python server.py\n\nThen try your query again.</p>`;
+                        if (typeof tabId !== 'undefined' && tabId) {
+                            updateTab(tabId, {
+                                status: 'error',
+                                error: '⚠️ Server is not running.\n\nPlease start the server by running: python server.py\n\nThen try your query again.'
+                            });
+                        }
                     });
                     // Skip default error display - we handle it above with async check
-                    document.getElementById('suggested-questions-container').style.display = 'none';
                     document.getElementById('result').classList.add('show', 'error');
                     return; // Exit early to prevent default error display below
                 } else if (errorMsg.includes('Token quota') || errorMsg.includes('token quota') || errorMsg.includes('250,000 tokens')) {
@@ -1651,8 +1675,13 @@
                         errorMsg += '\n\nRequest ID: ' + reqId;
                     }
                 }
-                document.getElementById('answer').innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">${errorMsg}</p>`;
-                document.getElementById('suggested-questions-container').style.display = 'none';
+                // Update tab with error (if tab exists) - don't use old 'answer' element
+                if (typeof tabId !== 'undefined' && tabId) {
+                    updateTab(tabId, {
+                        status: 'error',
+                        error: errorMsg
+                    });
+                }
                 document.getElementById('result').classList.add('show', 'error');
             } finally {
                 // Clear progress timeout and hide loading
