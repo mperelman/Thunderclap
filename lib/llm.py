@@ -282,32 +282,38 @@ class LLMAnswerGenerator:
                     raise
             except Exception as e:
                 last_err = e
+                error_msg = str(e)
+                print(f"  [ERROR] Async API call failed: {error_msg}")
+                
                 if self._is_rate_limit_error(e):
                     quota_error_count += 1
                     # Fail fast if we've hit quota errors too many times
                     if quota_error_count > max_quota_retries:
                         # Distinguish between actual quota exhaustion vs temporary rate limiting
                         if self._is_actual_quota_exhaustion(e):
-                            raise Exception(f"API quota exhausted after {quota_error_count} attempts. Please try again later or check your API quota limits.")
+                            raise Exception(f"API quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
                         else:
                             # This is likely a temporary rate limit, not quota exhaustion
-                            raise Exception(f"Rate limit errors persisted after {quota_error_count} retry attempts. The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
+                            # Log the actual error for debugging
+                            print(f"  [DEBUG] Async rate limit error details: {error_msg}")
+                            raise Exception(f"Rate limit errors persisted after {quota_error_count} failures ({max_quota_retries} retries). The API may be temporarily rate-limited. Please wait 30-60 seconds and try again.")
                     
                     # Try to extract retry delay from error message
                     retry_delay = self._extract_retry_delay(e)
                     if retry_delay:
                         wait_time = retry_delay + 1  # Add 1 second buffer
-                        print(f"  [RETRY] Async quota exceeded, waiting {wait_time:.1f}s (from API) (attempt {quota_error_count}/{max_quota_retries})")
+                        print(f"  [RETRY] Async rate limit detected, waiting {wait_time:.1f}s (from API) (attempt {quota_error_count}/{max_quota_retries})")
                     else:
-                        wait_time = backoff
-                        print(f"  [RETRY] Async rate limited, backing off {backoff:.1f}s (attempt {quota_error_count}/{max_quota_retries})")
+                        # For rate limits, use longer backoff - start with 5s, cap at 60s
+                        wait_time = min(backoff, 60)  # Cap at 60s for rate limits
+                        print(f"  [RETRY] Async rate limit detected, backing off {wait_time:.1f}s (attempt {quota_error_count}/{max_quota_retries})")
                         backoff = min(backoff * 2, 60.0)  # Cap at 60 seconds
                     
                     import asyncio
                     await asyncio.sleep(wait_time)
                     attempts += 1
                     continue
-                print(f"  [ERROR] Async API call failed: {e}")
+                print(f"  [ERROR] Non-rate-limit async API call failed: {e}")
                 raise
         raise last_err or Exception(f"Async API call failed after {max_attempts} retries")
     
