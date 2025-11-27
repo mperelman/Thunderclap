@@ -981,9 +981,13 @@
             
             console.log('Final valid questions after strict filtering:', finalValidQuestions.length);
             
+            if (finalValidQuestions.length === 0) {
+                console.warn('No valid questions after strict filtering!');
+            }
+            
             let html = '<div class="suggested-questions"><h3>Related Questions</h3><ul>';
-            for (let i = 0; i < validQuestions.length; i++) {
-                const q = validQuestions[i].trim();
+            for (let i = 0; i < finalValidQuestions.length; i++) {
+                const q = finalValidQuestions[i].trim();
                 // Escape single quotes for onclick handler - use JSON.stringify for safer escaping
                 const escaped = q.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ').replace(/\r/g, '');
                 // Escape HTML for display
