@@ -119,22 +119,22 @@ def build_complete_index():
             # So we need to merge them again now that identity augmentation has added them
             print("  Re-merging TERM_GROUPS to include identity-augmented underscore versions...")
             for main_term, variants in TERM_GROUPS.items():
-                all_chunks = set()
+                merged_chunk_set = set()  # Use different variable name to avoid shadowing outer all_chunks
                 # Collect from all space variants
                 for variant in variants:
                     if variant in indices['term_to_chunks']:
-                        all_chunks.update(indices['term_to_chunks'][variant])
+                        merged_chunk_set.update(indices['term_to_chunks'][variant])
                 # Collect from underscore versions
                 main_term_underscore = main_term.replace(' ', '_')
                 if main_term_underscore in indices['term_to_chunks']:
-                    all_chunks.update(indices['term_to_chunks'][main_term_underscore])
+                    merged_chunk_set.update(indices['term_to_chunks'][main_term_underscore])
                 for variant in variants:
                     variant_underscore = variant.replace(' ', '_')
                     if variant_underscore in indices['term_to_chunks']:
-                        all_chunks.update(indices['term_to_chunks'][variant_underscore])
+                        merged_chunk_set.update(indices['term_to_chunks'][variant_underscore])
                 
-                if all_chunks:
-                    merged_list = list(all_chunks)
+                if merged_chunk_set:
+                    merged_list = list(merged_chunk_set)
                     indices['term_to_chunks'][main_term] = merged_list
                     for variant in variants:
                         indices['term_to_chunks'][variant] = merged_list.copy()
