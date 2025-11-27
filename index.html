@@ -728,12 +728,12 @@
         function extractSuggestedQuestions(text) {
             // Extract suggested questions section - match all common variations
             const patterns = [
+                /Related Questions:\s*([\s\S]*?)$/i,  // Check this first - most common format
+                /\*\*Related Questions:\*\*\s*([\s\S]*?)$/i,
                 /Here are some potential follow-up questions.*?:\s*([\s\S]*?)$/i,
                 /Potential follow-up questions.*?:\s*([\s\S]*?)$/i,
                 /Follow-up questions.*?:\s*([\s\S]*?)$/i,
-                /\*\*Related Questions:\*\*\s*([\s\S]*?)$/i,
                 /\*\*Suggested Questions:\*\*\s*([\s\S]*?)$/i,
-                /Related Questions:\s*([\s\S]*?)$/i,
                 /Suggested Questions:\s*([\s\S]*?)$/i,
                 /\*\*Questions for further exploration:\*\*\s*([\s\S]*?)$/i
             ];
