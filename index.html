@@ -639,12 +639,13 @@
                             console.warn('Filtering incomplete question (starts mid-sentence):', cleaned);
                             return false;
                         }
-                        // Remove incomplete questions that end with prepositions/articles/verbs (likely truncated)
+                        // Remove incomplete questions that end with prepositions/articles/verbs/gerunds (likely truncated)
                         // Common prepositions/articles that shouldn't end a question: with, of, to, for, in, on, at, by, the, a, an
                         // Also catch verbs that indicate incomplete questions: affect, impact, influence, change, shape, lead, cause
-                        const incompletePattern = /\b(with|of|to|for|in|on|at|by|from|about|into|onto|upon|the|a|an|affect|impact|influence|change|shape|lead|cause|result|contribute|relate|connect|link)\s*$/i;
-                        if (incompletePattern.test(cleaned) && !cleaned.endsWith('?')) {
-                            console.warn('Filtering incomplete question (ends with preposition/article):', cleaned);
+                        // Also catch gerunds/participles: surrounding, involving, relating, concerning
+                        const incompletePattern = /\b(with|of|to|for|in|on|at|by|from|about|into|onto|upon|the|a|an|affect|impact|influence|change|shape|lead|cause|result|contribute|relate|connect|link|surrounding|involving|relating|concerning|regarding)\s*$/i;
+                        if (incompletePattern.test(cleaned)) {
+                            console.warn('Filtering incomplete question (ends with incomplete word):', cleaned);
                             return false;
                         }
                         // Remove questions that don't end with ? and are clearly incomplete

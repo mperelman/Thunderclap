@@ -614,9 +614,12 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    - Each question MUST end with "?" (CRITICAL - incomplete questions will be rejected)
    - Each question MUST be complete and grammatically correct (not cut off mid-sentence)
    - Each question MUST start with a question word (What, How, When, Where, Why, Who, Tell me)
-   - CRITICAL: Questions that end with verbs like "affect", "impact", "influence", "change", "shape" are INCOMPLETE - they must complete the thought (e.g., "affect First National Bank of Boston?" not just "affect")
+   - CRITICAL: Questions that end with verbs, gerunds, or prepositions are INCOMPLETE - they must complete the thought
+   - CRITICAL: Questions ending with words like "affect", "impact", "influence", "change", "shape", "surrounding", "involving", "relating" are INCOMPLETE - they must complete the thought with the object and end with "?"
    - BAD: "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect" (incomplete - missing the object and question mark)
+   - BAD: "What were the circumstances surrounding" (incomplete - missing the object and question mark)
    - GOOD: "How did regulatory changes, such as the Clayton Antitrust Act of 1914 and the Glass-Steagall Act of 1933, affect First National Bank of Boston?"
+   - GOOD: "What were the circumstances surrounding the Clayton Antitrust Act's impact on First National Bank of Boston?"
    - BAD: "Related Questions\n1. Question?2. Question?3. Question?" (all on one line, numbered)
    - BAD: "Related Questions\nQuestion 1? Question 2? Question 3?" (all on one line, no bullets)
    - GOOD: "Related Questions:\n* What was the role of X?\n* How did Y evolve?\n* What were the circumstances surrounding Z?"
@@ -849,7 +852,14 @@ FINAL SELF-CHECK BEFORE SUBMITTING (MANDATORY):
    - Verify all institution names are italicized - scan every bank/firm/company name
    - Ensure smooth transitions - every paragraph should connect to the previous one with explicit transition phrases
 
-6. CRITICAL: Verify Related Questions formatting - each question MUST be on its own line starting with "* " (bullet), each ending with "?", NOT numbered (1., 2., 3.), NOT all on one line
+6. CRITICAL: Verify Related Questions formatting and completeness:
+   - Each question MUST be on its own line starting with "* " (bullet), each ending with "?", NOT numbered (1., 2., 3.), NOT all on one line
+   - CRITICAL: Check that NO question ends with incomplete words like "affect", "impact", "surrounding", "involving", "relating" - these are INCOMPLETE
+   - CRITICAL: Every question MUST end with "?" - if any question doesn't end with "?", it's INCOMPLETE and must be deleted or completed
+   - BAD: "What were the circumstances surrounding" (incomplete - missing object and question mark)
+   - BAD: "How did regulatory changes affect" (incomplete - missing object and question mark)
+   - GOOD: "What were the circumstances surrounding the Clayton Antitrust Act's impact on First National Bank of Boston?"
+   - GOOD: "How did regulatory changes, such as the Clayton Antitrust Act of 1914, affect First National Bank of Boston?"
 
 Answer:"""
     
