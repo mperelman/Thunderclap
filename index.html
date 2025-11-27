@@ -963,6 +963,10 @@
                             }
                         }
                         return true;
+                    }).map(q => {
+                        // Ensure all questions end with ?
+                        const cleaned = q.trim();
+                        return cleaned.endsWith('?') ? cleaned : cleaned + '?';
                     });
                     
                     console.log('[EXTRACT] Questions after filtering:', questions.length, questions);
