@@ -1379,6 +1379,7 @@
                 throw new Error('Query is taking too long. Please try again or simplify your question.');
                 
             } catch (error) {
+                console.error('Error in askQuestion:', error);
                 // Clear timer on error (timerInterval is in outer scope)
                 if (typeof timerInterval !== 'undefined' && timerInterval) {
                     clearInterval(timerInterval);
