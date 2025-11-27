@@ -13,7 +13,7 @@
     <meta http-equiv="Expires" content="0">
     <title>Thunderclap AI - Banking History</title>
     <script>
-        // AGGRESSIVE cache busting - force reload if no version param
+        // Cache busting - check version but don't block execution
         (function() {
             const CURRENT_VERSION = '7';
             const BUILD_ID = 'e7d79db-2025-01-22-17:45-platinum';
@@ -22,12 +22,13 @@
             
             // Check if build ID matches
             const metaBuildId = document.querySelector('meta[name="build-id"]')?.content;
-            if (metaBuildId !== BUILD_ID) {
+            if (metaBuildId && metaBuildId !== BUILD_ID) {
                 console.warn('⚠️ Build ID mismatch! Expected:', BUILD_ID, 'Got:', metaBuildId);
             }
             
-            // If version doesn't match or missing, force reload
-            if (currentVersion !== CURRENT_VERSION) {
+            // If version doesn't match or missing, force reload (but only once to avoid loops)
+            if (currentVersion !== CURRENT_VERSION && !sessionStorage.getItem('version-check-done')) {
+                sessionStorage.setItem('version-check-done', 'true');
                 urlParams.set('v', CURRENT_VERSION);
                 urlParams.set('_t', Date.now());
                 const newUrl = window.location.pathname + '?' + urlParams.toString() + window.location.hash;
@@ -1699,17 +1700,18 @@
         console.log('Version:', window.THUNDERCLAP_VERSION || 'UNKNOWN - OLD VERSION DETECTED!');
         
         // Visual indicator that new version is loaded
-        if (window.THUNDERCLAP_VERSION === '5') {
-            console.log('✅ NEW VERSION LOADED - Timer, Tabs, and Filtering enabled');
+        if (window.THUNDERCLAP_VERSION === '7') {
+            console.log('✅ NEW VERSION LOADED - Timer, Tabs, Platinum Theme enabled');
+        } else if (window.THUNDERCLAP_VERSION) {
+            console.log('⚠️ Version', window.THUNDERCLAP_VERSION, 'loaded (expected 7)');
         } else {
-            console.error('❌ OLD VERSION DETECTED - Please clear cache and reload!');
-            // Show alert if old version
-            setTimeout(() => {
-                if (!window.THUNDERCLAP_VERSION) {
-                    alert('⚠️ Old cached version detected!\n\nPlease:\n1. Press Ctrl+Shift+R (hard refresh)\n2. Or clear browser cache\n3. Or wait 2-3 minutes for GitHub Pages to update');
-                }
-            }, 2000);
+            console.warn('⚠️ Version not detected - may be cached');
         }
+        
+        // Ensure functions are globally accessible
+        window.askQuestion = askQuestion;
+        window.showIndexed = showIndexed;
+        console.log('Functions registered:', { askQuestion: typeof askQuestion, showIndexed: typeof showIndexed });
     </script>
 </body>
 </html>
