@@ -6,14 +6,25 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <!-- Version: 2025-01-22-17:15 - Timer/Estimate/Tabs Fix v5 - FORCE CACHE BUST -->
+    <!-- Version: 2025-01-22-17:30 - Timer/Estimate/Tabs Fix v6 - BUILD: 8cbb7ad -->
+    <meta name="build-id" content="8cbb7ad-2025-01-22-17:30">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Thunderclap AI - Banking History</title>
     <script>
         // AGGRESSIVE cache busting - force reload if no version param
         (function() {
-            const CURRENT_VERSION = '5';
+            const CURRENT_VERSION = '6';
+            const BUILD_ID = '8cbb7ad-2025-01-22-17:30';
             const urlParams = new URLSearchParams(window.location.search);
             const currentVersion = urlParams.get('v');
+            
+            // Check if build ID matches
+            const metaBuildId = document.querySelector('meta[name="build-id"]')?.content;
+            if (metaBuildId !== BUILD_ID) {
+                console.warn('⚠️ Build ID mismatch! Expected:', BUILD_ID, 'Got:', metaBuildId);
+            }
             
             // If version doesn't match or missing, force reload
             if (currentVersion !== CURRENT_VERSION) {
@@ -26,8 +37,9 @@
             }
             
             // Version matches - log for debugging
-            console.log('✅ Running version', CURRENT_VERSION, '- All features enabled');
+            console.log('✅ Running version', CURRENT_VERSION, 'Build:', BUILD_ID, '- All features enabled');
             window.THUNDERCLAP_VERSION = CURRENT_VERSION;
+            window.THUNDERCLAP_BUILD = BUILD_ID;
         })();
     </script>
     <style>
