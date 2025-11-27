@@ -865,9 +865,14 @@
                         if (cleaned.match(/^[\d\s\.\?]+$/)) return false;
                         // CRITICAL: Filter incomplete questions FIRST (before checking for question mark)
                         // Check for questions ending with incomplete prepositions/verbs (with or without question mark)
-                        const incompleteEndings = /\b(between|affect|surrounding|involving|regarding|concerning|about|with|for|to|from|of|in|on|at|by|during|through|across|among|within|without|against|toward|towards|into|onto|upon|under|over|above|below|beside|besides|beyond|behind|before|after|since|until|while)\s*$/i;
+                        const incompleteEndings = /\b(between|affect|surrounding|involving|regarding|concerning|about|with|for|to|from|of|in|on|at|by|during|through|across|among|within|without|against|toward|towards|into|onto|upon|under|over|above|below|beside|besides|beyond|behind|before|after|since|until|while)\s*\?*$/i;
                         if (incompleteEndings.test(cleaned)) {
                             console.warn('Incomplete question detected (ends with preposition/verb):', cleaned);
+                            return false;
+                        }
+                        // CRITICAL: Also check if question ends with "surrounding" or "between" even if it has a question mark
+                        if (cleaned.match(/\b(surrounding|between|affect|involving)\s*\?$/i)) {
+                            console.warn('Incomplete question detected (ends with verb/preposition + ?):', cleaned);
                             return false;
                         }
                         // CRITICAL: Questions must end with "?"
@@ -947,6 +952,34 @@
             
             console.log('Valid questions after filtering:', validQuestions.length);
             console.log('Valid questions:', validQuestions);
+            
+            // CRITICAL: Filter out incomplete questions that end with prepositions/verbs
+            const finalValidQuestions = validQuestions.filter(q => {
+                const cleaned = q.trim();
+                // Must end with "?"
+                if (!cleaned.endsWith('?')) {
+                    console.log('Filtered out (no question mark):', cleaned);
+                    return false;
+                }
+                // Must not end with incomplete patterns
+                const incompleteEndings = /\b(between|affect|surrounding|involving|regarding|concerning|about|with|for|to|from|of|in|on|at|by|during|through|across|among|within|without|against|toward|towards|into|onto|upon|under|over|above|below|beside|besides|beyond|behind|before|after|since|until|while)\s*\?$/i;
+                if (incompleteEndings.test(cleaned)) {
+                    console.log('Filtered out (incomplete ending):', cleaned);
+                    return false;
+                }
+                // Must have substantial content after question word
+                const questionStarters = /^(what|how|when|where|why|who|tell me|describe|explain)\s+/i;
+                if (questionStarters.test(cleaned)) {
+                    const afterStarter = cleaned.replace(questionStarters, '').trim();
+                    if (afterStarter.length < 25) { // Increased minimum length
+                        console.log('Filtered out (too short after starter):', cleaned);
+                        return false;
+                    }
+                }
+                return true;
+            });
+            
+            console.log('Final valid questions after strict filtering:', finalValidQuestions.length);
             
             let html = '<div class="suggested-questions"><h3>Related Questions</h3><ul>';
             for (let i = 0; i < validQuestions.length; i++) {
