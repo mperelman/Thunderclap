@@ -1268,9 +1268,14 @@
                         // Extract suggested questions
                         const parsed = extractSuggestedQuestions(statusData.answer);
                         
-                        // Show result
-                        document.getElementById('answer').innerHTML = formatMarkdown(parsed.text);
-                        displaySuggestedQuestions(parsed.questions);
+                        // Update tab with results
+                        updateTab(tabId, {
+                            answer: parsed.text,
+                            questions: parsed.questions,
+                            status: 'complete',
+                            error: null
+                        });
+                        
                         document.getElementById('result').classList.add('show');
                         document.getElementById('result').classList.remove('error');
                         setProgress(100, 'Done');
