@@ -837,11 +837,11 @@
                         normalizedSection = normalizedSection.replace(/^\n+/, '');
                     }
                     
-                    const lines = normalizedSection.split('\n');
+                    const normalizedLines = normalizedSection.split('\n');
                     let currentQuestion = '';
                     
-                    for (let i = 0; i < lines.length; i++) {
-                        const line = lines[i].trim();
+                    for (let i = 0; i < normalizedLines.length; i++) {
+                        const line = normalizedLines[i].trim();
                         if (!line) {
                             // Empty line - if we have a current question, save it
                             if (currentQuestion && currentQuestion.length > 10) {
