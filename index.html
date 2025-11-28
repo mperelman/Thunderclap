@@ -768,14 +768,40 @@
                         return { text: cleanText, questions: lineMatches };
                     }
                     
-                    // Handle questions on same line separated by asterisks: "Question?* Question?* Question?"
-                    // Also handle: "* Question?* Question?* Question?"
-                    // Check if questions are separated by asterisks (may have newline after "Related Questions:")
+                    // Handle questions on same line separated by "?*" pattern: "Question?* Question?* Question?"
+                    // CRITICAL: Split on "?*" not just "*" because questions contain asterisks for italics (e.g., *Bank of Montreal*)
+                    if (questionsSection.includes('?*')) {
+                        // Remove any leading/trailing whitespace and normalize
+                        const normalized = questionsSection.trim();
+                        // Split on "?*" or "? *" (question mark followed by asterisk, with optional space)
+                        const questionSplit = normalized.split(/\?\s*\*\s*/);
+                        const questionMatches = [];
+                        for (let i = 0; i < questionSplit.length; i++) {
+                            let q = questionSplit[i].trim();
+                            // Add back the ? that was removed by split (except for last one if it already has ?)
+                            if (i < questionSplit.length - 1 || !q.endsWith('?')) {
+                                q = q + '?';
+                            }
+                            // Skip empty or very short questions
+                            if (q.length > 10) {
+                                questionMatches.push(q);
+                            }
+                        }
+                        if (questionMatches.length > 0) {
+                            const cleanText = text.substring(0, match.index).trim();
+                            console.log('[EXTRACT] Found', questionMatches.length, 'questions from ?* split:', questionMatches);
+                            return { text: cleanText, questions: questionMatches };
+                        }
+                    }
+                    
+                    // Fallback: Handle questions separated by just "*" (less common, but handle it)
+                    // Only if we didn't find "?*" pattern
                     if (questionsSection.includes('*')) {
                         // Remove any leading/trailing whitespace and normalize
                         const normalized = questionsSection.trim();
-                        // Split by asterisk - handle both "* Question?" and "Question?* Question?" formats
-                        const asteriskSplit = normalized.split(/\s*\*\s*/);
+                        // Try splitting on "* " (asterisk followed by space and capital letter/question word)
+                        // This handles "* Question?* Question?" format
+                        const asteriskSplit = normalized.split(/\s*\*\s+(?=[A-Z])/);
                         const asteriskMatches = [];
                         for (const part of asteriskSplit) {
                             const q = part.trim();
@@ -787,17 +813,11 @@
                             } else if (q.length > 10 && !q.endsWith('?') && q.match(/^(What|Who|How|When|Where|Why|Tell me)/i)) {
                                 // Question word but missing ? - add it
                                 asteriskMatches.push(q + '?');
-                            } else if (q.length > 10 && q.match(/^(What|Who|How|When|Where|Why|Tell me)/i)) {
-                                // Question that might be incomplete but starts with question word
-                                // Check if it's actually a complete thought
-                                if (!q.match(/\b(between|surrounding|affect|involving)\s*$/i)) {
-                                    asteriskMatches.push(q.endsWith('?') ? q : q + '?');
-                                }
                             }
                         }
                         if (asteriskMatches.length > 0) {
                             const cleanText = text.substring(0, match.index).trim();
-                            console.log('[EXTRACT] Found', asteriskMatches.length, 'questions from asterisk-split:', asteriskMatches);
+                            console.log('[EXTRACT] Found', asteriskMatches.length, 'questions from asterisk-split fallback:', asteriskMatches);
                             return { text: cleanText, questions: asteriskMatches };
                         }
                     }
