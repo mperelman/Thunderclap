@@ -768,26 +768,36 @@
                         return { text: cleanText, questions: lineMatches };
                     }
                     
-                    // Handle questions on same line separated by asterisks: "* Question?* Question?* Question?"
-                    // Split by asterisk followed by space and question word, or asterisk at start of question
-                    if (questionsSection.includes('*') && !questionsSection.includes('\n')) {
-                        // All on one line with asterisks - split properly
-                        // Pattern: "* Question?* Question?* Question?" or "Question?* Question?* Question?"
-                        const asteriskSplit = questionsSection.split(/\s*\*\s*/);
+                    // Handle questions on same line separated by asterisks: "Question?* Question?* Question?"
+                    // Also handle: "* Question?* Question?* Question?"
+                    // Check if questions are separated by asterisks (may have newline after "Related Questions:")
+                    if (questionsSection.includes('*')) {
+                        // Remove any leading/trailing whitespace and normalize
+                        const normalized = questionsSection.trim();
+                        // Split by asterisk - handle both "* Question?" and "Question?* Question?" formats
+                        const asteriskSplit = normalized.split(/\s*\*\s*/);
                         const asteriskMatches = [];
                         for (const part of asteriskSplit) {
                             const q = part.trim();
+                            // Skip empty parts
+                            if (!q) continue;
                             // Must be a complete question (ends with ? and has content)
                             if (q.length > 10 && q.endsWith('?')) {
                                 asteriskMatches.push(q);
                             } else if (q.length > 10 && !q.endsWith('?') && q.match(/^(What|Who|How|When|Where|Why|Tell me)/i)) {
                                 // Question word but missing ? - add it
                                 asteriskMatches.push(q + '?');
+                            } else if (q.length > 10 && q.match(/^(What|Who|How|When|Where|Why|Tell me)/i)) {
+                                // Question that might be incomplete but starts with question word
+                                // Check if it's actually a complete thought
+                                if (!q.match(/\b(between|surrounding|affect|involving)\s*$/i)) {
+                                    asteriskMatches.push(q.endsWith('?') ? q : q + '?');
+                                }
                             }
                         }
                         if (asteriskMatches.length > 0) {
                             const cleanText = text.substring(0, match.index).trim();
-                            console.log('[EXTRACT] Found', asteriskMatches.length, 'questions from asterisk-split (same line):', asteriskMatches);
+                            console.log('[EXTRACT] Found', asteriskMatches.length, 'questions from asterisk-split:', asteriskMatches);
                             return { text: cleanText, questions: asteriskMatches };
                         }
                     }
