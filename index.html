@@ -768,6 +768,30 @@
                         return { text: cleanText, questions: lineMatches };
                     }
                     
+                    // Handle questions on same line separated by asterisks: "* Question?* Question?* Question?"
+                    // Split by asterisk followed by space and question word, or asterisk at start of question
+                    if (questionsSection.includes('*') && !questionsSection.includes('\n')) {
+                        // All on one line with asterisks - split properly
+                        // Pattern: "* Question?* Question?* Question?" or "Question?* Question?* Question?"
+                        const asteriskSplit = questionsSection.split(/\s*\*\s*/);
+                        const asteriskMatches = [];
+                        for (const part of asteriskSplit) {
+                            const q = part.trim();
+                            // Must be a complete question (ends with ? and has content)
+                            if (q.length > 10 && q.endsWith('?')) {
+                                asteriskMatches.push(q);
+                            } else if (q.length > 10 && !q.endsWith('?') && q.match(/^(What|Who|How|When|Where|Why|Tell me)/i)) {
+                                // Question word but missing ? - add it
+                                asteriskMatches.push(q + '?');
+                            }
+                        }
+                        if (asteriskMatches.length > 0) {
+                            const cleanText = text.substring(0, match.index).trim();
+                            console.log('[EXTRACT] Found', asteriskMatches.length, 'questions from asterisk-split (same line):', asteriskMatches);
+                            return { text: cleanText, questions: asteriskMatches };
+                        }
+                    }
+                    
                     // Fallback: Also try: Questions on same line separated by multiple spaces and asterisks
                     // Pattern: "Question1*   Question2*   Question3?"
                     const inlineAsteriskPattern = /([^*?]+(?:[?]|Tell me|What|Who|How|When|Where|Why)[^*]*)/gi;
@@ -781,6 +805,7 @@
                     }
                     if (inlineMatches.length > 1) {
                         const cleanText = text.substring(0, match.index).trim();
+                        console.log('[EXTRACT] Found', inlineMatches.length, 'questions from inline pattern:', inlineMatches);
                         return { text: cleanText, questions: inlineMatches };
                     }
                     
@@ -1375,8 +1400,9 @@
             if (timerEl) {
                 timerEl.textContent = '0s';
             }
+            // Initialize time estimate immediately
             if (estimateEl) {
-                estimateEl.textContent = 'Estimating...';
+                estimateEl.textContent = '~15-30s';
             }
             
             // Start timer immediately (update every second)
@@ -1385,6 +1411,18 @@
                 const elapsed = Math.floor((Date.now() - timerStart) / 1000);
                 if (timerEl) {
                     timerEl.textContent = `${elapsed}s`;
+                }
+                // Update estimate based on elapsed time if no chunk_count yet
+                if (estimateEl && elapsed > 0) {
+                    if (elapsed < 15) {
+                        estimateEl.textContent = '~15-30s remaining';
+                    } else if (elapsed < 45) {
+                        estimateEl.textContent = '~30-60s remaining';
+                    } else if (elapsed < 90) {
+                        estimateEl.textContent = '~1-2min remaining';
+                    } else {
+                        estimateEl.textContent = '~2-3min remaining';
+                    }
                 }
             }, 1000);
             
