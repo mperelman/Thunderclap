@@ -1814,8 +1814,17 @@
                     return; // Exit early to prevent default error display below
                 } else if (errorMsg.includes('Token quota') || errorMsg.includes('token quota') || errorMsg.includes('250,000 tokens')) {
                     errorMsg = '⚠️ Token quota exceeded (250,000 tokens/minute). Your query uses too many tokens.\n\n' +
-                               'Please wait 1-2 minutes and try again, or simplify your question to use fewer chunks.\n\n' +
-                               'Your question is preserved above - just click "Ask Thunderclap" when ready.';
+                               '**Suggestions to split your query:**\n' +
+                               '1. Wait 1-2 minutes and try again\n' +
+                               '2. Make your question more specific with a time period:\n' +
+                               '   • "Tell me about Bank of Montreal in the 19th century"\n' +
+                               '   • "Tell me about Bank of Montreal from 1817-1860"\n' +
+                               '   • "Tell me about Bank of Montreal from 1860-1900"\n' +
+                               '3. Ask about specific aspects separately:\n' +
+                               '   • "What was Bank of Montreal\'s role in Canadian railroads?"\n' +
+                               '   • "How did Bank of Montreal expand internationally?"\n\n' +
+                               'Each more specific query will use fewer chunks and can be run in separate tabs.\n\n' +
+                               'Your question is preserved above - try making it more specific and click "Ask Thunderclap" again.';
                 } else if (errorMsg.includes('quota exhausted') || (errorMsg.includes('quota') && errorMsg.includes('exhausted') && errorMsg.includes('daily'))) {
                     errorMsg = '⚠️ API daily quota exhausted. Please wait and try again later, or check your API quota limits.\n\n' +
                                'Your question is preserved above - just click "Ask Thunderclap" when ready.';
