@@ -1414,14 +1414,15 @@
                 }
                 // Update estimate based on elapsed time if no chunk_count yet
                 if (estimateEl && elapsed > 0) {
+                    // Show estimated total time, not remaining
                     if (elapsed < 15) {
-                        estimateEl.textContent = '~15-30s remaining';
+                        estimateEl.textContent = '~15-30s total';
                     } else if (elapsed < 45) {
-                        estimateEl.textContent = '~30-60s remaining';
+                        estimateEl.textContent = '~30-60s total';
                     } else if (elapsed < 90) {
-                        estimateEl.textContent = '~1-2min remaining';
+                        estimateEl.textContent = '~1-2min total';
                     } else {
-                        estimateEl.textContent = '~2-3min remaining';
+                        estimateEl.textContent = '~2-3min total';
                     }
                 }
             }, 1000);
@@ -1547,23 +1548,23 @@
                     const estimate = calculateTimeEstimate(chunkCount);
                     
                     if (chunkCount && estimate) {
-                        estimateEl.textContent = `${chunkCount} chunks: ${estimate}`;
+                        estimateEl.textContent = `${chunkCount} chunks: ${estimate} total`;
                         console.log('[TIME] Updated with chunk count:', estimateEl.textContent);
                     } else if (elapsed > 0) {
-                        // Fallback estimate based on elapsed time
+                        // Fallback estimate based on elapsed time - show estimated total
                         if (elapsed < 15) {
-                            estimateEl.textContent = '~15-30s remaining';
+                            estimateEl.textContent = '~15-30s total';
                         } else if (elapsed < 45) {
-                            estimateEl.textContent = '~30-60s remaining';
+                            estimateEl.textContent = '~30-60s total';
                         } else if (elapsed < 90) {
-                            estimateEl.textContent = '~1-2min remaining';
+                            estimateEl.textContent = '~1-2min total';
                         } else {
-                            estimateEl.textContent = '~2-3min remaining';
+                            estimateEl.textContent = '~2-3min total';
                         }
                         console.log('[TIME] Updated with elapsed time:', estimateEl.textContent);
                     } else {
                         // Even with no elapsed time, show initial estimate
-                        estimateEl.textContent = '~15-30s';
+                        estimateEl.textContent = '~15-30s total';
                         console.log('[TIME] Set initial estimate:', estimateEl.textContent);
                     }
                 }
