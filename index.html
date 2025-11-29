@@ -744,32 +744,9 @@
                     const questionsSection = match[1];
                     const questions = [];
                     
-                    // First: Parse line by line - this handles bullet format correctly
-                    // Format: "* Question 1?\n* Question 2?\n* Question 3?"
-                    const lines = questionsSection.split('\n');
-                    const lineMatches = [];
-                    for (const line of lines) {
-                        const trimmed = line.trim();
-                        // Match bullet format: "* Question?" or "- Question?" or "• Question?"
-                        const bulletMatch = trimmed.match(/^[-•→*]\s*(.+)$/);
-                        if (bulletMatch) {
-                            const q = bulletMatch[1].trim();
-                            if (q.length > 10 && q.endsWith('?')) {
-                                lineMatches.push(q);
-                            }
-                        } else if (trimmed.length > 10 && trimmed.endsWith('?') && !trimmed.match(/^\d+\./)) {
-                            // Standalone question without bullet
-                            lineMatches.push(trimmed);
-                        }
-                    }
-                    if (lineMatches.length > 0) {
-                        const cleanText = text.substring(0, match.index).trim();
-                        console.log('[EXTRACT] Found', lineMatches.length, 'questions from line-by-line parsing:', lineMatches);
-                        return { text: cleanText, questions: lineMatches };
-                    }
-                    
-                    // Handle questions on same line separated by "?*" pattern: "Question?* Question?* Question?"
+                    // PRIORITY 1: Handle questions on same line separated by "?*" pattern: "Question?* Question?* Question?"
                     // CRITICAL: Split on "?*" not just "*" because questions contain asterisks for italics (e.g., *Bank of Montreal*)
+                    // This must come FIRST because it's the most common format from the LLM
                     if (questionsSection.includes('?*')) {
                         // Remove any leading/trailing whitespace and normalize
                         const normalized = questionsSection.trim();
@@ -794,7 +771,35 @@
                         }
                     }
                     
-                    // Fallback: Handle questions separated by just "*" (less common, but handle it)
+                    // PRIORITY 2: Parse line by line - this handles bullet format correctly
+                    // Format: "* Question 1?\n* Question 2?\n* Question 3?"
+                    const lines = questionsSection.split('\n');
+                    const lineMatches = [];
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        // Skip empty lines
+                        if (!trimmed) continue;
+                        // Match bullet format: "* Question?" or "- Question?" or "• Question?"
+                        const bulletMatch = trimmed.match(/^[-•→*]\s*(.+)$/);
+                        if (bulletMatch) {
+                            const q = bulletMatch[1].trim();
+                            if (q.length > 10 && q.endsWith('?')) {
+                                lineMatches.push(q);
+                            }
+                        } else if (trimmed.length > 10 && trimmed.endsWith('?') && !trimmed.match(/^\d+\./)) {
+                            // Standalone question without bullet (but check it doesn't contain ?* which means it's multiple questions)
+                            if (!trimmed.includes('?*')) {
+                                lineMatches.push(trimmed);
+                            }
+                        }
+                    }
+                    if (lineMatches.length > 0) {
+                        const cleanText = text.substring(0, match.index).trim();
+                        console.log('[EXTRACT] Found', lineMatches.length, 'questions from line-by-line parsing:', lineMatches);
+                        return { text: cleanText, questions: lineMatches };
+                    }
+                    
+                    // PRIORITY 3: Fallback: Handle questions separated by just "*" (less common, but handle it)
                     // Only if we didn't find "?*" pattern
                     if (questionsSection.includes('*')) {
                         // Remove any leading/trailing whitespace and normalize
