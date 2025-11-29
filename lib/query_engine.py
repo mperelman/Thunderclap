@@ -2930,10 +2930,37 @@ Answer:"""
         Uses generate_answer to ensure consistent narrative quality (same prompt as everywhere else).
         """
         import time
+        from lib.config import MAX_TOKENS_PER_REQUEST, MAX_TOKENS_PER_MINUTE
         llm_start = time.time()
         chunk_count = len(chunks)
         estimated_input_tokens = self._estimate_tokens_for_chunks(chunks)
         print(f"    [LLM_CALL] Starting LLM call with {chunk_count} chunks (~{estimated_input_tokens:,} tokens)")
+        # Expose last chunk count for server/frontend status
+        try:
+            self.last_chunk_count = chunk_count
+        except Exception:
+            # Don't let diagnostic attributes break the query
+            pass
+        
+        # FAST FAIL: If this query would obviously exceed our safe token limits,
+        # abort BEFORE calling the LLM so the user doesn't wait 300s for a failure.
+        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.95)
+        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.95)
+        effective_limit = min(hard_input_limit, minute_budget)
+        if estimated_input_tokens > effective_limit:
+            print(
+                f"    [LLM_CALL] PRE-CHECK TOKEN QUOTA EXCEEDED: "
+                f"estimated_input_tokens={estimated_input_tokens:,}, "
+                f"limit≈{effective_limit:,} (request={MAX_TOKENS_PER_REQUEST:,}, minute={MAX_TOKENS_PER_MINUTE:,})"
+            )
+            # Raise a clear error that the frontend can recognize and render with guidance
+            raise Exception(
+                "Token quota exceeded (250,000 tokens/minute limit, pre-check). "
+                "Your question pulls in too many document chunks at once, so this query "
+                "would exceed the safe token limit before the LLM can answer. "
+                "Please split the question into smaller time periods or more specific aspects "
+                "and run them in separate tabs."
+            )
         
         try:
             self._wait_for_token_rate_limit(chunks)
