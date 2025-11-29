@@ -32,7 +32,6 @@ from .engines.period_engine import PeriodEngine
 from .acronyms import ACRONYM_EXPANSIONS
 from .term_utils import canonicalize_term
 from .constants import YEAR_PREFIX_EXPANSIONS, STOP_WORDS
-from .economic_systems import format_definitions_for_prompt
 from .text_utils import split_into_sentences
 from .answer_reviewer import AnswerReviewer
 
@@ -726,8 +725,6 @@ class QueryEngine:
             print(f"    [RECONNECT] New collection ID: {self.collection.id}")
         data = self.collection.get(ids=chunk_ids_list)
         
-        # Store chunk count for external access (e.g., time estimation)
-        self.last_chunk_count = len(chunk_ids_list)
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
         # Augment with endnotes if results are sparse
@@ -1622,14 +1619,11 @@ MARKET/ASSET CLASS RULES:
     
     def _is_ideology_query(self, question: str) -> bool:
         q = (question or "").lower()
-        ideology_terms = ("marxism", "marxist", "socialism", "socialist", "communism", "communist", "collectivism", "collectivist")
-        economic_system_terms = ("free market", "free-market", "command economy", "command economies", "mixed model", "mixed economy", "mixed economies", "economic system", "economic systems")
-        return any(k in q for k in ideology_terms) or any(k in q for k in economic_system_terms)
+        return any(k in q for k in ("marxism", "marxist", "socialism", "socialist", "communism", "communist", "collectivism", "collectivist"))
     
     def _filter_chunks_for_ideology(self, chunks: list, question: str) -> list:
-        """Keep chunks that mention the ideology/economic system AND (banking/transition OR crisis); prefer identity-bearing chunks."""
+        """Keep chunks that mention the ideology AND (banking/transition OR crisis); prefer identity-bearing chunks."""
         ideology_terms = ["marxism", "marxist", "socialism", "socialist", "communism", "communist", "collectivism", "collectivist"]
-        economic_system_terms = ["free market", "free-market", "command economy", "command economies", "mixed model", "mixed economy", "mixed economies", "economic system", "economic systems"]
         finance_terms = [
             "bank", "banking", "credit", "money", "market", "securities", "bond", "equity",
             "stock", "capital", "liquidity", "exchange", "regulation", "balance sheet",
@@ -1651,12 +1645,11 @@ MARKET/ASSET CLASS RULES:
         for text, meta in chunks:
             tl = text.lower()
             has_ideology = any(t in tl for t in ideology_terms)
-            has_economic_system = any(t in tl for t in economic_system_terms)
             has_finance = any(f in tl for f in finance_terms)
             has_transition = any(t in tl for t in transition_terms)
             has_crisis = any(c in tl for c in crisis_terms)
             has_identity = any(i in tl for i in identity_terms)
-            if (has_ideology or has_economic_system) and (has_finance or has_transition or has_crisis):
+            if has_ideology and (has_finance or has_transition or has_crisis):
                 kept_primary.append((text, meta))
                 if has_identity:
                     kept_with_identity.append((text, meta))
@@ -1667,76 +1660,32 @@ MARKET/ASSET CLASS RULES:
         return chunks
     
     def _build_prompt_ideology(self, question: str, chunks: list) -> str:
-        """Prompt for evaluating economic systems through sociology, banking, and financial panics lens."""
+        """Prompt that constrains ideology topics to finance/banking mechanics, panics, and identity effects."""
         chunks_text = "\n\n".join([
             f"--- CHUNK {i+1} ---\n{text}"
             for i, (text, meta) in enumerate(chunks)
         ])
-        definitions_text = format_definitions_for_prompt()
-        return f"""You are an expert analyst evaluating economic systems (free markets, socialism, Marxism, command economies, mixed models) using a lens of sociology, banking, and financial panics. Answer this question: {question}
-
-{definitions_text}
+        return f"""You are a banking historian. Answer this question through an IDEOLOGY → SOCIETY & FINANCE lens: {question}
 
 DOCUMENT CHUNKS:
 {chunks_text}
 
-Follow this checklist strictly:
-
-1. **System Definition**:
-   - Clearly define the economic system in theory.
-   - Distinguish between theoretical principles and real-world implementations.
-   - Identify where the system falls on the state vs market spectrum.
-
-2. **Sociological Perspective**:
-   - Describe impacts on social structures, class dynamics, labor relations, and social mobility.
-   - Tie social hierarchies or cultural norms to systemic features (e.g., dependency, inequality, incentives), rather than just historical narrative.
-   - Examine societal responses to economic policies and crises (strikes, protests, cohesion).
-
-3. **Banking & Financial Structures**:
-   - Explain the role of banking institutions, central banks, and commercial banks.
-   - Show how banking interacts with the system (state-controlled vs private, access to credit, regulation, liquidity).
-   - Explicitly connect banking structures to systemic outcomes and vulnerability to crises.
-
-4. **Financial Panics & Crises**:
-   - Identify systemic vulnerabilities (bank failures, credit crunches, housing busts, stock market crashes).
-   - Analyze how each system historically responded to crises, including social and economic consequences.
-   - Present events selectively, chronologically where helpful, but focus on illustrating system-level mechanisms and effects.
-   - Avoid assigning causes to ethnicity, religion, conspiracies, or moral character.
-
-5. **Evidence-Based Evaluation**:
-   - Prioritize empirical outcomes, measurable effects, or historical systemic performance.
-   - Avoid dense, multi-country narratives that don't illustrate systemic consequences.
-   - Link historical examples directly to system performance, banking, and social outcomes.
-
-6. **Trade-Offs & Systemic Analysis**:
-   - Explicitly compare strengths and weaknesses of each system across social, banking, and crisis dimensions.
-   - Discuss conditional scenarios under which each system performs well or poorly.
-   - Highlight trade-offs between efficiency, equity, stability, and societal impact.
-
-7. **Response Structure**:
-   1. System Definition & Theory
-   2. Sociological Impacts (class, social hierarchy, social mobility)
-   3. Banking & Financial Structures (bank types, access to credit, regulation)
-   4. Historical Financial Crises / Panics (chronological, selective, system-focused)
-   5. Trade-Offs & Interaction Effects (strengths, weaknesses, conditional performance)
-   6. Balanced Summary / Conditional Recommendations
-
-**Strict Rules**:
-- Avoid identity-based explanations (race, religion, ethnicity) for outcomes.
-- Avoid ideological framing, moral judgments, or cherry-picked political anecdotes.
-- Do not overwhelm with narrative history; prioritize causal links to systemic performance.
-- Always distinguish between theoretical models and historical implementations.
-- Present trade-offs and balanced analysis rather than declaring one system "better."
-- SUBJECT ACTIVE: Keep the economic system as the subject in every sentence (e.g., "Socialism shaped banking structures...").
-- MECHANICS: Institutions italicized (e.g., *FRS*, *NYSE*, *Banque de France*); people normal. No platitudes.
-- PARAGRAPHS: MAX 3 sentences per paragraph; MIN 5 paragraphs total.
-- CHRONOLOGY: Move forward in time with clear transitions. Do not mix decades in the same paragraph.
-- END: "Related Questions:" with 3–5 substantial, document-grounded items.
+IDEOLOGY → FINANCE RULES:
+1) SUBJECT ACTIVE (ALWAYS): Keep the ideology as the subject in every sentence (e.g., "Marxism shaped bank nationalization...").
+2) SOCIETY & STATE (MANDATORY): Focus on nationalization/collectivization mechanics, property rights, redistribution, repression or protections, and how the state reallocated economic control.
+3) PANICS/CRISES (MANDATORY WHEN PRESENT): If sources mention panics/crises (1763, 1825, 1873, 1893, 1907, 1929, 1973–74, 1987, 1998, 2008), explain social effects: employment, credit access, expropriations, migration, class/caste conflict, and changes to who could access finance.
+4) IDENTITY (MANDATORY WHEN PRESENT): Explain effects on minorities and identity groups documented in the sources (e.g., exclusions or access for Jews, Quakers, Dalits, women/widows), and how those shaped roles (minority middlemen).
+5) STRICT RELEVANCE: Avoid unrelated event/name “laundry lists.” Do NOT jump across unrelated locales. Do NOT introduce new people unless the documents show a direct tie to the subject; when a person is named, state in 1 short clause why they matter to this ideology’s effect on banking/society.
+6) FINANCIAL MECHANICS (WHEN PRESENT): Banking structure, credit allocation, benchmarks, dealer/state balance sheets—only as they inform social outcomes.
+7) CHRONOLOGY WITH TRANSITIONS: Move forward in time (e.g., 1910s → 1930s → 1950s). Use explicit transitions that explain how one period leads to the next. Do not mix decades in the same paragraph.
+8) PARAGRAPHS: MAX 3 sentences per paragraph; MIN 5 paragraphs total.
+9) MECHANICS: Institutions italicized (e.g., *FRS*, *NYSE*, *Banque de France*); people normal. No platitudes.
+10) END: "Related Questions:" with 3–5 substantial, document-grounded items.
 
 ENTITY INTRODUCTIONS (MANDATORY):
 - Expand acronyms/institutions on first mention with role (e.g., "*Vneshtorg* (Soviet Bank for Foreign Trade)").
 - For each person first mentioned, add role + relevance to SUBJECT in one short clause; otherwise omit the name.
-- Do NOT use unknown acronyms unless you define them from the provided chunks; if the chunks do not define, avoid using them.
+- Do NOT use unknown acronyms (e.g., BSU) unless you define them from the provided chunks; if the chunks do not define, avoid using them.
 - For any non-subject entity mentioned (person or institution), explicitly state in the same sentence how they relate to the SUBJECT.
 """
     
