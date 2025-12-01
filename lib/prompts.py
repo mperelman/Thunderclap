@@ -158,6 +158,25 @@ RULE #2: ACCURACY - NEVER FABRICATE
 - CRITICAL: NEVER infer ancestral relationships (e.g., "descendant of", "ancestor of") unless documents EXPLICITLY state them
 - CRITICAL: If documents say "connected to contemporary bankers", write that - do NOT infer "descendant of" or other ancestral relationships
 - CRITICAL: When documents mention connections to contemporary people, include those connections exactly as stated - do NOT replace them with inferred ancestral relationships
+- CRITICAL: DISTINGUISH ENTITIES WITH SAME NAME BUT DIFFERENT LOCATIONS (MANDATORY):
+  * Entities with the same name but different locations are DISTINCT entities - NEVER conflate them
+  * Examples: "National City Bank of New York" vs "National City Bank of Seattle" vs "National City Bank of Cleveland" are THREE DIFFERENT banks
+  * Examples: "First National Bank of Boston" vs "First National Bank of New York" are DIFFERENT banks
+  * CRITICAL: Some location names are similar but DIFFERENT (e.g., "New York" vs "New York City" vs "New York State" are different locations)
+  * CRITICAL: When location follows the name (e.g., "Morgan London", "Rothschild Paris"), this indicates a BRANCH or AFFILIATED OFFICE of the same entity, NOT a different entity
+  * Examples: "Morgan London" = Morgan's London branch/office (same entity as "Morgan New York", just different location)
+  * Examples: "Rothschild Paris" = Rothschild's Paris branch (same entity as "Rothschild London", just different location)
+  * When documents mention entities with the same name, ALWAYS specify the location/city to distinguish them
+  * If documents mention "National City Bank" without location, check context (city, state, region) to identify which one
+  * If you cannot determine which entity from context, state: "Documents mention [Name] but do not specify which location"
+  * NEVER write as if multiple entities with the same name are the same institution unless documents explicitly state they merged or are the same OR the location follows the name (indicating a branch)
+  * BAD: "National City Bank was founded in New York and also in Seattle" (conflates two different banks)
+  * BAD: "Morgan London and Morgan New York are different banks" (they're branches of the same entity)
+  * GOOD: "National City Bank of New York was founded in [year]. Separately, National City Bank of Seattle was founded in 1906 by James Maxwell Sr."
+  * GOOD: "Morgan established a London branch (Morgan London) and maintained operations in New York (Morgan New York), both part of the same entity."
+  * GOOD: "Documents mention National City Bank in Cleveland, where John Sherwin began his banking career, and separately National City Bank of Seattle, founded in 1906."
+  * When discussing activities, ALWAYS specify which location: "National City Bank of New York [action]" vs "National City Bank of Seattle [action]"
+  * When discussing branches, clarify they're the same entity: "Morgan London [action]" (branch of Morgan entity)
 - For panics: Include panics when documents mention them during time periods when the subject was active, showing how the subject navigated or was affected (based on what documents say)
 - For laws: Only include if documents explicitly link them to the subject
 - Better to be incomplete than inaccurate
@@ -275,18 +294,23 @@ NARRATIVE STRUCTURE:
    - ALWAYS start with ONE clear framing sentence that establishes:
      * The subject's origin/context (e.g., "The Goldsmid family branched from the Goldschmidt banking dynasty of Frankfurt")
      * For institutions: MUST include founding date/origin AND the CONTEXTUAL EVENTS that precipitated it (e.g., "First National Bank of Boston was established in 1863 when Safety Fund Bank converted under the National Bank Act of 1863 during the Civil War, becoming First National Bank of Boston")
+     * CRITICAL: For institutions with common names, MUST specify location/city to distinguish from other entities with the same name (e.g., "National City Bank of New York" not just "National City Bank")
      * Key branches/locations (e.g., "with the London Goldsmids descending from Benedict Goldschmidt's Amsterdam line, while the Frankfurt branch retained the original Goldschmidt name")
      * The historical significance or trajectory (e.g., "establishing a lineage that would become key financiers to European governments")
    - This framing sentence sets up the entire narrative - don't just jump into facts
    - CRITICAL: For institutions, NEVER skip founding/origin information - it's the most important context
    - CRITICAL: For institutions, ALWAYS include the CONTEXTUAL EVENTS that precipitated founding (laws, panics, crises, wars, regulatory changes) - things don't happen accidentally
+   - CRITICAL: For institutions with common names, check chunks for location context (city, state, region) and ALWAYS specify in opening: "National City Bank of New York" vs "National City Bank of Seattle" vs "National City Bank of Cleveland"
    - MANDATORY: If the chunks mention how the institution was founded (e.g., "Safety Fund Bank became First NB of Boston in 1863"), you MUST include this in the opening sentence
    - MANDATORY: Search the chunks for founding information - look for words like "became", "established", "founded", "changed to", "formerly" - and include this information
    - MANDATORY: Search the chunks for CONTEXTUAL EVENTS around founding - look for laws (e.g., "National Bank Act"), panics, crises, wars, regulatory changes mentioned in the same chunks as founding - these explain WHY the founding happened
+   - MANDATORY: If chunks mention multiple entities with the same name, check location context (city, state, region) in each chunk to identify which entity is being discussed - NEVER conflate them
    - BAD: "The First National Bank of Boston, a Boston Brahmin-led institution, played a significant role..." (missing founding date)
    - BAD: "First National Bank of Boston was established in 1863 when Safety Fund Bank became First National Bank of Boston..." (missing contextual events - why did this happen?)
+   - BAD: "National City Bank refers to at least two distinct institutions..." (should specify locations: "National City Bank of New York" vs "National City Bank of Seattle")
    - BAD: "The Goldsmid family originated from descendants of Benedict Goldschmidt who moved to Amsterdam..."
    - GOOD: "First National Bank of Boston was established in 1863 when Safety Fund Bank converted under the National Bank Act of 1863 during the Civil War, becoming First National Bank of Boston and evolving into a Boston Brahmin-led institution that played a significant role in American finance."
+   - GOOD: "National City Bank of New York was established in [year] and later became Citi. Separately, National City Bank of Seattle was founded in 1906 by James Maxwell Sr, and National City Bank of Cleveland operated in Ohio, where John Sherwin began his banking career."
    - GOOD: "The Goldsmid family branched from the Goldschmidt banking and trading dynasty of Frankfurt, with the London Goldsmids descending from Benedict Goldschmidt's Amsterdam line, while the Frankfurt branch retained the original Goldschmidt name."
 
 1. RELEVANCE FILTER - STAY ON TOPIC:

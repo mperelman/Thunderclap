@@ -1151,6 +1151,175 @@
             askQuestion();
         }
         
+        // Cache indexed terms for hyperlinking
+        let indexedTerms = [];
+        let indexedTermsLoaded = false;
+        
+        async function loadIndexedTerms() {
+            if (indexedTermsLoaded) {
+                console.log('[HYPERLINK] Terms already loaded, skipping');
+                return Promise.resolve();
+            }
+            try {
+                const termsUrl = API_URL.replace('/query', '/terms');
+                console.log('[HYPERLINK] Starting to load indexed terms...');
+                console.log('[HYPERLINK] API_URL:', API_URL);
+                console.log('[HYPERLINK] Terms URL:', termsUrl);
+                const response = await fetch(termsUrl);
+                console.log('[HYPERLINK] Fetch response status:', response.status, response.statusText);
+                if (response.ok) {
+                    const data = await response.json();
+                    indexedTerms = data.terms || [];
+                    // Sort by length (longest first) to match longer terms first
+                    indexedTerms.sort((a, b) => b.length - a.length);
+                    indexedTermsLoaded = true;
+                    console.log(`[HYPERLINK] ✅ Loaded ${indexedTerms.length} indexed terms for hyperlinking`);
+                    console.log('[HYPERLINK] Sample terms:', indexedTerms.slice(0, 10));
+                    return Promise.resolve();
+                } else {
+                    const errorText = await response.text().catch(() => '');
+                    console.error('[HYPERLINK] ❌ Failed to load terms, status:', response.status, 'Response:', errorText);
+                    return Promise.reject(new Error(`HTTP ${response.status}: ${errorText}`));
+                }
+            } catch (e) {
+                console.error('[HYPERLINK] ❌ Exception loading indexed terms:', e);
+                console.error('[HYPERLINK] Error details:', e.message, e.stack);
+                return Promise.reject(e);
+            }
+        }
+        
+        function hyperlinkIndexedTerms(html) {
+            if (!indexedTerms || indexedTerms.length === 0) {
+                console.log('[HYPERLINK] No indexed terms available, skipping hyperlinking');
+                return html;
+            }
+            console.log('[HYPERLINK] Processing HTML for hyperlinking,', indexedTerms.length, 'terms available');
+            
+            // Use DOM manipulation for safer HTML processing
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // Process all text nodes
+            const walker = document.createTreeWalker(
+                tempDiv,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: function(node) {
+                        // Skip if parent is a link or script/style tag
+                        const parent = node.parentElement;
+                        if (parent && (
+                            parent.tagName === 'A' || 
+                            parent.tagName === 'SCRIPT' || 
+                            parent.tagName === 'STYLE' ||
+                            parent.classList.contains('indexed-term-link')
+                        )) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                },
+                false
+            );
+            
+            const textNodes = [];
+            let node;
+            while (node = walker.nextNode()) {
+                textNodes.push(node);
+            }
+            
+            // Process each text node (in reverse order to avoid index issues)
+            let totalLinks = 0;
+            for (let i = textNodes.length - 1; i >= 0; i--) {
+                const textNode = textNodes[i];
+                const text = textNode.textContent;
+                const linked = hyperlinkText(text);
+                if (linked !== text) {
+                    // Replace text node with HTML
+                    const wrapper = document.createElement('span');
+                    wrapper.innerHTML = linked;
+                    const linkCount = (linked.match(/indexed-term-link/g) || []).length;
+                    totalLinks += linkCount;
+                    // Replace the text node with the wrapper's children
+                    const parent = textNode.parentNode;
+                    while (wrapper.firstChild) {
+                        parent.insertBefore(wrapper.firstChild, textNode);
+                    }
+                    parent.removeChild(textNode);
+                }
+            }
+            
+            if (totalLinks > 0) {
+                console.log(`[HYPERLINK] Created ${totalLinks} hyperlinks`);
+            } else {
+                console.log('[HYPERLINK] No hyperlinks created - checking if terms match...');
+            }
+            
+            return tempDiv.innerHTML;
+        }
+        
+        function hyperlinkText(text) {
+            if (!text || text.trim().length === 0 || !indexedTerms || indexedTerms.length === 0) return text;
+            
+            // Create a case-insensitive map for quick lookup
+            const termMap = new Map();
+            indexedTerms.forEach(term => {
+                const lower = term.toLowerCase();
+                if (!termMap.has(lower)) {
+                    termMap.set(lower, term);
+                }
+            });
+            
+            // Sort terms by length (longest first) to match longer terms first
+            const sortedTerms = Array.from(termMap.entries()).sort((a, b) => b[0].length - a[0].length);
+            
+            // Collect all matches first (with their positions)
+            const matches = [];
+            for (const [lowerTerm, originalTerm] of sortedTerms) {
+                // Escape special regex characters
+                const escaped = lowerTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // Match whole words only (word boundaries), case-insensitive
+                const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+                
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    matches.push({
+                        index: match.index,
+                        length: match[0].length,
+                        text: match[0],
+                        term: originalTerm,
+                        lowerTerm: lowerTerm
+                    });
+                }
+            }
+            
+            // Sort matches by index (descending) so we can replace from end to start
+            matches.sort((a, b) => b.index - a.index);
+            
+            // Remove overlapping matches (keep the longest one)
+            const nonOverlapping = [];
+            for (const match of matches) {
+                const overlaps = nonOverlapping.some(existing => 
+                    match.index < existing.index + existing.length && 
+                    match.index + match.length > existing.index
+                );
+                if (!overlaps) {
+                    nonOverlapping.push(match);
+                }
+            }
+            
+            // Replace matches from end to start (so indices don't shift)
+            let result = text;
+            for (const match of nonOverlapping) {
+                const query = `Tell me about ${match.term}`;
+                const escapedQuery = query.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+                const link = `<a href="#" class="indexed-term-link" onclick="event.preventDefault(); selectIndexedQuery('${escapedQuery}'); return false;" style="color: #c9a227; text-decoration: underline; cursor: pointer;" title="Click to search for: ${match.term}">${match.text}</a>`;
+                
+                result = result.substring(0, match.index) + link + result.substring(match.index + match.length);
+            }
+            
+            return result;
+        }
+        
         function formatMarkdown(text) {
             // Simple markdown-to-HTML converter
             let html = text;
@@ -1177,6 +1346,9 @@
             html = html.replace(/<p>(<h[123]>)/g, '$1');
             html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
             
+            // Hyperlink indexed terms
+            html = hyperlinkIndexedTerms(html);
+            
             return html;
         }
         
@@ -1184,6 +1356,8 @@
             document.getElementById('question').value = query;
             const modal = document.getElementById('indexed-modal');
             if (modal) modal.remove();
+            // Optionally auto-submit the query
+            // askQuestion(); // Uncomment if you want clicking a term to auto-search
         }
 
         
@@ -1946,17 +2120,36 @@
         
         // Visual indicator that new version is loaded
         if (window.THUNDERCLAP_VERSION === '8') {
-            console.log('✅ NEW VERSION LOADED - Timer, Tabs, Gold Theme enabled');
+            console.log('✅ NEW VERSION LOADED - Timer, Tabs, Gold Theme, Indexed Term Hyperlinks enabled');
         } else if (window.THUNDERCLAP_VERSION) {
-            console.log('⚠️ Version', window.THUNDERCLAP_VERSION, 'loaded (expected 7)');
+            console.log('⚠️ Version', window.THUNDERCLAP_VERSION, 'loaded (expected 8)');
         } else {
             console.warn('⚠️ Version not detected - may be cached');
         }
         
+        // Load indexed terms for hyperlinking
+        console.log('[HYPERLINK] About to call loadIndexedTerms(), API_URL:', API_URL);
+        (async () => {
+            try {
+                await loadIndexedTerms();
+                console.log('[HYPERLINK] Terms loaded, ready for hyperlinking');
+                // Test with a sample to verify it works
+                if (indexedTerms.length > 0) {
+                    console.log('[HYPERLINK] Sample term test:', indexedTerms[0]);
+                } else {
+                    console.warn('[HYPERLINK] No terms loaded - hyperlinking will be disabled');
+                }
+            } catch (err) {
+                console.error('[HYPERLINK] Failed to load indexed terms:', err);
+                console.warn('[HYPERLINK] Hyperlinking will be disabled until terms are loaded');
+            }
+        })();
+        
         // Ensure functions are globally accessible (for backward compatibility)
         window.askQuestion = askQuestion;
         window.showIndexed = showIndexed;
-        console.log('Functions registered globally:', { askQuestion: typeof askQuestion, showIndexed: typeof showIndexed });
+        window.selectIndexedQuery = selectIndexedQuery;
+        console.log('Functions registered globally:', { askQuestion: typeof askQuestion, showIndexed: typeof showIndexed, selectIndexedQuery: typeof selectIndexedQuery });
     </script>
 </body>
 </html>
