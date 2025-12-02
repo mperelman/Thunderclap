@@ -13,6 +13,7 @@ sys.path.insert(0, '.')
 
 from lib.document_parser import load_all_documents
 from lib.index_builder import build_indices, build_endnote_mappings, save_indices, split_into_chunks, augment_indices_with_identities, create_deduplicated_term_files
+from lib.panic_indexer import augment_index_with_panics
 from lib.config import DATA_DIR, COLLECTION_NAME
 import chromadb
 from chromadb.config import Settings
@@ -53,6 +54,11 @@ def build_complete_index():
     # Step 3: Build term indices (for body chunks)
     print("Step 3: Building term indices...")
     indices = build_indices(all_chunks, chunk_ids)
+    print()
+    
+    # Step 3a: Augment indices with panic terms
+    print("Step 3a: Augmenting indices with panic terms...")
+    indices['term_to_chunks'] = augment_index_with_panics(indices['term_to_chunks'], all_chunks, chunk_ids)
     print()
     
     # Step 3b: Load identity detection results and augment indices
