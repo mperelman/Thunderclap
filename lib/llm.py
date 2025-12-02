@@ -23,21 +23,8 @@ class LLMAnswerGenerator:
         # Try Gemini first
         if self.api_key:
             try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                # Use low-variance generation to stabilize output length/structure
-                self._gen_config = {
-                    "temperature": 0.2,
-                    "top_p": 0.3,
-                    "top_k": 1,
-                    "max_output_tokens": 16384,  # Increased to handle very long responses
-                    "candidate_count": 1,
-                }
-                self.client = genai.GenerativeModel(
-                    model_name='gemini-2.5-flash',
-                    generation_config=self._gen_config,
-                )
-                print("  [OK] Gemini API configured (2.5 Flash, 15 RPM / 1M TPM / 200 RPD)")
+                from lib.llm_config import get_llm_client
+                self.client = get_llm_client()
             except Exception as e:
                 print(f"  [ERROR] Gemini setup failed: {e}")
                 self.client = None
