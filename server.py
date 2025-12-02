@@ -223,6 +223,24 @@ def get_status():
         "trace_count": len(TRACE_BUFFER)
     }
 
+@app.get("/terms")
+def get_indexed_terms():
+    """Get list of indexed terms for hyperlinking in responses."""
+    from lib.config import INDICES_FILE
+    try:
+        if os.path.exists(INDICES_FILE):
+            with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            terms = list(data.get('term_to_chunks', {}).keys())
+            # Filter out very short terms and common words
+            filtered_terms = [t for t in terms if len(t) > 3 and t.lower() not in ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use']]
+            return {"terms": filtered_terms}
+        else:
+            return {"terms": []}
+    except Exception as e:
+        print(f"[ERROR] Failed to load indexed terms: {e}")
+        return {"terms": []}
+
 if __name__ == "__main__":
     import uvicorn
     print("="*60)
