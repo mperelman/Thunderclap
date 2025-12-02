@@ -225,7 +225,8 @@ def get_status():
 
 @app.get("/terms")
 def get_indexed_terms():
-    """Get list of indexed terms for hyperlinking in responses."""
+    """Get list of indexed terms for hyperlinking in responses.
+    Updated: 2025-01-22 - Force redeploy."""
     from lib.config import INDICES_FILE
     try:
         if os.path.exists(INDICES_FILE):
