@@ -488,19 +488,71 @@ def build_indices(chunks, chunk_ids):
                         name_changes[old_lower] = set()
                     name_changes[old_lower].add(new_lower)
         
-        # Extract surnames
+        # Extract surnames and middle names (middle names are often maiden/mother's names)
         proper_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', chunk)
         for full_name in proper_names:
             parts = full_name.split()
             surname_raw = parts[-1].lower()
             surname = canonicalize_term(surname_raw)
             
+            # Index surname
             for target in filter(None, {surname_raw, surname}):
                 term_counts[target] = term_counts.get(target, 0) + 1
                 if target not in term_to_chunks:
                     term_to_chunks[target] = []
                 term_to_chunks[target].append(chunk_id)
             chunk_entity_list.append(surname or surname_raw)
+            
+            # Index middle names (maiden/mother's names) - if there are 3+ parts
+            if len(parts) >= 3:
+                for middle_part in parts[1:-1]:  # All parts except first and last
+                    middle_lower = middle_part.lower()
+                    middle_canonical = canonicalize_term(middle_lower)
+                    for target in filter(None, {middle_lower, middle_canonical}):
+                        term_counts[target] = term_counts.get(target, 0) + 1
+                        if target not in term_to_chunks:
+                            term_to_chunks[target] = []
+                        term_to_chunks[target].append(chunk_id)
+        
+        # Index identity terms directly from text (Jewish, female, widow, Black, etc.)
+        # These are important searchable terms even without identity detector
+        identity_terms = [
+            # Religious
+            r'\b(jewish|jew|jews|sephardi|sephardim|ashkenazi|ashkenazim|court\s+jew|court\s+jews|kohanim|katz)\b',
+            r'\b(quaker|quakers|huguenot|huguenots|mennonite|mennonites|puritan|puritans|calvinist|presbyterian)\b',
+            r'\b(muslim|muslims|islam|islamic|sunni|shia|shiite|alawite|druze|ismaili)\b',
+            r'\b(maronite|maronites|coptic|greek\s+orthodox|orthodox)\b',
+            r'\b(parsee|parsees|zoroastrian|hindu|brahmin|bania)\b',
+            # Ethnic
+            r'\b(armenian|armenians|greek|greeks|lebanese|syrian|syrians|palestinian|palestinians)\b',
+            r'\b(basque|basques|hausa|yoruba|igbo|fulani|akan|zulu)\b',
+            r'\b(scottish|scots|irish|welsh)\b',
+            # Racial
+            r'\b(black|african\s+american|african-american)\b',
+            # Gender
+            r'\b(female|woman|women|widow|widows|queen|princess|lady|heiress)\b',
+            # Latino/Hispanic
+            r'\b(latino|latina|latinos|latinas|hispanic|hispanics|mexican|cuban|puerto\s+rican)\b',
+        ]
+        
+        visible = strip_tags(chunk)
+        for pattern in identity_terms:
+            matches = re.finditer(pattern, visible, re.IGNORECASE)
+            for match in matches:
+                identity_term = match.group(1).lower().replace(' ', '_')  # Normalize spaces to underscores
+                canonical = canonicalize_term(identity_term)
+                target = canonical if canonical else identity_term
+                term_counts[target] = term_counts.get(target, 0) + 1
+                if target not in term_to_chunks:
+                    term_to_chunks[target] = []
+                term_to_chunks[target].append(chunk_id)
+                # Also index with spaces (for natural search)
+                space_version = target.replace('_', ' ')
+                if space_version != target:
+                    term_counts[space_version] = term_counts.get(space_version, 0) + 1
+                    if space_version not in term_to_chunks:
+                        term_to_chunks[space_version] = []
+                    term_to_chunks[space_version].append(chunk_id)
         
         # Index firm names (italicized)
         # Pattern 1: Complete firm name in single <italic> tag: <italic>FirmName</italic>
@@ -526,19 +578,20 @@ def build_indices(chunks, chunk_ids):
                     location_clean = canonicalize_term(location_part)
                     location_lower = location_clean if location_clean else location_part.lower()
                     
-                    # Index as "first nb of boston" (or "second nb of new york", etc.)
-                    nb_phrase = f"{first_lower} nb of {location_lower}"
-                    term_counts[nb_phrase] = term_counts.get(nb_phrase, 0) + 1
-                    if nb_phrase not in term_to_chunks:
-                        term_to_chunks[nb_phrase] = []
-                    term_to_chunks[nb_phrase].append(chunk_id)
+                    # Index as firm name only (e.g., "first national bank" or "first nb")
+                    # Don't index location phrases like "first nb of boston"
+                    firm_name = f"{first_lower} nb"
+                    term_counts[firm_name] = term_counts.get(firm_name, 0) + 1
+                    if firm_name not in term_to_chunks:
+                        term_to_chunks[firm_name] = []
+                    term_to_chunks[firm_name].append(chunk_id)
                     
-                    # Also index expanded version: "first national bank of boston"
-                    expanded_phrase = f"{first_lower} national bank of {location_lower}"
-                    term_counts[expanded_phrase] = term_counts.get(expanded_phrase, 0) + 1
-                    if expanded_phrase not in term_to_chunks:
-                        term_to_chunks[expanded_phrase] = []
-                    term_to_chunks[expanded_phrase].append(chunk_id)
+                    # Also index expanded version: "first national bank"
+                    expanded_name = f"{first_lower} national bank"
+                    term_counts[expanded_name] = term_counts.get(expanded_name, 0) + 1
+                    if expanded_name not in term_to_chunks:
+                        term_to_chunks[expanded_name] = []
+                    term_to_chunks[expanded_name].append(chunk_id)
         
         # Pattern 3: Firm name in plain text (no italics): "First NB of Boston", "Second NB of New York", etc.
         # These appear in regular text and should be indexed as phrases
@@ -560,19 +613,20 @@ def build_indices(chunks, chunk_ids):
                 location_clean = canonicalize_term(location_part)
                 location_lower = location_clean if location_clean else location_part.lower()
                 
-                # Index as "first nb of boston" (or "second nb of new york", etc.)
-                nb_phrase = f"{first_lower} nb of {location_lower}"
-                term_counts[nb_phrase] = term_counts.get(nb_phrase, 0) + 1
-                if nb_phrase not in term_to_chunks:
-                    term_to_chunks[nb_phrase] = []
-                term_to_chunks[nb_phrase].append(chunk_id)
+                # Index as firm name only (e.g., "first national bank" or "first nb")
+                # Don't index location phrases like "first nb of boston"
+                firm_name = f"{first_lower} nb"
+                term_counts[firm_name] = term_counts.get(firm_name, 0) + 1
+                if firm_name not in term_to_chunks:
+                    term_to_chunks[firm_name] = []
+                term_to_chunks[firm_name].append(chunk_id)
                 
-                # Also index expanded version: "first national bank of boston"
-                expanded_phrase = f"{first_lower} national bank of {location_lower}"
-                term_counts[expanded_phrase] = term_counts.get(expanded_phrase, 0) + 1
-                if expanded_phrase not in term_to_chunks:
-                    term_to_chunks[expanded_phrase] = []
-                term_to_chunks[expanded_phrase].append(chunk_id)
+                # Also index expanded version: "first national bank"
+                expanded_name = f"{first_lower} national bank"
+                term_counts[expanded_name] = term_counts.get(expanded_name, 0) + 1
+                if expanded_name not in term_to_chunks:
+                    term_to_chunks[expanded_name] = []
+                term_to_chunks[expanded_name].append(chunk_id)
         
         # Pattern 1: Standard firm names in <italic> tags
         for match in firm_pattern.finditer(chunk):
@@ -598,23 +652,8 @@ def build_indices(chunks, chunk_ids):
                             term_to_chunks[firm_expanded] = []
                         term_to_chunks[firm_expanded].append(chunk_id)
                 
-                # Index firm name + location phrases (e.g., "Rothschild Vienna")
-                # Look for location name immediately after the closing </italic> tag
-                end_pos = match.end()
-                # Check next 50 characters for a location name (capitalized word)
-                following_text = chunk[end_pos:end_pos+50]
-                # Match location, handling possessives and plurals flexibly
-                location_match = re.search(r"\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)(?:'s|'s|s)?", following_text)
-                if location_match:
-                    location = location_match.group(1).strip()
-                    # Only index if location is a single word or common 2-word place (avoid full sentences)
-                    if len(location.split()) <= 2 and not location.endswith(('.', ',', ';', ':', '!', '?')):
-                        # Index base phrase without possessive/plural
-                        firm_location_phrase = f"{firm_lower} {location.lower()}"
-                        term_counts[firm_location_phrase] = term_counts.get(firm_location_phrase, 0) + 1
-                        if firm_location_phrase not in term_to_chunks:
-                            term_to_chunks[firm_location_phrase] = []
-                        term_to_chunks[firm_location_phrase].append(chunk_id)
+                # Don't index firm + location phrases (e.g., "Rothschild Vienna")
+                # Only index the firm name itself
         
         # Index acronyms (exact token) and their exact spelled-out names (dictionary) for ALL acronyms
         visible = strip_tags(chunk)
@@ -665,30 +704,12 @@ def build_indices(chunks, chunk_ids):
                         term_counts[alias] = term_counts.get(alias, 0) + 1
                         term_to_chunks.setdefault(alias, []).append(chunk_id)
         
-        # Index all significant words (for geographies, events, identities)
-        # Exclude words inside <italic> tags since they're already indexed as firm names
-        # This preserves the distinction: italicized = firm names, plain = family names
-        text_without_firms = re.sub(r'<italic>.*?</italic>', ' ', chunk_lower)
-        clean_text = text_without_firms.replace("'", "'")
-        # Index regular words (4+ chars) and also short acronyms (2-3 uppercase letters like "NB", "SEC")
-        words = re.findall(r"[a-z']{4,}", clean_text)
-        # Also find short acronyms (2-3 uppercase letters) in the original text (before lowercasing)
-        # These are often abbreviations like "NB", "SEC", "FRS" that should be indexed
-        acronyms_in_text = re.findall(r'\b([A-Z]{2,3})\b', chunk)
-        for acro in acronyms_in_text:
-            acro_lower = acro.lower()
-            if acro_lower not in words:  # Don't duplicate if already found as a word
-                words.append(acro_lower)
-        for word in words:
-            canonical = canonicalize_term(word)
-            # CRITICAL: Only index canonicalized version to merge plural/singular variants
-            # This ensures "court jews" and "court jew" both map to "court jew"
-            # and "hispanics" and "hispanic" both map to "hispanic"
-            target = canonical if canonical else word
-            term_counts[target] = term_counts.get(target, 0) + 1
-            if target not in term_to_chunks:
-                term_to_chunks[target] = []
-            term_to_chunks[target].append(chunk_id)
+        # Don't index every word - only index specific entities:
+        # - Surnames (already indexed above)
+        # - Firm names (already indexed above)
+        # - Acronyms (already indexed above)
+        # - Law codes (already indexed above)
+        # - Panics (indexed separately via panic_indexer)
         
         # Store entities for co-occurrence
         if chunk_entity_list:

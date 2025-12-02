@@ -1,0 +1,324 @@
+warning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/query_engine.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/index.html b/index.html[m
+[1mindex aaf9c6b..e747e67 100644[m
+[1m--- a/index.html[m
+[1m+++ b/index.html[m
+[36m@@ -6,8 +6,8 @@[m
+     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">[m
+     <meta http-equiv="Pragma" content="no-cache">[m
+     <meta http-equiv="Expires" content="0">[m
+[31m-    <!-- Version: 2025-01-22-17:45 - Platinum Theme v7 - BUILD: e7d79db -->[m
+[31m-    <meta name="build-id" content="e7d79db-2025-01-22-17:45-platinum">[m
+[32m+[m[32m    <!-- Version: 2025-01-22-17:45 - Gold Theme v8 - BUILD: gold01 -->[m
+[32m+[m[32m    <meta name="build-id" content="gold01-2025-01-22-17:45-gold">[m
+     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">[m
+     <meta http-equiv="Pragma" content="no-cache">[m
+     <meta http-equiv="Expires" content="0">[m
+[36m@@ -15,8 +15,8 @@[m
+     <script>[m
+         // Cache busting - check version but don't block execution[m
+         (function() {[m
+[31m-            const CURRENT_VERSION = '7';[m
+[31m-            const BUILD_ID = 'e7d79db-2025-01-22-17:45-platinum';[m
+[32m+[m[32m            const CURRENT_VERSION = '8';[m
+[32m+[m[32m            const BUILD_ID = 'gold01-2025-01-22-17:45-gold';[m
+             const urlParams = new URLSearchParams(window.location.search);[m
+             const currentVersion = urlParams.get('v');[m
+             [m
+[36m@@ -52,7 +52,7 @@[m
+         [m
+         body {[m
+             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;[m
+[31m-            background: linear-gradient(135deg, #E5E4E2 0%, #C0C0C0 50%, #A8A8A8 100%);[m
+[32m+[m[32m            background: linear-gradient(135deg, #f0d38a 0%, #c9a227 50%, #b38728 100%);[m
+             min-height: 100vh;[m
+             display: flex;[m
+             align-items: center;[m
+[36m@@ -75,7 +75,7 @@[m
+             object-fit: contain;[m
+             image-rendering: -webkit-optimize-contrast;[m
+         }[m
+[31m-        .brand h1 { color: #C0C0C0; }[m
+[32m+[m[32m        .brand h1 { color: #c9a227; }[m
+         [m
+         .container {[m
+             background: white;[m
+[36m@@ -118,7 +118,7 @@[m
+         }[m
+         [m
+         h1 {[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+             margin-bottom: 10px;[m
+             font-size: 2.5em;[m
+         }[m
+[36m@@ -151,7 +151,7 @@[m
+             width: 100%;[m
+             padding: 15px;[m
+             font-size: 1.1em;[m
+[31m-            background: linear-gradient(135deg, #D3D3D3 0%, #A8A8A8 100%);[m
+[32m+[m[32m            background: linear-gradient(135deg, #f0d38a 0%, #c9a227 100%);[m
+             color: white;[m
+             border: none;[m
+             border-radius: 10px;[m
+[36m@@ -213,7 +213,7 @@[m
+         }[m
+         [m
+         .tabs-bar::-webkit-scrollbar-thumb {[m
+[31m-            background: #C0C0C0;[m
+[32m+[m[32m            background: #c9a227;[m
+             border-radius: 3px;[m
+         }[m
+         [m
+[36m@@ -239,8 +239,8 @@[m
+         .tab.active {[m
+             background: #fff;[m
+             border-bottom: 2px solid #fff;[m
+[31m-            border-color: #C0C0C0;[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            border-color: #c9a227;[m
+[32m+[m[32m            color: #c9a227;[m
+             font-weight: 600;[m
+             margin-bottom: -2px;[m
+         }[m
+[36m@@ -261,7 +261,7 @@[m
+         }[m
+         [m
+         .tab-close:hover {[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+         }[m
+         [m
+         .tab-content {[m
+[36m@@ -282,7 +282,7 @@[m
+         }[m
+         [m
+         .result h2 {[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+             margin-bottom: 20px;[m
+             font-size: 1.8em;[m
+             border-bottom: 2px solid #f0f0f0;[m
+[36m@@ -296,7 +296,7 @@[m
+         }[m
+         [m
+         #answer h2 {[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+             margin-top: 25px;[m
+             margin-bottom: 15px;[m
+             font-weight: 600;[m
+[36m@@ -333,11 +333,11 @@[m
+             padding: 25px;[m
+             background: #fbf3cf;[m
+             border-radius: 12px;[m
+[31m-            border-left: 4px solid #C0C0C0;[m
+[32m+[m[32m            border-left: 4px solid #c9a227;[m
+         }[m
+         [m
+         .suggested-questions h3 {[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+             font-size: 1.2em;[m
+             margin-bottom: 15px;[m
+             font-weight: 600;[m
+[36m@@ -362,16 +362,16 @@[m
+         [m
+         .suggested-questions li:before {[m
+             content: "→ ";[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+             font-weight: bold;[m
+             margin-right: 5px;[m
+         }[m
+         [m
+         .suggested-questions li:hover {[m
+[31m-            background: #C0C0C0;[m
+[32m+[m[32m            background: #c9a227;[m
+             color: white;[m
+             transform: translateX(5px);[m
+[31m-            border-color: #C0C0C0;[m
+[32m+[m[32m            border-color: #c9a227;[m
+         }[m
+         [m
+         .suggested-questions li:hover:before {[m
+[36m@@ -390,7 +390,7 @@[m
+         [m
+         .loading-details {[m
+             margin-top: 15px;[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+             font-size: 0.95em;[m
+             line-height: 1.6;[m
+         }[m
+[36m@@ -406,7 +406,7 @@[m
+         [m
+         .spinner {[m
+             border: 4px solid #f3f3f3;[m
+[31m-            border-top: 4px solid #C0C0C0;[m
+[32m+[m[32m            border-top: 4px solid #c9a227;[m
+             border-radius: 50%;[m
+             width: 40px;[m
+             height: 40px;[m
+[36m@@ -459,7 +459,7 @@[m
+         [m
+         .quick-query {[m
+             background: white;[m
+[31m-            border: 2px solid #D3D3D3;[m
+[32m+[m[32m            border: 2px solid #e0c15c;[m
+             color: #5a4a12;[m
+             padding: 10px 14px;[m
+             border-radius: 999px;[m
+[36m@@ -472,8 +472,8 @@[m
+         }[m
+         [m
+         .quick-query:hover {[m
+[31m-            border-color: #C0C0C0;[m
+[31m-            color: #C0C0C0;[m
+[32m+[m[32m            border-color: #c9a227;[m
+[32m+[m[32m            color: #c9a227;[m
+             transform: translateY(-2px);[m
+         }[m
+         [m
+[36m@@ -482,8 +482,8 @@[m
+             padding: 12px;[m
+             font-size: 1em;[m
+             background: white;[m
+[31m-            color: #C0C0C0;[m
+[31m-            border: 2px solid #C0C0C0;[m
+[32m+[m[32m            color: #c9a227;[m
+[32m+[m[32m            border: 2px solid #c9a227;[m
+             border-radius: 8px;[m
+             cursor: pointer;[m
+             font-weight: 600;[m
+[36m@@ -492,7 +492,7 @@[m
+         }[m
+         [m
+         .secondary-btn:hover {[m
+[31m-            background: #C0C0C0;[m
+[32m+[m[32m            background: #c9a227;[m
+             color: white;[m
+         }[m
+         [m
+[36m@@ -526,12 +526,12 @@[m
+         [m
+         <div class="loading" id="loading">[m
+             <div class="spinner"></div>[m
+[31m-            <p style="margin-top: 10px; color: #C0C0C0; font-weight: 600;">Researching historical documents...</p>[m
+[32m+[m[32m            <p style="margin-top: 10px; color: #c9a227; font-weight: 600;">Researching historical documents...</p>[m
+             <div class="loading-details" id="loading-details">[m
+                 Analyzing your query...[m
+             </div>[m
+             <div id="progress-container" style="margin-top:12px; width:100%; background:#eee; border-radius:8px; overflow:hidden; height:10px; display:none;">[m
+[31m-                <div id="progress-bar" style="height:100%; width:0%; background:#C0C0C0; transition: width 0.3s ease;"></div>[m
+[32m+[m[32m                <div id="progress-bar" style="height:100%; width:0%; background:#c9a227; transition: width 0.3s ease;"></div>[m
+             </div>[m
+             <div class="loading-tip" id="loading-tip" style="display: block; visibility: visible; opacity: 1;">[m
+                 ⏱️ <span id="time-estimate">Estimating time...</span> | <span id="elapsed-timer">0s</span>[m
+[36m@@ -699,7 +699,7 @@[m
+                 debugDiv.style.color = '#666';[m
+                 debugDiv.innerHTML = `[m
+                     <div>Request ID: ${tab.jobId}</div>[m
+[31m-                    <div><a href="http://localhost:8000/debug/last?n=50" target="_blank" style="color:#C0C0C0;">View server trace</a></div>[m
+[32m+[m[32m                    <div><a href="http://localhost:8000/debug/last?n=50" target="_blank" style="color:#c9a227;">View server trace</a></div>[m
+                 `;[m
+                 contentDiv.appendChild(debugDiv);[m
+             }[m
+[36m@@ -1352,44 +1352,44 @@[m
+             [m
+             const modal = `[m
+                 <div id="indexed-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">[m
+[31m-                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 900px; max-height: 85vh; overflow-y: auto; border:2px solid #C0C0C0;" onclick="event.stopPropagation()">[m
+[31m-                        <h2 style="color: #C0C0C0; margin-top: 0;">Sample Terms</h2>[m
+[32m+[m[32m                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 900px; max-height: 85vh; overflow-y: auto; border:2px solid #c9a227;" onclick="event.stopPropagation()">[m
+[32m+[m[32m                        <h2 style="color: #c9a227; margin-top: 0;">Sample Terms</h2>[m
+                         <p style="color: #444; font-size: 0.95em; margin-bottom: 12px;">Tap any topic below to auto-fill the search bar, or type your own term.</p>[m
+                         <p style="color: #777; font-size: 0.85em; margin-bottom: 18px;">[m
+                             Showing highlighted topics. Type any other term directly in the search bar if you don’t see it listed here.[m
+                         </p>[m
+                         [m
+[31m-                        <h3 style="color: #C0C0C0;">Banking Families & Houses</h3>[m
+[32m+[m[32m                        <h3 style="color: #c9a227;">Banking Families & Houses</h3>[m
+                         <div class="search-categories" style="margin-bottom: 15px;">[m
+                             ${renderChips(families)}[m
+                         </div>[m
+                         [m
+[31m-                        <h3 style="color: #C0C0C0;">Identities & Cousinhoods</h3>[m
+[32m+[m[32m                        <h3 style="color: #c9a227;">Identities & Cousinhoods</h3>[m
+                         <div class="search-categories" style="margin-bottom: 15px;">[m
+                             ${renderChips(identities)}[m
+                         </div>[m
+                         [m
+[31m-                        <h3 style="color: #C0C0C0;">Markets & Asset Classes</h3>[m
+[32m+[m[32m                        <h3 style="color: #c9a227;">Markets & Asset Classes</h3>[m
+                         <div class="search-categories" style="margin-bottom: 15px;">[m
+                             ${renderChips(markets)}[m
+                         </div>[m
+                         [m
+[31m-                        <h3 style="color: #C0C0C0;">Concepts & Themes</h3>[m
+[32m+[m[32m                        <h3 style="color: #c9a227;">Concepts & Themes</h3>[m
+                         <div class="search-categories" style="margin-bottom: 15px;">[m
+                             ${renderChips(concepts)}[m
+                         </div>[m
+                         [m
+[31m-                        <h3 style="color: #C0C0C0;">Financial Panics & Crises</h3>[m
+[32m+[m[32m                        <h3 style="color: #c9a227;">Financial Panics & Crises</h3>[m
+                         <div class="search-categories" style="margin-bottom: 15px;">[m
+                             ${renderChips(panics)}[m
+                         </div>[m
+                         [m
+[31m-                        <h3 style="color: #C0C0C0;">Geographies</h3>[m
+[32m+[m[32m                        <h3 style="color: #c9a227;">Geographies</h3>[m
+                         <div class="search-categories" style="margin-bottom: 15px;">[m
+                             ${renderChips(geographies)}[m
+                         </div>[m
+                         [m
+[31m-                        <button style="margin-top: 20px; padding: 10px 20px; background: linear-gradient(135deg, #D3D3D3 0%, #A8A8A8 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1em;" onclick="this.closest('div').parentElement.remove()">Close</button>[m
+[32m+[m[32m                        <button style="margin-top: 20px; padding: 10px 20px; background: linear-gradient(135deg, #f0d38a 0%, #c9a227 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1em;" onclick="this.closest('div').parentElement.remove()">Close</button>[m
+                     </div>[m
+                 </div>[m
+             `;[m
+[36m@@ -1945,8 +1945,8 @@[m
+         console.log('Version:', window.THUNDERCLAP_VERSION || 'UNKNOWN - OLD VERSION DETECTED!');[m
+         [m
+         // Visual indicator that new version is loaded[m
+[31m-        if (window.THUNDERCLAP_VERSION === '7') {[m
+[31m-            console.log('✅ NEW VERSION LOADED - Timer, Tabs, Platinum Theme enabled');[m
+[32m+[m[32m        if (window.THUNDERCLAP_VERSION === '8') {[m
+[32m+[m[32m            console.log('✅ NEW VERSION LOADED - Timer, Tabs, Gold Theme enabled');[m
+         } else if (window.THUNDERCLAP_VERSION) {[m
+             console.log('⚠️ Version', window.THUNDERCLAP_VERSION, 'loaded (expected 7)');[m
+         } else {[m
+[1mdiff --git a/lib/query_engine.py b/lib/query_engine.py[m
+[1mindex e56faf2..12a41ea 100644[m
+[1m--- a/lib/query_engine.py[m
+[1m+++ b/lib/query_engine.py[m
+[36m@@ -2930,10 +2930,37 @@[m [mAnswer:"""[m
+         Uses generate_answer to ensure consistent narrative quality (same prompt as everywhere else).[m
+         """[m
+         import time[m
+[32m+[m[32m        from lib.config import MAX_TOKENS_PER_REQUEST, MAX_TOKENS_PER_MINUTE[m
+         llm_start = time.time()[m
+         chunk_count = len(chunks)[m
+         estimated_input_tokens = self._estimate_tokens_for_chunks(chunks)[m
+         print(f"    [LLM_CALL] Starting LLM call with {chunk_count} chunks (~{estimated_input_tokens:,} tokens)")[m
+[32m+[m[32m        # Expose last chunk count for server/frontend status[m
+[32m+[m[32m        try:[m
+[32m+[m[32m            self.last_chunk_count = chunk_count[m
+[32m+[m[32m        except Exception:[m
+[32m+[m[32m            # Don't let diagnostic attributes break the query[m
+[32m+[m[32m            pass[m
+[32m+[m[41m        [m
+[32m+[m[32m        # FAST FAIL: If this query would obviously exceed our safe token limits,[m
+[32m+[m[32m        # abort BEFORE calling the LLM so the user doesn't wait 300s for a failure.[m
+[32m+[m[32m        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.95)[m
+[32m+[m[32m        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.95)[m
+[32m+[m[32m        effective_limit = min(hard_input_limit, minute_budget)[m
+[32m+[m[32m        if estimated_input_tokens > effective_limit:[m
+[32m+[m[32m            print([m
+[32m+[m[32m                f"    [LLM_CALL] PRE-CHECK TOKEN QUOTA EXCEEDED: "[m
+[32m+[m[32m                f"estimated_input_tokens={estimated_input_tokens:,}, "[m
+[32m+[m[32m                f"limit≈{effective_limit:,} (request={MAX_TOKENS_PER_REQUEST:,}, minute={MAX_TOKENS_PER_MINUTE:,})"[m
+[32m+[m[32m            )[m
+[32m+[m[32m            # Raise a clear error that the frontend can recognize and render with guidance

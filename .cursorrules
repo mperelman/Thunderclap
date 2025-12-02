@@ -147,6 +147,42 @@ View history through SOCIOLOGICAL + PANIC lenses IN EVERY SECTION (not just the 
 - Bad question types: hyper-specific details that only had 1 sentence in the documents
 - Test: "Could I write multiple paragraphs answering this from the documents?" If yes → good question
 
+## Indexing Preferences (CRITICAL - DO NOT INDEX GENERIC WORDS)
+
+### What TO Index:
+- **Surnames** from proper names (e.g., "John Smith" → index "smith")
+- **Middle names** (maiden/mother's names) from proper names (e.g., "John Mary Smith" → index "mary")
+- **Firm names** (italicized) - the name itself only, NOT location phrases
+  - ✓ Index: "First National Bank" or "First NB"
+  - ✗ Do NOT index: "first nb of boston" or "Rothschild Vienna"
+- **Acronyms** (e.g., SEC, NB, FRS)
+- **Law codes** (e.g., TA1813, BA1933)
+- **Panics** (via panic_indexer) - e.g., "Panic of 1763", "Panic of 1929"
+- **Identity terms** directly from text:
+  - Religious: Jewish, Sephardi, Quaker, Muslim, etc.
+  - Ethnic: Armenian, Greek, Lebanese, Basque, Hausa, etc.
+  - Racial: Black, African American
+  - Gender: female, woman, widow, queen, princess, etc.
+  - Latino/Hispanic: Latino, Hispanic, Mexican, Cuban, etc.
+
+### What NOT to Index:
+- ✗ Generic words 4+ chars (e.g., "bank", "establish", "dominant", "british", "america")
+- ✗ Firm+location phrases (e.g., "first nb of boston", "Rothschild Vienna")
+- ✗ Common function words (stop words)
+- ✗ Generic descriptive terms
+
+### Implementation:
+- Indexing logic in `lib/index_builder.py` should ONLY extract:
+  1. Surnames from proper names
+  2. Middle names from proper names (3+ part names)
+  3. Firm names (italicized) - name only, no location phrases
+  4. Acronyms
+  5. Law codes
+  6. Identity terms (via regex patterns)
+  7. Panics (via `lib/panic_indexer.py`)
+- Filtering in `server.py` `/terms` endpoint further filters generic terms for hyperlinking
+- Do NOT use "index every word 4+ chars" approach
+
 ## System Info
 - 1,509 indexed chunks (500-word chunks with 100-word overlap)
 - 23,504 terms (names, places, events, identities - all searchable)

@@ -30,15 +30,21 @@ def index_panics(chunks: List[str], chunk_ids: List[str]) -> Dict[str, List[str]
     panic_index = {}
     
     # Build patterns for each panic
+    # Panics are often in italics (e.g., *Panic of 1763*), so we need to handle HTML tags
     for year in KNOWN_PANICS:
+        # Pattern 1: Normal text "Panic of 1763" or "panic of 1763"
         panic_pattern = rf'\b[Pp]anic\s+of\s+{year}\b'
         crisis_pattern = rf'\b[Cc]risis\s+of\s+{year}\b'
         
+        # Pattern 2: In italics (HTML <em> or <i> tags, or markdown *text*)
+        # Remove HTML tags first for matching, but keep original for context
         panic_term = f'panic_of_{year}'
         matching_chunks = []
         
         for chunk_id, chunk_text in zip(chunk_ids, chunks):
-            if re.search(panic_pattern, chunk_text) or re.search(crisis_pattern, chunk_text):
+            # Remove HTML tags for pattern matching (panics are often italicized)
+            text_for_matching = re.sub(r'<[^>]+>', '', chunk_text)
+            if re.search(panic_pattern, text_for_matching) or re.search(crisis_pattern, text_for_matching):
                 matching_chunks.append(chunk_id)
         
         if matching_chunks:
