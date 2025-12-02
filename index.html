@@ -1266,17 +1266,33 @@
             indexedTerms.forEach(term => {
                 const lower = term.toLowerCase();
                 
+                // Exclude the query subject itself (don't hyperlink "Bank of Montreal" in a query about "Bank of Montreal")
+                if (currentQuerySubject && lower === currentQuerySubject) {
+                    return;
+                }
+                
+                // Exclude very short terms that cause false positives (2 chars or less)
+                if (term.length <= 2) {
+                    return;
+                }
+                
+                // Exclude common short words even if they're acronyms
+                const shortCommonWords = ['co', 'era', 'inc', 'ltd', 'corp'];
+                if (shortCommonWords.includes(lower)) {
+                    return;
+                }
+                
                 // ONLY hyperlink if:
                 // 1. Multi-word term (e.g., "Bank of Montreal", "David David")
-                // 2. All caps acronym (e.g., "SEC", "FDIC")
-                // 3. Contains special characters (e.g., "BA1933", "TA1813")
-                // 4. Starts with "Panic of" or other specific patterns
+                // 2. All caps acronym 3+ chars (e.g., "SEC", "FDIC")
+                // 3. Contains numbers/special characters (e.g., "BA1933", "TA1813")
+                // 4. Starts with "Panic of YYYY" (specific year pattern)
                 const isMultiWord = term.includes(' ');
-                const isAcronym = term === term.toUpperCase() && term.length >= 2;
-                const hasSpecialChars = /[0-9\-_&]/.test(term);
-                const isSpecificPattern = /^(panic of|crisis of|bank of|treaty of)/i.test(term);
+                const isAcronym = term === term.toUpperCase() && term.length >= 3;
+                const hasNumbersOrSpecialChars = /[0-9\-_&]/.test(term);
+                const isPanicWithYear = /^panic of \d{4}$/i.test(term);
                 
-                if (isMultiWord || isAcronym || hasSpecialChars || isSpecificPattern) {
+                if (isMultiWord || isAcronym || hasNumbersOrSpecialChars || isPanicWithYear) {
                     if (!termMap.has(lower)) {
                         termMap.set(lower, term);
                     }
@@ -1588,10 +1604,21 @@
             document.body.insertAdjacentHTML('beforeend', modal);
         }
         
+        let currentQuerySubject = '';  // Track the current query subject to exclude from hyperlinking
+        
         async function askQuestion() {
             console.log('askQuestion() called');
             const question = document.getElementById('question').value.trim();
             console.log('Question:', question);
+            
+            // Extract the subject from "Tell me about X" queries
+            const aboutMatch = question.match(/tell me about (.+)/i);
+            if (aboutMatch) {
+                currentQuerySubject = aboutMatch[1].trim().toLowerCase();
+                console.log('[QUERY] Subject:', currentQuerySubject);
+            } else {
+                currentQuerySubject = '';
+            }
             
             if (!question || question.length < 3) {
                 alert('Please enter a question (at least 3 characters)');
