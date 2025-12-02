@@ -62,29 +62,28 @@ for i in progress_bar:
     # Create a FRESH LLM client for each batch (workaround for key invalidation issue)
     llm = LLMAnswerGenerator()
     
-    prompt = f"""You are filtering indexed terms for a historical banking database.
+    prompt = f"""You are filtering indexed terms for a historical banking database for hyperlinking.
 
-Your task: Return ONLY the terms that are meaningful entities (proper nouns, specific concepts).
+Return ONLY terms that would be useful to hyperlink (specific entities, not common words).
 
 **KEEP:**
-- Multi-word proper nouns: "Bank of Montreal", "David David", "Aaron Hart"
-- Full family names: "Rothschild", "Morgan", "Lehman" (distinctive surnames)
-- Identity terms: "Jewish", "Quaker", "female", "widow", "Black", "Armenian"
-- Panics: "Panic of 1763", "Panic of 1929" (NOT "hispanic")
-- Law codes: "TA1813", "BA1933"
-- Acronyms: "SEC", "FDIC", "WWI"
-- Specific places when part of institution: "Bank of London", "New York Stock Exchange"
+- Multi-word phrases (e.g., "Bank of Montreal", "Panic of 1929")
+- Distinctive family names (e.g., "Rothschild", "Sassoon")
+- Identity/ethnic/religious terms (e.g., "Jewish", "Quaker", "Armenian")
+- Acronyms and law codes (e.g., "SEC", "BA1933")
 
 **EXCLUDE:**
-- Generic words: "bank", "after", "establish", "dominant", "AMERICA", "BRITISH", "financial", "commercial", "american", "european"
-- Common single-word first names: "John", "David", "James", "William", "George", "Charles", "Henry", "Thomas", "Robert", "Joseph", "Aaron", "Jacob", "Louis", "Samuel"
-- Common single-word place names when standalone: "York", "London", "Paris", "Boston", "Columbia", "Brunswick" (unless part of "Bank of York", etc.)
-- Generic single words: "son", "father", "brother", "president", "director", "governor"
+- Generic banking/finance words (e.g., "bank", "credit", "financial")
+- Common single-word first names that appear frequently
+- Common single-word place names when standalone
+- Generic descriptive words (e.g., "dominant", "significant")
+- Common relationship words (e.g., "son", "father", "brother")
+- Generic titles (e.g., "president", "director", "governor")
 
 **Terms to filter:**
 {json.dumps(batch)}
 
-**Output:** JSON array of terms to KEEP only. No explanations.
+**Output:** JSON array of terms to KEEP. No explanations.
 """
     
     try:
