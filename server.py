@@ -226,9 +226,17 @@ def get_status():
 @app.get("/terms")
 def get_indexed_terms():
     """Get list of indexed terms for hyperlinking in responses.
-    Updated: 2025-01-22 - Force redeploy."""
+    Updated: 2025-01-22 - Load from filtered_terms.json (LLM-filtered)."""
     from lib.config import INDICES_FILE
     try:
+        # Try to load pre-filtered terms first (LLM-filtered list)
+        filtered_file = 'data/filtered_terms.json'
+        if os.path.exists(filtered_file):
+            with open(filtered_file, 'r', encoding='utf-8') as f:
+                filtered_terms = json.load(f)
+            return {"terms": filtered_terms}
+        
+        # Fallback: load from indices and apply basic filtering
         if os.path.exists(INDICES_FILE):
             with open(INDICES_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
