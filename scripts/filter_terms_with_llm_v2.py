@@ -47,9 +47,13 @@ print()
 
 filtered_terms = []
 
-for i in tqdm(range(0, len(terms), BATCH_SIZE), desc="Filtering batches"):
+progress_bar = tqdm(range(0, len(terms), BATCH_SIZE), desc="Filtering batches", unit="batch")
+for i in progress_bar:
     batch = terms[i:i+BATCH_SIZE]
     batch_num = i//BATCH_SIZE + 1
+    
+    # Update progress bar description with current stats
+    progress_bar.set_description(f"Batch {batch_num}/{num_batches} ({batch_num*100//num_batches}%)")
     
     # Wait BEFORE making request (except first batch) to respect 15 RPM limit
     if i > 0:
@@ -63,14 +67,19 @@ for i in tqdm(range(0, len(terms), BATCH_SIZE), desc="Filtering batches"):
 Your task: Return ONLY the terms that are meaningful entities (proper nouns, specific concepts).
 
 **KEEP:**
-- Proper nouns: "Rothschild", "Morgan", "Bank of Montreal"
+- Multi-word proper nouns: "Bank of Montreal", "David David", "Aaron Hart"
+- Full family names: "Rothschild", "Morgan", "Lehman" (distinctive surnames)
 - Identity terms: "Jewish", "Quaker", "female", "widow", "Black", "Armenian"
 - Panics: "Panic of 1763", "Panic of 1929" (NOT "hispanic")
 - Law codes: "TA1813", "BA1933"
 - Acronyms: "SEC", "FDIC", "WWI"
+- Specific places when part of institution: "Bank of London", "New York Stock Exchange"
 
 **EXCLUDE:**
 - Generic words: "bank", "after", "establish", "dominant", "AMERICA", "BRITISH", "financial", "commercial", "american", "european"
+- Common single-word first names: "John", "David", "James", "William", "George", "Charles", "Henry", "Thomas", "Robert", "Joseph", "Aaron", "Jacob", "Louis", "Samuel"
+- Common single-word place names when standalone: "York", "London", "Paris", "Boston", "Columbia", "Brunswick" (unless part of "Bank of York", etc.)
+- Generic single words: "son", "father", "brother", "president", "director", "governor"
 
 **Terms to filter:**
 {json.dumps(batch)}
@@ -94,9 +103,17 @@ Your task: Return ONLY the terms that are meaningful entities (proper nouns, spe
         kept_pct = (len(kept_terms) / len(batch)) * 100
         removed_pct = 100 - kept_pct
         overall_pct = (batch_num / num_batches) * 100
+        total_removed_so_far = (batch_num * BATCH_SIZE) - len(filtered_terms)
+        
+        # Update progress bar with detailed stats
+        progress_bar.set_postfix({
+            'kept': f'{len(kept_terms)}/{len(batch)}',
+            'total': len(filtered_terms),
+            'removed': total_removed_so_far
+        })
         
         print(f"\n   ✅ Batch {batch_num}/{num_batches} ({overall_pct:.0f}%): Kept {len(kept_terms)}/{len(batch)} ({kept_pct:.0f}%), Removed {len(batch)-len(kept_terms)} ({removed_pct:.0f}%)")
-        print(f"      Total filtered so far: {len(filtered_terms)} terms")
+        print(f"      Total: {len(filtered_terms)} kept, {total_removed_so_far} removed")
         
     except Exception as e:
         print(f"\n   [ERROR] Batch {batch_num} failed: {str(e)[:300]}")
