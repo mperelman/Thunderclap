@@ -9,10 +9,11 @@ import re
 from typing import Dict, List
 
 # All panics mentioned in documents (per user's Thunderclap framework)
+# Note: No panics between 1937-1987 (post-New Deal regulations, WWII, Bretton Woods era)
 KNOWN_PANICS = [
     1763, 1772, 1792, 1797, 1810, 1819, 1825, 1837, 1847, 1857, 
     1866, 1873, 1884, 1890, 1893, 1896, 1901, 1907, 1914, 1920,
-    1929, 1931, 1933, 1937, 1987, 1989, 1997, 1998, 2000, 2001, 2007, 2008
+    1929, 1931, 1933, 1937, 1987, 1989, 1997, 1998, 2000, 2001, 2007
 ]
 
 def index_panics(chunks: List[str], chunk_ids: List[str]) -> Dict[str, List[str]]:
