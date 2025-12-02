@@ -34,14 +34,15 @@ if not test_llm.client:
     sys.exit(1)
 print()
 
-# Filter terms in batches (500 terms = ~1.3K input tokens, output fits in 16K limit)
-BATCH_SIZE = 500
+# Filter terms in batches (250 terms = smaller output to avoid token limit truncation)
+BATCH_SIZE = 250
 num_batches = (len(terms) + BATCH_SIZE - 1) // BATCH_SIZE
 
 print(f"3. Filtering terms with LLM...")
 print(f"   Batching: {num_batches} batches of {BATCH_SIZE} terms each")
 print(f"   Rate limit: 15 requests/minute (5 seconds between batches)")
 print(f"   Estimated time: ~{num_batches * 5 / 60:.1f} minutes")
+print(f"   Progress will be shown for each batch")
 print()
 
 filtered_terms = []
