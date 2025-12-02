@@ -1260,10 +1260,27 @@
         function hyperlinkText(text) {
             if (!text || text.trim().length === 0 || !indexedTerms || indexedTerms.length === 0) return text;
             
+            // Exclude overly common single-word terms that cause false positives
+            const commonSingleWords = new Set([
+                'son', 'jacob', 'brunswick', 'york', 'john', 'louis', 'columbia', 
+                'david', 'hart', 'aaron', 'james', 'william', 'george', 'charles',
+                'henry', 'thomas', 'robert', 'joseph', 'edward', 'samuel', 'daniel',
+                'benjamin', 'alexander', 'frederick', 'albert', 'francis', 'peter',
+                'paul', 'michael', 'richard', 'arthur', 'frank', 'lewis', 'walter',
+                'harold', 'herbert', 'ernest', 'alfred', 'oscar', 'nathan', 'isaac',
+                'abraham', 'moses', 'jacob', 'solomon', 'simon', 'leon', 'morris',
+                'max', 'otto', 'emil', 'carl', 'herman', 'julius', 'august', 'gustav',
+                'london', 'paris', 'berlin', 'vienna', 'boston', 'chicago', 'philadelphia'
+            ]);
+            
             // Create a case-insensitive map for quick lookup
             const termMap = new Map();
             indexedTerms.forEach(term => {
                 const lower = term.toLowerCase();
+                // Skip single-word common names
+                if (!term.includes(' ') && commonSingleWords.has(lower)) {
+                    return; // Don't add to map
+                }
                 if (!termMap.has(lower)) {
                     termMap.set(lower, term);
                 }
