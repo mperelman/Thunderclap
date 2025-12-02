@@ -233,8 +233,65 @@ def get_indexed_terms():
             with open(INDICES_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             terms = list(data.get('term_to_chunks', {}).keys())
-            # Filter out very short terms and common words
-            filtered_terms = [t for t in terms if len(t) > 3 and t.lower() not in ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use']]
+            
+            # Comprehensive list of common English words to exclude
+            common_words = {
+                # Articles, pronouns, prepositions
+                'the', 'a', 'an', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'mine', 'yours', 'hers', 'ours', 'theirs',
+                # Common verbs
+                'get', 'got', 'go', 'went', 'come', 'came', 'see', 'saw', 'know', 'knew', 'think', 'thought', 'take', 'took', 'give', 'gave', 'make', 'made', 'say', 'said', 'tell', 'told', 'ask', 'asked', 'find', 'found', 'work', 'worked', 'try', 'tried', 'use', 'used', 'call', 'called', 'want', 'wanted', 'need', 'needed', 'seem', 'seemed', 'help', 'helped', 'show', 'showed', 'play', 'played', 'move', 'moved', 'live', 'lived', 'believe', 'believed', 'bring', 'brought', 'happen', 'happened', 'write', 'wrote', 'sit', 'sat', 'stand', 'stood', 'lose', 'lost', 'pay', 'paid', 'meet', 'met', 'include', 'included', 'continue', 'continued', 'set', 'put', 'let', 'allow', 'allowed',
+                # Common nouns (generic)
+                'time', 'year', 'people', 'way', 'day', 'man', 'thing', 'woman', 'life', 'child', 'world', 'school', 'state', 'family', 'student', 'group', 'country', 'problem', 'hand', 'part', 'place', 'case', 'week', 'company', 'system', 'program', 'question', 'work', 'government', 'number', 'night', 'point', 'home', 'water', 'room', 'mother', 'area', 'money', 'story', 'fact', 'month', 'lot', 'right', 'study', 'book', 'eye', 'job', 'word', 'business', 'issue', 'side', 'kind', 'head', 'house', 'service', 'friend', 'father', 'power', 'hour', 'game', 'line', 'end', 'member', 'law', 'car', 'city', 'community', 'name', 'president', 'team', 'minute', 'idea', 'kid', 'body', 'information', 'back', 'parent', 'face', 'others', 'level', 'office', 'door', 'health', 'person', 'art', 'war', 'history', 'party', 'result', 'change', 'morning', 'reason', 'research', 'girl', 'guy', 'moment', 'air', 'teacher', 'force', 'education',
+                # Common adjectives/adverbs
+                'good', 'new', 'first', 'last', 'long', 'great', 'little', 'own', 'other', 'old', 'right', 'big', 'high', 'different', 'small', 'large', 'next', 'early', 'young', 'important', 'few', 'public', 'bad', 'same', 'able', 'human', 'local', 'late', 'hard', 'major', 'better', 'economic', 'strong', 'possible', 'whole', 'free', 'military', 'true', 'federal', 'international', 'full', 'special', 'sure', 'clear', 'recent', 'personal', 'private', 'past', 'foreign', 'available', 'popular', 'national', 'current', 'wrong', 'receive', 'receive', 'according', 'behind', 'during', 'through', 'throughout', 'within', 'without', 'above', 'below', 'across', 'after', 'before', 'between', 'among', 'around', 'along', 'against', 'toward', 'towards', 'upon', 'under', 'over', 'into', 'onto', 'out', 'off', 'up', 'down', 'away', 'back', 'here', 'there', 'where', 'when', 'why', 'how', 'what', 'which', 'who', 'whom', 'whose', 'very', 'much', 'more', 'most', 'less', 'least', 'many', 'some', 'any', 'all', 'each', 'every', 'both', 'either', 'neither', 'few', 'several', 'enough', 'too', 'also', 'only', 'just', 'even', 'still', 'yet', 'already', 'again', 'once', 'twice', 'always', 'never', 'often', 'sometimes', 'usually', 'really', 'quite', 'rather', 'pretty', 'almost', 'nearly', 'about', 'approximately', 'exactly', 'almost', 'nearly', 'quite', 'very', 'too', 'so', 'such', 'well', 'better', 'best', 'worse', 'worst', 'more', 'most', 'less', 'least',
+                # Numbers and basic terms
+                'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'first', 'second', 'third', 'fourth', 'fifth', 'last', 'next', 'previous', 'another', 'other', 'others', 'same', 'different', 'similar', 'various', 'several', 'many', 'few', 'most', 'least', 'more', 'less', 'much', 'little', 'enough', 'too', 'also', 'only', 'just', 'even', 'still', 'yet', 'already', 'again', 'once', 'twice', 'always', 'never', 'often', 'sometimes', 'usually', 'really', 'quite', 'rather', 'pretty', 'almost', 'nearly', 'about', 'approximately', 'exactly',
+                # Time-related
+                'year', 'years', 'month', 'months', 'week', 'weeks', 'day', 'days', 'hour', 'hours', 'minute', 'minutes', 'second', 'seconds', 'time', 'times', 'today', 'yesterday', 'tomorrow', 'now', 'then', 'when', 'while', 'during', 'before', 'after', 'since', 'until', 'ago', 'later', 'earlier', 'soon', 'recently', 'recent', 'past', 'present', 'future', 'early', 'late', 'long', 'short', 'quick', 'slow', 'fast',
+                # Generic location terms
+                'place', 'places', 'area', 'areas', 'region', 'regions', 'country', 'countries', 'state', 'states', 'city', 'cities', 'town', 'towns', 'village', 'villages', 'home', 'homes', 'house', 'houses', 'building', 'buildings', 'room', 'rooms', 'office', 'offices', 'school', 'schools', 'hospital', 'hospitals', 'store', 'stores', 'shop', 'shops', 'restaurant', 'restaurants', 'hotel', 'hotels', 'park', 'parks', 'street', 'streets', 'road', 'roads', 'way', 'ways', 'path', 'paths', 'direction', 'directions', 'north', 'south', 'east', 'west', 'left', 'right', 'up', 'down', 'here', 'there', 'where', 'everywhere', 'anywhere', 'somewhere', 'nowhere', 'away', 'back', 'out', 'in', 'inside', 'outside', 'above', 'below', 'over', 'under', 'across', 'through', 'around', 'along', 'beside', 'behind', 'beyond', 'near', 'far', 'close', 'distant',
+            }
+            
+            # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
+            filtered_terms = []
+            for term in terms:
+                term_lower = term.lower().strip()
+                # Skip if too short
+                if len(term) < 4:
+                    continue
+                # Skip common words (comprehensive list)
+                if term_lower in common_words:
+                    continue
+                # Skip if it's just a number
+                if term_lower.isdigit():
+                    continue
+                # Skip if it's a single character repeated
+                if len(set(term_lower)) == 1:
+                    continue
+                # Skip if it's a common verb form (ends in -ed, -ing, -s, etc.)
+                if term_lower.endswith(('ed', 'ing', 'ly', 'er', 'est', 'tion', 'sion', 'ment', 'ness', 'ity', 'ies', 'ied')):
+                    # But allow if it's capitalized (might be a name)
+                    if not term[0].isupper():
+                        continue
+                # ONLY include terms that are clearly entities:
+                # 1. Multi-word phrases (e.g., "Bank of Montreal", "David David")
+                if ' ' in term:
+                    filtered_terms.append(term)
+                # 2. Proper nouns (start with capital letter)
+                elif term[0].isupper():
+                    filtered_terms.append(term)
+                # 3. Acronyms (all caps, at least 2 chars)
+                elif term.isupper() and len(term) >= 2:
+                    filtered_terms.append(term)
+                # 4. Mixed case (e.g., "iPhone", "McDonald")
+                elif any(c.isupper() for c in term[1:]):
+                    filtered_terms.append(term)
+                # 5. Lowercase but long and not a common word (likely specific entity)
+                elif len(term) >= 8 and term_lower not in common_words:
+                    # Double-check it's not a common word we missed
+                    if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
+                        filtered_terms.append(term)
+            
             return {"terms": filtered_terms}
         else:
             return {"terms": []}
