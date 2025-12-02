@@ -1322,20 +1322,29 @@
                 }
             }
             
-            // Sort matches by index (descending) so we can replace from end to start
-            matches.sort((a, b) => b.index - a.index);
+            // Sort matches by: 1) length (longest first), then 2) position (earliest first)
+            // This ensures "Corn Exchange Bank Trust" beats "Exchange Bank"
+            matches.sort((a, b) => {
+                if (b.length !== a.length) return b.length - a.length;  // Longer first
+                return a.index - b.index;  // If same length, earlier first
+            });
             
-            // Remove overlapping matches (keep the longest one)
+            // Remove overlapping/nested matches (keep the longest/earliest one)
             const nonOverlapping = [];
             for (const match of matches) {
                 const overlaps = nonOverlapping.some(existing => 
-                    match.index < existing.index + existing.length && 
-                    match.index + match.length > existing.index
+                    // Check if this match overlaps or is nested within an existing match
+                    (match.index >= existing.index && match.index < existing.index + existing.length) ||
+                    (match.index + match.length > existing.index && match.index + match.length <= existing.index + existing.length) ||
+                    (match.index <= existing.index && match.index + match.length >= existing.index + existing.length)
                 );
                 if (!overlaps) {
                     nonOverlapping.push(match);
                 }
             }
+            
+            // Sort by index descending for replacement (so indices don't shift)
+            nonOverlapping.sort((a, b) => b.index - a.index);
             
             // Replace matches from end to start (so indices don't shift)
             let result = text;
