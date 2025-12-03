@@ -325,10 +325,48 @@ class QueryEngine:
         if acronyms:
             intersect_terms = [a for a in acronyms if a in self.term_to_chunks]
         else:
-            intersect_terms = [
-                k for k in keywords
-                if k not in SUBJECT_GENERIC_TERMS and k in self.term_to_chunks
-            ]
+            # For each keyword, find ALL variants (plural/singular/case) to maximize recall
+            # This is critical for identity terms where "Hispanics" should match "Hispanic" and "hispanic"
+            intersect_terms = []
+            for k in keywords:
+                if k in SUBJECT_GENERIC_TERMS:
+                    continue
+                
+                # Collect ALL variants for this keyword
+                variants_for_k = []
+                
+                # Exact match
+                if k in self.term_to_chunks:
+                    variants_for_k.append(k)
+                
+                # Case variants (Hispanic -> hispanic, hispanic -> Hispanic)
+                k_lower = k.lower()
+                k_title = k_lower.capitalize()
+                if k_lower != k and k_lower in self.term_to_chunks:
+                    variants_for_k.append(k_lower)
+                if k_title != k and k_title in self.term_to_chunks:
+                    variants_for_k.append(k_title)
+                
+                # Plural/singular variants
+                if k.endswith('s') and len(k) > 2:
+                    # Try removing 's' (Hispanics -> Hispanic)
+                    k_singular = k[:-1]
+                    if k_singular in self.term_to_chunks and k_singular not in variants_for_k:
+                        variants_for_k.append(k_singular)
+                    # Try lowercase singular too
+                    k_singular_lower = k_singular.lower()
+                    if k_singular_lower in self.term_to_chunks and k_singular_lower not in variants_for_k:
+                        variants_for_k.append(k_singular_lower)
+                else:
+                    # Try adding 's' (Hispanic -> Hispanics)
+                    k_plural = k + 's'
+                    if k_plural in self.term_to_chunks and k_plural not in variants_for_k:
+                        variants_for_k.append(k_plural)
+                
+                # Add all variants found
+                if variants_for_k:
+                    intersect_terms.extend(variants_for_k)
+                    print(f"  [KEYWORD] '{k}' matched {len(variants_for_k)} variant(s): {variants_for_k}")
         # Include law terms (both literal and expanded phrases) in retrieval anchor set
         for law_term in law_terms:
             if law_term in self.term_to_chunks and law_term not in intersect_terms:
@@ -443,6 +481,7 @@ class QueryEngine:
         term_sets = []
         if intersect_terms:
             term_sets = [set(self.term_to_chunks[k]) for k in intersect_terms]
+            print(f"  [DEBUG] term_sets created: {[len(s) for s in term_sets]} chunks per term")
         
         # CRITICAL: If we found a firm phrase match, use that phrase as primary, but ALSO augment with chunks containing all key terms
         # This catches chunks that mention the firm in full form (e.g., "First National Bank of Boston") even if not indexed as exact phrase
@@ -529,6 +568,7 @@ class QueryEngine:
         # These queries are very broad and will timeout if we retrieve too many chunks
         # Use VERY small limit (8) to ensure fast processing and avoid rate limits
         # VERSION: 2025-01-22 - Early limit for control/influence queries
+        print(f"  [DEBUG] Before control check: chunk_ids has {len(chunk_ids)} chunks, intersect_terms={intersect_terms}")
         is_control_influence = self._is_control_influence_query(question)
         print(f"  [VERSION_CHECK] Using updated query_engine.py with early limit (2025-01-22)")
         print(f"  [DEBUG] Control/influence check: is_control={is_control_influence}, chunk_count={len(chunk_ids)}")
