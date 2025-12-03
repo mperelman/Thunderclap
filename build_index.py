@@ -157,6 +157,24 @@ def build_complete_index():
         traceback.print_exc()
         print(f"  [SKIP] Continuing without identity augmentation\n")
     
+    # Step 3d: Filter terms for hyperlinking (LLM or heuristic)
+    print("Step 3d: Filtering terms for hyperlinking...")
+    try:
+        from scripts.filter_terms_heuristic import filter_terms_heuristic
+        all_terms = list(indices['term_to_chunks'].keys())
+        filtered_terms = filter_terms_heuristic(all_terms, indices['term_to_chunks'], len(all_chunks))
+        
+        # Save filtered terms to data/filtered_terms.json
+        filtered_file = os.path.join(DATA_DIR, 'filtered_terms.json')
+        with open(filtered_file, 'w', encoding='utf-8') as f:
+            json.dump(sorted(set(filtered_terms)), f, indent=2, ensure_ascii=False)
+        
+        print(f"  [OK] Filtered {len(all_terms)} terms → {len(filtered_terms)} meaningful terms")
+        print(f"  [OK] Saved to {filtered_file}\n")
+    except Exception as e:
+        print(f"  [WARNING] Term filtering failed: {e}")
+        print(f"  [SKIP] Continuing without term filtering\n")
+    
     # Save indices (now with identity augmentation)
     save_indices(indices)
     

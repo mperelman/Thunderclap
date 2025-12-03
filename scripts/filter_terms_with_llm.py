@@ -44,7 +44,7 @@ print("2. Filtering terms with LLM...")
 print("   This will identify which terms are meaningful entities vs generic words")
 print()
 
-model = genai.GenerativeModel('gemini-2.0-flash-exp')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 BATCH_SIZE = 200  # Process 200 terms at a time
 filtered_terms = []
@@ -81,7 +81,15 @@ Do NOT include explanations, just the JSON array.
 """
     
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.2,
+                "top_p": 0.3,
+                "top_k": 1,
+                "max_output_tokens": 8192,
+            }
+        )
         response_text = response.text.strip()
         
         # Extract JSON from response (handle markdown code blocks)
