@@ -565,9 +565,13 @@ def build_indices(chunks, chunk_ids):
         
         # Pattern 2a: <italic>Word</italic> NB <italic>of</italic> <italic>Location</italic> (of italicized - most common)
         # Pattern 2b: <italic>Word</italic> NB of <italic>Location</italic> (of not italicized)
+        # Pattern 2c: <italic>Word</italic> NB (standalone, no location) - e.g., <italic>Park</italic> NB
+        # Pattern 2d: <italic>Word</italic> IHC (Investment Holding Company)
+        # Pattern 2e: <italic>Word</italic> PU (Public Utility)
         # Include possessive forms: <italic>First</italic> NB <italic>of</italic> <italic>Boston</italic>'s -> "first nb of boston"
         nb_pattern_italic_a = re.compile(r'<italic>([A-Z][a-z]+)</italic>\s+NB\s+<italic>of</italic>\s+<italic>([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)</italic>(?:\'s)?', re.IGNORECASE)
         nb_pattern_italic_b = re.compile(r'<italic>([A-Z][a-z]+)</italic>\s+NB\s+of\s+<italic>([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)</italic>(?:\'s)?', re.IGNORECASE)
+        nb_pattern_standalone = re.compile(r'<italic>([A-Z][a-z]+)</italic>\s+(NB|IHC|PU|SB|HC|TC)(?:\'s)?(?=\s|[,.]|$)', re.IGNORECASE)  # Standalone abbreviations
         
         for pattern in [nb_pattern_italic_a, nb_pattern_italic_b]:
             for match in pattern.finditer(chunk):
@@ -592,6 +596,26 @@ def build_indices(chunks, chunk_ids):
                     if expanded_name not in term_to_chunks:
                         term_to_chunks[expanded_name] = []
                     term_to_chunks[expanded_name].append(chunk_id)
+        
+        # Pattern 2c: Standalone abbreviations: <italic>Park</italic> NB, <italic>Morgan</italic> IHC, etc.
+        for match in nb_pattern_standalone.finditer(chunk):
+            firm_name = match.group(1).strip()
+            abbrev = match.group(2).strip().upper()
+            
+            # Create full term: "Park NB", "Morgan IHC", etc.
+            full_term = f"{canonicalize_term(firm_name)} {abbrev}"
+            term_counts[full_term] = term_counts.get(full_term, 0) + 1
+            if full_term not in term_to_chunks:
+                term_to_chunks[full_term] = []
+            term_to_chunks[full_term].append(chunk_id)
+            
+            # Also create expanded version for NB
+            if abbrev == 'NB':
+                expanded = f"{canonicalize_term(firm_name)} National Bank"
+                term_counts[expanded] = term_counts.get(expanded, 0) + 1
+                if expanded not in term_to_chunks:
+                    term_to_chunks[expanded] = []
+                term_to_chunks[expanded].append(chunk_id)
         
         # Pattern 3: Firm name in plain text (no italics): "First NB of Boston", "Second NB of New York", etc.
         # These appear in regular text and should be indexed as phrases
