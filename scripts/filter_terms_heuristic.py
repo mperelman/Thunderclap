@@ -1,126 +1,112 @@
 """
-Filter indexed terms using heuristics to identify only meaningful entities.
-This removes generic words and keeps only proper nouns, specific entities, and meaningful terms.
+Heuristic-based term filtering for hyperlinking.
+Filters out generic words while keeping proper nouns and specific entities.
 """
+import json
 import sys
 import os
-sys.path.insert(0, '.')
 
-import json
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-print("="*80)
-print("FILTERING INDEXED TERMS (HEURISTIC)")
-print("="*80)
-print()
+from lib.config import DATA_DIR
 
-# Load current index
-print("1. Loading current index...")
-from lib.config import INDICES_FILE
-with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-    data = json.load(f)
+# Load the index
+indices_file = os.path.join(DATA_DIR, 'indices.json')
+with open(indices_file, 'r', encoding='utf-8') as f:
+    indices = json.load(f)
 
-terms = list(data.get('term_to_chunks', {}).keys())
-term_to_chunks = data.get('term_to_chunks', {})
-total_chunks = sum(len(chunks) for chunks in term_to_chunks.values()) if term_to_chunks else 1
+term_to_chunks = indices['term_to_chunks']
+all_terms = list(term_to_chunks.keys())
 
-print(f"   Total terms in index: {len(terms)}")
-print()
+print(f"Loaded {len(all_terms)} terms from index")
 
-# Apply heuristic filtering
-print("2. Applying heuristic filters...")
+# Generic words to ALWAYS exclude (even if capitalized)
+ALWAYS_EXCLUDE = {
+    'financial', 'assets', 'asset', 'son', 'sons', 'daughter', 'daughters',
+    'president', 'director', 'chairman', 'officer', 'manager', 'partner',
+    'king', 'queen', 'prince', 'princess', 'duke', 'earl', 'lord', 'lady',
+    'father', 'mother', 'brother', 'sister', 'uncle', 'aunt', 'cousin',
+    'wife', 'husband', 'widow', 'widower', 'family', 'families',
+    'capital', 'credit', 'finance', 'financing', 'investment', 'investments',
+    'securities', 'security', 'stock', 'stocks', 'bond', 'bonds',
+    'market', 'markets', 'trade', 'trading', 'trader', 'traders',
+    'business', 'businesses', 'industry', 'industries', 'sector', 'sectors',
+    'economy', 'economic', 'commerce', 'commercial',
+    'government', 'federal', 'state', 'national', 'international',
+    'public', 'private', 'royal', 'imperial', 'central',
+    'exchange', 'association', 'society', 'institute', 'foundation',
+    'board', 'committee', 'commission', 'agency', 'department',
+    'act', 'acts', 'law', 'laws', 'rule', 'rules', 'regulation', 'regulations',
+    'section', 'sections', 'article', 'articles', 'chapter', 'chapters',
+    'crisis', 'crises', 'panic', 'panics', 'depression', 'recession',
+    'war', 'wars', 'peace', 'treaty', 'treaties', 'agreement', 'agreements',
+    'century', 'decade', 'year', 'years', 'period', 'era', 'age',
+    'early', 'late', 'mid', 'modern', 'contemporary', 'historical',
+    'first', 'second', 'third', 'fourth', 'fifth', 'last', 'final',
+    'new', 'old', 'young', 'great', 'grand', 'major', 'minor',
+    'north', 'south', 'east', 'west', 'central', 'western', 'eastern',
+    'european', 'asian', 'african', 'american', 'british', 'french', 'german',
+    'city', 'cities', 'town', 'towns', 'village', 'villages',
+    'street', 'avenue', 'road', 'boulevard', 'square', 'place',
+    'building', 'buildings', 'house', 'houses', 'office', 'offices',
+    'system', 'systems', 'network', 'networks', 'organization', 'organizations',
+    'group', 'groups', 'holding', 'holdings', 'corporation', 'corporations'
+}
+
 filtered_terms = []
 
-for term in terms:
-    term_lower = term.lower().strip()
+for term in all_terms:
+    term_lower = term.lower()
     
-    # Rule 1: Skip if too short
-    if len(term) < 4:
+    # Always exclude generic words
+    if term_lower in ALWAYS_EXCLUDE:
         continue
     
-    # Rule 2: Skip if it's just a number
-    if term_lower.isdigit():
+    # Keep acronyms (3+ caps)
+    if term.isupper() and len(term) >= 3:
+        filtered_terms.append(term)
         continue
     
-    # Rule 3: Skip if it's a single character repeated
-    if len(set(term_lower)) == 1:
-        continue
-    
-    # Rule 4: Skip if term appears in too many chunks (>10% = too generic)
-    chunk_count = len(term_to_chunks.get(term, []))
-    if chunk_count > max(50, total_chunks * 0.1):
-        continue
-    
-    # Rule 5: ONLY include terms that look like entities:
-    
-    # 5a. Multi-word phrases (likely entity names)
+    # Keep multi-word terms (likely firm names, full names, etc.)
     if ' ' in term:
-        # Skip generic phrases like "and the", "of the"
-        words = term_lower.split()
-        if len(words) >= 2 and any(len(w) >= 4 for w in words):
-            filtered_terms.append(term)
-        continue
-    
-    # 5b. Proper nouns (capitalized) - these are likely names
-    if term[0].isupper():
         filtered_terms.append(term)
         continue
     
-    # 5c. Acronyms (all caps, 2+ chars)
-    if term.isupper() and len(term) >= 2:
+    # Keep capitalized single words that are likely proper nouns
+    # (surnames, firm names, place names)
+    if len(term) > 0 and term[0].isupper() and len(term) > 2:
         filtered_terms.append(term)
         continue
     
-    # 5d. Mixed case (e.g., "iPhone", "McDonald")
-    if any(c.isupper() for c in term[1:]):
+    # Keep lowercase terms that are NOT generic English words
+    # (these are likely specialized terms, foreign words, or technical terms)
+    # But skip very short terms (likely generic)
+    if len(term) > 4 and not term_lower in ALWAYS_EXCLUDE:
         filtered_terms.append(term)
-        continue
-    
-    # 5e. Lowercase terms: ONLY if they're identity terms or very specific
-    # Identity terms from .cursorrules
-    identity_keywords = {
-        'jewish', 'jew', 'jews', 'sephardi', 'sephardim', 'ashkenazi', 'ashkenazim',
-        'quaker', 'quakers', 'huguenot', 'huguenots', 'mennonite', 'mennonites',
-        'puritan', 'puritans', 'protestant', 'catholic', 'muslim', 'muslims',
-        'parsee', 'parsees', 'armenian', 'armenians', 'greek', 'greeks',
-        'black', 'african', 'latino', 'latina', 'hispanic',
-        'female', 'woman', 'women', 'widow', 'widows', 'daughter', 'daughters',
-        'queen', 'princess', 'duchess', 'countess', 'baroness',
-        'kohanim', 'katz', 'levite', 'levites',
-    }
-    if term_lower in identity_keywords:
-        filtered_terms.append(term)
-        continue
-    
-    # 5f. Panic terms (e.g., "panic of 1929", "panic_of_1929")
-    if 'panic' in term_lower or 'crisis' in term_lower:
-        if any(c.isdigit() for c in term):  # Contains a year
-            filtered_terms.append(term)
-            continue
-    
-    # 5g. Law codes (e.g., "ba1933", "ta1813")
-    if len(term) >= 6 and term[:2].isalpha() and term[2:6].isdigit():
-        filtered_terms.append(term)
-        continue
-    
-    # Everything else is excluded (lowercase generic words)
 
-print()
-print(f"3. Filtering complete!")
-print(f"   Original terms: {len(terms)}")
-print(f"   Filtered terms: {len(filtered_terms)}")
-print(f"   Removed: {len(terms) - len(filtered_terms)} ({100*(len(terms) - len(filtered_terms))/len(terms):.1f}%)")
-print()
+print(f"\nFiltered: {len(filtered_terms)} terms kept, {len(all_terms) - len(filtered_terms)} removed")
+print(f"Removal rate: {((len(all_terms) - len(filtered_terms)) / len(all_terms) * 100):.1f}%")
 
-# Save filtered terms list
-output_file = 'data/filtered_terms.json'
-print(f"4. Saving filtered terms to {output_file}...")
+# Save to lib/filtered_terms.json (used by server)
+output_file = os.path.join('lib', 'filtered_terms.json')
 with open(output_file, 'w', encoding='utf-8') as f:
-    json.dump(sorted(set(filtered_terms)), f, indent=2, ensure_ascii=False)
+    json.dump(sorted(filtered_terms), f, indent=2, ensure_ascii=False)
 
-print()
-print("="*80)
-print("DONE!")
-print("="*80)
-print()
-print("Filtered terms saved. server.py will now load this file for hyperlinking.")
+print(f"\n✅ Saved filtered terms to {output_file}")
 
+# Show some examples of what was kept vs removed
+print("\n" + "=" * 80)
+print("SAMPLE OF KEPT TERMS:")
+print("=" * 80)
+kept_sample = sorted(filtered_terms)[:30]
+for t in kept_sample:
+    print(f"  {t}")
+
+print("\n" + "=" * 80)
+print("SAMPLE OF REMOVED TERMS:")
+print("=" * 80)
+removed = [t for t in all_terms if t not in filtered_terms]
+removed_sample = sorted(removed)[:30]
+for t in removed_sample:
+    print(f"  {t}")
