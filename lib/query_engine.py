@@ -20,9 +20,7 @@ from .config import (
     CHUNK_RETRIEVAL_BATCH_SIZE, EARLY_STOP_GAP_THRESHOLD, SPARSE_RESULTS_THRESHOLD,
     MAX_TOKENS_PER_REQUEST, MAX_TOKENS_PER_MINUTE, ESTIMATED_WORDS_PER_CHUNK, TOKENS_PER_WORD, MAX_WORDS_PER_REQUEST,
     CONTROL_INFLUENCE_EARLY_CHUNK_LIMIT, CONTROL_INFLUENCE_FINAL_CHUNK_LIMIT,
-    CONTROL_INFLUENCE_MAX_RETRIES, CONTROL_INFLUENCE_SLOW_THRESHOLD_SECONDS,
-    BROAD_IDENTITY_EARLY_CHUNK_LIMIT, BROAD_IDENTITY_FINAL_CHUNK_LIMIT,
-    BROAD_IDENTITY_MAX_RETRIES, BROAD_IDENTITY_SLOW_THRESHOLD_SECONDS
+    CONTROL_INFLUENCE_MAX_RETRIES, CONTROL_INFLUENCE_SLOW_THRESHOLD_SECONDS
 )
 from .llm import LLMAnswerGenerator
 from .engines.market_engine import MarketEngine
@@ -577,69 +575,13 @@ class QueryEngine:
             chunk_ids = set(list(chunk_ids)[:CONTROL_INFLUENCE_EARLY_CHUNK_LIMIT])
             print(f"  [EARLY_LIMIT] After limit: {len(chunk_ids)} chunks")
         
-        # Also detect broad identity queries (like "Tell me about black" or "Tell me about women")
-        # These are not control/influence queries but still need chunk limiting to avoid timeouts
-        # CRITICAL: Sample chunks from different time periods to ensure chronological coverage
-        is_broad_identity = self._is_broad_identity_query(question)
-        if not is_control_influence and is_broad_identity and len(chunk_ids) > BROAD_IDENTITY_EARLY_CHUNK_LIMIT:
-            print(f"  [BROAD_IDENTITY] Broad identity query detected - sampling {BROAD_IDENTITY_EARLY_CHUNK_LIMIT} chunks from {len(chunk_ids)} to ensure chronological diversity")
-            # Sample chunks from different time periods instead of just taking first N
-            try:
-                # Get chunk texts to analyze years
-                try:
-                    _ = self.collection.id  # Force validation
-                except Exception:
-                    self.collection = self.chroma_client.get_collection(name=COLLECTION_NAME)
-                sample_chunk_data = self.collection.get(ids=list(chunk_ids)[:min(200, len(chunk_ids))])  # Sample up to 200 to analyze
-                chunks_with_years = []
-                for i, chunk_id in enumerate(sample_chunk_data['ids']):
-                    text = sample_chunk_data['documents'][i]
-                    # Find years in chunk
-                    matches = re.findall(r'\b(1[6-9]\d{2}|20[0-2]\d)\b', text)
-                    if matches:
-                        latest_year = max(int(m) for m in matches)
-                        decade = (latest_year // 10) * 10
-                    else:
-                        decade = 0  # Undated
-                    chunks_with_years.append((chunk_id, decade))
-                
-                # Group by decade
-                chunks_by_decade = {}
-                for chunk_id, decade in chunks_with_years:
-                    if decade not in chunks_by_decade:
-                        chunks_by_decade[decade] = []
-                    chunks_by_decade[decade].append(chunk_id)
-                
-                # Sample evenly across decades (at least 1-2 per decade, up to limit)
-                sampled_chunk_ids = []
-                chunks_per_decade = max(1, BROAD_IDENTITY_EARLY_CHUNK_LIMIT // max(len(chunks_by_decade), 1))
-                for decade in sorted(chunks_by_decade.keys()):
-                    dec_chunks = chunks_by_decade[decade][:chunks_per_decade]
-                    sampled_chunk_ids.extend(dec_chunks)
-                    if len(sampled_chunk_ids) >= BROAD_IDENTITY_EARLY_CHUNK_LIMIT:
-                        break
-                
-                # If we still need more, add from remaining chunks
-                if len(sampled_chunk_ids) < BROAD_IDENTITY_EARLY_CHUNK_LIMIT:
-                    remaining = [cid for cid in chunk_ids if cid not in sampled_chunk_ids]
-                    sampled_chunk_ids.extend(remaining[:BROAD_IDENTITY_EARLY_CHUNK_LIMIT - len(sampled_chunk_ids)])
-                
-                chunk_ids = set(sampled_chunk_ids[:BROAD_IDENTITY_EARLY_CHUNK_LIMIT])
-                print(f"  [BROAD_IDENTITY] Sampled {len(chunk_ids)} chunks across {len(chunks_by_decade)} decades")
-            except Exception as e:
-                # Fallback to simple limit if sampling fails
-                print(f"  [BROAD_IDENTITY] Sampling failed ({e}), using simple limit")
-                chunk_ids = set(list(chunk_ids)[:BROAD_IDENTITY_EARLY_CHUNK_LIMIT])
-            print(f"  [BROAD_IDENTITY] After limit: {len(chunk_ids)} chunks")
-        
         # Augment queries with crisis/panic chunks that overlap the subject
         # SKIP this augmentation if we matched a firm phrase (e.g., "First National Bank of Boston")
         # because firm phrases are specific entities - crisis augmentation adds too many chunks (100+)
         # and the firm phrase chunks already include relevant crisis contexts
         # LIMIT crisis augmentation to avoid timeouts: cap at 20 chunks max
         # SKIP crisis augmentation for control/influence queries (they're already limited)
-        # SKIP crisis augmentation for broad identity queries (they're already limited)
-        if chunk_ids and not all_firm_phrases and not is_control_influence and not is_broad_identity:
+        if chunk_ids and not all_firm_phrases and not is_control_influence:
             try:
                 crisis_terms = ['panic', 'crisis', 'crises', '1973', '1974', '1987', '1998', '2008', '1929', '1907', '1825', '1873']
                 crisis_ids = set()
@@ -673,8 +615,7 @@ class QueryEngine:
         # SKIP this augmentation if we matched a firm phrase (e.g., "Rothschild Vienna")
         # because firm phrases are specific entities that shouldn't be expanded with individual terms
         # SKIP this augmentation for control/influence queries (they're already limited)
-        # SKIP this augmentation for broad identity queries (they're already limited)
-        if chunk_ids and subject_terms and len(term_sets) >= 2 and not all_firm_phrases and not is_control_influence and not is_broad_identity:
+        if chunk_ids and subject_terms and len(term_sets) >= 2 and not all_firm_phrases and not is_control_influence:
             try:
                 # First, determine the time span of currently retrieved chunks
                 # Verify collection before accessing
@@ -805,12 +746,13 @@ class QueryEngine:
             if self._is_ideology_query(question):
                 chunks = self._filter_chunks_for_ideology(chunks, question)
             
-            # For broad identity queries, filter to banking/finance-relevant chunks only
-            # This prevents mixing unrelated historical/political information (e.g., African kingdoms) with banking topics
+            # For identity queries, filter to banking/finance-relevant chunks only
+            # This prevents mixing unrelated historical/political information with banking topics
             # CRITICAL: Require STRICT banking/finance terms, not general "trade", "commerce", or "economic" which can refer to non-banking activities
             # NOTE: Chunks may be in the identity index via identity augmentation (e.g., chunks about Parsons/Lewis added to "black" index)
             # So we don't require explicit identity terms in chunk text - if chunk is in identity index, it's already relevant
-            if 'is_broad_identity' in locals() and is_broad_identity:
+            is_identity_query = self._is_identity_query(question)
+            if is_identity_query:
                 # Strict banking/finance keywords only (exclude general "trade", "commerce", "economic" which can be non-banking)
                 strict_finance_keywords = ['bank', 'banking', 'banker', 'bankers', 'finance', 'financial', 'financier', 'financiers',
                                           'investment', 'investor', 'investors', 'capital', 'credit', 'loan', 'lending', 
@@ -881,7 +823,7 @@ class QueryEngine:
                         filtered_chunks.append((text, meta))
                 
                 if filtered_chunks:
-                    print(f"  [FILTER] Filtered {len(chunks)} chunks to {len(filtered_chunks)} finance-relevant chunks for broad identity query (required finance keywords, excluded non-banking)")
+                    print(f"  [FILTER] Filtered {len(chunks)} chunks to {len(filtered_chunks)} finance-relevant chunks for identity query (required finance keywords, excluded non-banking)")
                     chunks = filtered_chunks
                 else:
                     print(f"  [WARN] No finance-relevant chunks found after filtering - using all chunks")
@@ -903,11 +845,6 @@ class QueryEngine:
             else:
                 print(f"  [DEDUP] Used preprocessed deduplicated file ({len(chunks)} chunks)")
             
-            # Apply final chunk limit for broad identity queries (after deduplication)
-            if 'is_broad_identity' in locals() and is_broad_identity and len(chunks) > BROAD_IDENTITY_FINAL_CHUNK_LIMIT:
-                print(f"  [BROAD_IDENTITY] Final limit: reducing chunks from {len(chunks)} to {BROAD_IDENTITY_FINAL_CHUNK_LIMIT}")
-                chunks = chunks[:BROAD_IDENTITY_FINAL_CHUNK_LIMIT]
-            
             # Detect special query types
             # Note: is_control_influence already detected earlier (before augmentation)
             is_market = self._is_market_query(question)
@@ -916,10 +853,6 @@ class QueryEngine:
             # Re-check control/influence if not already detected (shouldn't happen, but safety check)
             if 'is_control_influence' not in locals():
                 is_control_influence = self._is_control_influence_query(question)
-            # Re-check broad identity if not already detected
-            if 'is_broad_identity' not in locals():
-                is_broad_identity = self._is_broad_identity_query(question)
-            
             if is_market:
                 print(f"  [AUTO] Market/asset query detected ({len(chunks)} chunks)")
                 print(f"  [AUTO] Routing to MarketEngine...")
@@ -1044,44 +977,14 @@ class QueryEngine:
             except Exception as e:
                     pass  # Chunk tracking optional
 
-            # Handle broad identity queries with simple direct path (skip PeriodEngine to avoid timeouts)
-            if 'is_broad_identity' in locals() and is_broad_identity:
-                print(f"  [BROAD_IDENTITY] Processing broad identity query directly ({len(chunks)} chunks)")
-                # Limit chunks if needed
-                if len(chunks) > BROAD_IDENTITY_FINAL_CHUNK_LIMIT:
-                    print(f"  [LIMIT] Reducing chunks from {len(chunks)} to {BROAD_IDENTITY_FINAL_CHUNK_LIMIT} for broad identity query")
-                    chunks = chunks[:BROAD_IDENTITY_FINAL_CHUNK_LIMIT]
-                
-                # Temporarily reduce retries for broad identity queries (prevents long waits)
-                self.llm._temp_max_attempts = BROAD_IDENTITY_MAX_RETRIES
-                
-                import time
-                start_time = time.time()
-                
-                try:
-                    # Use simple direct LLM call
-                    answer = self.llm.generate_answer(question, chunks)
-                    elapsed = time.time() - start_time
-                    print(f"  [BROAD_IDENTITY] LLM call completed in {elapsed:.1f}s")
-                    
-                    # Check for timeout
-                    if elapsed > BROAD_IDENTITY_SLOW_THRESHOLD_SECONDS:
-                        print(f"  [WARN] LLM call was slow ({elapsed:.1f}s) but completed")
-                        # Still return answer, but warn if very slow
-                        if elapsed > 90:
-                            return f"⚠️ Query took {elapsed:.0f} seconds. The query '{question}' is very broad. Please try a more specific question:\n\n- 'Tell me about Black bankers in 19th century America'\n- 'Tell me about Women bankers in London'\n- 'Tell me about specific Black banking families'\n\n{answer}"
-                    
-                    # Check for empty answer
-                    if not answer or not answer.strip():
-                        print(f"  [WARN] Empty answer detected, attempting retry with reduced chunks...")
-                        if len(chunks) > 5:
-                            reduced_chunks = chunks[:5]
-                            print(f"  [RETRY] Retrying with {len(reduced_chunks)} chunks (reduced from {len(chunks)})")
-                            answer = self.llm.generate_answer(question, reduced_chunks)
-                        else:
-                            return f"I apologize, but I encountered an issue generating a response for '{question}'. Please try rephrasing your question or breaking it into smaller parts."
-                    
-                    # Ensure structure & related questions
+            # All queries now use standard routing (no special-casing)
+            # Identity queries are filtered for banking/finance relevance above
+            # Then routed based on chunk count: ≤20 fast, 21-30 single, 31-100 PeriodEngine, 100+ batching
+            if False:  # Removed broad_identity special-casing
+                # This block is now disabled - all queries use standard routing
+                pass
+            
+            # Standard routing continues below
                     if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                         answer = self._polish_answer(question, answer, chunks)
                     return answer
@@ -1432,28 +1335,14 @@ class QueryEngine:
         has_identity = any(term in question_lower for term in identity_terms_set)
         return has_control and has_identity
     
-    def _is_broad_identity_query(self, question: str) -> bool:
+    def _is_identity_query(self, question: str) -> bool:
         """
-        Detect broad identity queries (like "Tell me about black" or "Tell me about women").
-        These are NOT control/influence queries but are still very broad and need chunk limiting.
+        Detect identity queries (queries about specific identity groups in banking).
+        Used to filter chunks for banking/finance relevance.
         """
         question_lower = question.lower()
-        # Check for "tell me about" pattern with identity terms
-        tell_me_patterns = ['tell me about', 'what is', 'who are', 'what are']
-        has_tell_me = any(pattern in question_lower for pattern in tell_me_patterns)
-        # Check for identity/group terms (same list as control/influence)
         from lib.identity_terms import IDENTITY_TERMS_SET as identity_terms_set
-        has_identity = any(term in question_lower for term in identity_terms_set)
-        # Check if query is very short/simple (likely to be broad)
-        # Remove stop words and check if only 1-2 meaningful words remain
-        words = question_lower.split()
-        # Use centralized STOP_WORDS from constants.py
-        meaningful_words = [w for w in words if w not in STOP_WORDS and len(w) > 2]
-        is_simple = len(meaningful_words) <= 3  # Allow up to 3 meaningful words (e.g., "Tell me about Black" = 1 word)
-        # Also check if query ends with just the identity term (very broad)
-        # "Tell me about Black" should match, but "Tell me about Black bankers in 19th century" should not
-        ends_with_identity = any(question_lower.rstrip('?.').endswith(term) for term in identity_terms_set)
-        return has_tell_me and has_identity and (is_simple or ends_with_identity)
+        return any(term in question_lower for term in identity_terms_set)
     
     def _is_market_query(self, question: str) -> bool:
         """
@@ -1553,7 +1442,7 @@ MANDATORY STRUCTURE - FOLLOW THIS EXACT ORDER (DO NOT SKIP STEPS):
      * Social exclusion and discrimination
      * Political interference and persecution
    - MANDATORY: Include OTHER COMPETITORS AND GROUPS:
-     * Other cousinhoods (Quakers, Huguenots, Parsees, Mennonites, Boston Brahmins, Protestant Cologne, Greeks, Armenians, etc.)
+     * Other identity groups (Quakers, Huguenots, Parsees, Mennonites, Boston Brahmins, Protestant Cologne, Greeks, Armenians, etc.)
      * Religious prohibitions on credit/usury that affected other groups (e.g., Christian prohibitions on lending at interest that created opportunities for certain groups)
      * Show that banking involved many groups, not just the queried group
    - Show that participation was precarious and subject to sudden reversals
