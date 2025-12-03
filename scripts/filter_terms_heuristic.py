@@ -21,37 +21,64 @@ all_terms = list(term_to_chunks.keys())
 
 print(f"Loaded {len(all_terms)} terms from index")
 
-# Generic words to ALWAYS exclude (even if capitalized)
+# Generic words to ALWAYS exclude (even if capitalized or multi-word)
+# This includes: generic terms, titles, common place names, descriptors
 ALWAYS_EXCLUDE = {
+    # Generic financial/business terms
     'financial', 'assets', 'asset', 'son', 'sons', 'daughter', 'daughters',
-    'president', 'director', 'chairman', 'officer', 'manager', 'partner',
-    'king', 'queen', 'prince', 'princess', 'duke', 'earl', 'lord', 'lady',
-    'father', 'mother', 'brother', 'sister', 'uncle', 'aunt', 'cousin',
-    'wife', 'husband', 'widow', 'widower', 'family', 'families',
     'capital', 'credit', 'finance', 'financing', 'investment', 'investments',
     'securities', 'security', 'stock', 'stocks', 'bond', 'bonds',
     'market', 'markets', 'trade', 'trading', 'trader', 'traders',
     'business', 'businesses', 'industry', 'industries', 'sector', 'sectors',
     'economy', 'economic', 'commerce', 'commercial',
+    'exchange', 'association', 'society', 'institute', 'foundation',
+    'system', 'systems', 'network', 'networks', 'organization', 'organizations',
+    'group', 'groups', 'holding', 'holdings', 'corporation', 'corporations',
+    
+    # Titles and roles (should NOT be hyperlinked)
+    'president', 'director', 'chairman', 'officer', 'manager', 'partner',
+    'governor', 'mayor', 'senator', 'representative', 'congressman',
+    'king', 'queen', 'prince', 'princess', 'duke', 'earl', 'lord', 'lady',
+    'emperor', 'czar', 'kaiser', 'sultan', 'shah', 'caliph',
+    
+    # Family relationships
+    'father', 'mother', 'brother', 'sister', 'uncle', 'aunt', 'cousin',
+    'wife', 'husband', 'widow', 'widower', 'family', 'families',
+    
+    # Government/legal terms
     'government', 'federal', 'state', 'national', 'international',
     'public', 'private', 'royal', 'imperial', 'central',
-    'exchange', 'association', 'society', 'institute', 'foundation',
     'board', 'committee', 'commission', 'agency', 'department',
     'act', 'acts', 'law', 'laws', 'rule', 'rules', 'regulation', 'regulations',
     'section', 'sections', 'article', 'articles', 'chapter', 'chapters',
+    'policy', 'policies', 'program', 'programs',
+    
+    # Economic events
     'crisis', 'crises', 'panic', 'panics', 'depression', 'recession',
     'war', 'wars', 'peace', 'treaty', 'treaties', 'agreement', 'agreements',
+    
+    # Time periods
     'century', 'decade', 'year', 'years', 'period', 'era', 'age',
     'early', 'late', 'mid', 'modern', 'contemporary', 'historical',
+    
+    # Ordinals and descriptors
     'first', 'second', 'third', 'fourth', 'fifth', 'last', 'final',
     'new', 'old', 'young', 'great', 'grand', 'major', 'minor',
+    
+    # Directions and regions (generic)
     'north', 'south', 'east', 'west', 'central', 'western', 'eastern',
+    'northern', 'southern', 'northeastern', 'northwestern', 'southeastern', 'southwestern',
     'european', 'asian', 'african', 'american', 'british', 'french', 'german',
+    
+    # Generic place terms
     'city', 'cities', 'town', 'towns', 'village', 'villages',
     'street', 'avenue', 'road', 'boulevard', 'square', 'place',
     'building', 'buildings', 'house', 'houses', 'office', 'offices',
-    'system', 'systems', 'network', 'networks', 'organization', 'organizations',
-    'group', 'groups', 'holding', 'holdings', 'corporation', 'corporations'
+    
+    # Major generic place names (too generic to hyperlink)
+    'york', 'new york', 'london', 'paris', 'berlin', 'vienna', 'rome',
+    'amsterdam', 'brussels', 'geneva', 'zurich', 'madrid', 'lisbon',
+    'america', 'europe', 'asia', 'africa', 'australia',
 }
 
 filtered_terms = []
@@ -59,7 +86,7 @@ filtered_terms = []
 for term in all_terms:
     term_lower = term.lower()
     
-    # Always exclude generic words
+    # Always exclude generic words (single or multi-word)
     if term_lower in ALWAYS_EXCLUDE:
         continue
     
@@ -68,8 +95,23 @@ for term in all_terms:
         filtered_terms.append(term)
         continue
     
-    # Keep multi-word terms (likely firm names, full names, etc.)
+    # Keep multi-word terms UNLESS they're generic
+    # Check if any word in the term is in the exclusion list
     if ' ' in term:
+        # Don't exclude if it's a specific entity with a generic word
+        # e.g., "Deutsche Bank" is OK even though "bank" is generic
+        # But "New York" is generic even though it's multi-word
+        words = term_lower.split()
+        # If ALL words are generic, exclude
+        if all(w in ALWAYS_EXCLUDE for w in words):
+            continue
+        # Special case: if it's ONLY place names, exclude
+        place_only = all(w in ['york', 'new', 'london', 'paris', 'berlin', 'vienna', 'rome', 
+                                'amsterdam', 'brussels', 'geneva', 'zurich', 'madrid', 'lisbon',
+                                'america', 'europe', 'asia', 'africa', 'north', 'south', 'east', 'west'] 
+                         for w in words)
+        if place_only:
+            continue
         filtered_terms.append(term)
         continue
     
