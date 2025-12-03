@@ -491,10 +491,27 @@ def build_indices(chunks, chunk_ids):
         # Extract surnames and middle names (middle names are often maiden/mother's names)
         # UPDATED: Preserve capitalization to distinguish proper nouns from common words
         proper_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', chunk)
+        # CRITICAL: Filter out generic words that are not surnames
+        # These appear in proper names but are not people's surnames
+        GENERIC_NOT_SURNAMES = {
+            'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
+            'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
+            'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
+            'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
+            'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
+            'national', 'international', 'federal', 'state', 'central', 'commercial',
+            'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
+            'exchange', 'credit', 'finance', 'capital', 'securities', 'assets'
+        }
+        
         for full_name in proper_names:
             parts = full_name.split()
             surname_raw = parts[-1]  # Keep original capitalization
             surname = canonicalize_term(surname_raw)
+            
+            # CRITICAL: Skip if surname is a generic word (not a person's name)
+            if surname.lower() in GENERIC_NOT_SURNAMES:
+                continue
             
             # Index surname (preserving capitalization)
             for target in filter(None, {surname_raw, surname}):
@@ -651,11 +668,36 @@ def build_indices(chunks, chunk_ids):
                 term_to_chunks[expanded_name].append(chunk_id)
         
         # Pattern 1: Standard firm names in <italic> tags
+        # CRITICAL: Only index multi-word italicized terms or non-generic single words
+        # Generic words like "Bank", "Trust", "Co" should NOT be indexed standalone
+        GENERIC_FIRM_WORDS = {
+            'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
+            'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
+            'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
+            'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
+            'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
+            'national', 'international', 'federal', 'state', 'central', 'commercial',
+            'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
+            'exchange', 'credit', 'finance', 'capital', 'securities', 'assets'
+        }
+        
         for match in firm_pattern.finditer(chunk):
             firm = match.group(1).strip()
             if len(firm) < 100:
                 # Canonicalize (now preserves case)
                 firm_term = canonicalize_term(firm)
+                
+                # CRITICAL: Skip standalone generic words
+                # Only index if:
+                # 1. Multi-word (e.g., "Morgan Grenfell", "Deutsche Bank")
+                # 2. Single word but NOT generic (e.g., "Paribas" OK, "Bank" NOT OK)
+                is_multi_word = ' ' in firm_term
+                is_generic = firm_term.lower() in GENERIC_FIRM_WORDS
+                
+                if is_generic and not is_multi_word:
+                    # Skip standalone generic words like "Bank", "Trust", "Co"
+                    continue
+                
                 # Index the firm name itself (with capitalization preserved)
                 term_counts[firm_term] = term_counts.get(firm_term, 0) + 1
                 if firm_term not in term_to_chunks:
