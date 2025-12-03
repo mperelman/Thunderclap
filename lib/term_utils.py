@@ -12,23 +12,24 @@ POSSESSIVE_PATTERN = re.compile(r"('s|’s)$", re.IGNORECASE)
 
 def canonicalize_term(term: str) -> str:
     """
-    Normalize a term so plural/possessive variants map to the same index key.
-    - Keeps all-uppercase acronyms (SEC, MMEU) unchanged
-    - Converts to lowercase otherwise
-    - Strips apostrophes/possessives and trailing 's' for 4+ letter words
+    Normalize a term PRESERVING capitalization.
+    
+    NEW BEHAVIOR:
+    - Preserves original capitalization completely (e.g., "Paribas" stays "Paribas", "BANK" stays "BANK")
+    - Only removes possessives ('s) - does NOT remove trailing 's' from words
+    - This allows distinguishing: "Paribas" (proper noun) vs "bank" (generic word)
+    
+    Returns:
+        Term with possessives removed, capitalization preserved
     """
     if not term:
         return term
     
-    if term.isupper():
-        return term
-    
-    t = term.lower().replace("’", "'").strip("'")
-    t = POSSESSIVE_PATTERN.sub('', t)
-    t = t.replace("'", "")
-    
-    if len(t) > 3 and t.endswith('s'):
-        t = t[:-1]
+    # Remove possessives ('s or 's) but preserve everything else
+    t = term.replace("'", "'")  # Normalize apostrophes
+    t = POSSESSIVE_PATTERN.sub('', t)  # Remove 's
+    t = t.replace("'", "")  # Remove any remaining apostrophes
+    t = t.strip()
     
     return t
 
