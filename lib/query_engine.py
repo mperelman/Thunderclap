@@ -767,13 +767,10 @@ class QueryEngine:
         
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
-        # Augment with endnotes if results are sparse
-        # CRITICAL: Skip endnote augmentation for firm name queries to avoid pushing chunk count over fast-path threshold (20)
-        # Firm name queries should use exact phrase matches, not broad endnote augmentation
+        # Augment with endnotes if results are sparse (< 10 chunks)
+        # Endnotes provide additional bibliographic detail and source context
         endnote_chunks = []
-        is_firm_name_query = any('national bank' in q.lower() or ' nb of ' in q.lower() for q in [question])
-        skip_endnotes = is_firm_name_query and len(chunk_ids_list) >= 10  # Don't augment if we already have reasonable coverage
-        if not skip_endnotes and len(chunk_ids_list) < SPARSE_RESULTS_THRESHOLD and self.chunk_to_endnotes and self.endnotes:
+        if len(chunk_ids_list) < SPARSE_RESULTS_THRESHOLD and self.chunk_to_endnotes and self.endnotes:
             print(f"  [AUGMENT] Sparse results - including endnotes linked to {len(chunk_ids_list)} chunks...")
             endnote_ids = set()
             
