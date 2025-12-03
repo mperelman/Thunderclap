@@ -631,6 +631,14 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
    - Provide 3-5 follow-up questions based ONLY on topics with SUBSTANTIAL material in the documents
    - For EACH potential question, ask yourself: "Could I write 3+ paragraphs answering this from what the documents ACTUALLY say?"
    - If answer is NO → DELETE that question
+   - CRITICAL: Questions must be SPECIFIC to avoid token limits:
+     * Include time periods (e.g., "in the 1870s-1880s", "during the 1930s", "in the late 19th century")
+     * Focus on specific aspects (e.g., "role in Canadian Pacific Railway" not "role in railroads generally")
+     * Focus on specific people/institutions (e.g., "relationship with Rothschild" not "international partnerships")
+     * BAD: "What was Bank of Montreal's role in financing Canadian railway development?" (too broad, will retrieve too many chunks)
+     * GOOD: "What was Bank of Montreal's role in financing Canadian Pacific Railway in the 1880s?"
+     * BAD: "How did Bank of Montreal expand internationally?" (too broad)
+     * GOOD: "How did Bank of Montreal establish its European presence through Berenberg Gossler in 1967?"
    
    CRITICAL: COMPOSE COMPLETE, GRAMMATICALLY CORRECT QUESTIONS (MANDATORY - ABSOLUTE REQUIREMENT):
    - Each question MUST be a complete, grammatically correct sentence that can stand alone
