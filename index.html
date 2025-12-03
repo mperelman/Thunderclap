@@ -1267,7 +1267,11 @@
                 const lower = term.toLowerCase();
                 
                 // Exclude the query subject itself (don't hyperlink "Bank of Montreal" in a query about "Bank of Montreal")
+                // Also exclude the acronym (don't hyperlink "WFC" in a query about "War Finance Corporation")
                 if (currentQuerySubject && lower === currentQuerySubject) {
+                    return;
+                }
+                if (currentQuerySubjectAcronym && lower === currentQuerySubjectAcronym) {
                     return;
                 }
                 
@@ -1614,6 +1618,7 @@
         }
         
         let currentQuerySubject = '';  // Track the current query subject to exclude from hyperlinking
+        let currentQuerySubjectAcronym = '';  // Track acronym of query subject (e.g., "WFC" for "War Finance Corporation")
         
         async function askQuestion() {
             console.log('askQuestion() called');
@@ -1623,10 +1628,23 @@
             // Extract the subject from "Tell me about X" queries
             const aboutMatch = question.match(/tell me about (.+)/i);
             if (aboutMatch) {
-                currentQuerySubject = aboutMatch[1].trim().toLowerCase();
+                const subject = aboutMatch[1].trim();
+                currentQuerySubject = subject.toLowerCase();
                 console.log('[QUERY] Subject:', currentQuerySubject);
+                
+                // Also extract acronym if present (e.g., "War Finance Corporation" -> "WFC")
+                const words = subject.split(/\s+/);
+                if (words.length >= 2) {
+                    // Create acronym from capital letters
+                    const acronym = words.map(w => w[0]).join('').toUpperCase();
+                    if (acronym.length >= 2) {
+                        currentQuerySubjectAcronym = acronym.toLowerCase();
+                        console.log('[QUERY] Acronym:', currentQuerySubjectAcronym);
+                    }
+                }
             } else {
                 currentQuerySubject = '';
+                currentQuerySubjectAcronym = '';
             }
             
             if (!question || question.length < 3) {
