@@ -731,6 +731,26 @@ def build_indices(chunks, chunk_ids):
                 term_lc = term.lower()
                 term_counts[term_lc] = term_counts.get(term_lc, 0) + 1
                 term_to_chunks.setdefault(term_lc, []).append(chunk_id)
+                
+                # CRITICAL: Also index acronym + location patterns (e.g., "FRS New York", "SEC Chicago")
+                # These are specific entities: FRS New York = Federal Reserve Bank of New York
+                # Pattern: ACRONYM followed by a capitalized place name
+                acronym_location_pattern = re.compile(rf"\b{re.escape(term)}\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b")
+                for match in acronym_location_pattern.finditer(visible):
+                    location = match.group(1).strip()
+                    # Only index if location is a recognizable place (not a generic word)
+                    # Common US cities/regions and international financial centers
+                    valid_locations = {
+                        'new york', 'boston', 'chicago', 'philadelphia', 'cleveland', 'richmond',
+                        'atlanta', 'st louis', 'minneapolis', 'kansas city', 'dallas', 'san francisco',
+                        'london', 'paris', 'vienna', 'berlin', 'amsterdam', 'brussels', 'zurich',
+                        'geneva', 'frankfurt', 'milan', 'madrid', 'lisbon', 'stockholm', 'copenhagen',
+                        'tokyo', 'hong kong', 'singapore', 'shanghai', 'beijing', 'mumbai', 'dubai'
+                    }
+                    if location.lower() in valid_locations:
+                        full_term = f"{term} {location}"
+                        term_counts[full_term] = term_counts.get(full_term, 0) + 1
+                        term_to_chunks.setdefault(full_term, []).append(chunk_id)
         # Use all_acronyms (extracted + hardcoded) instead of ACRONYM_EXPANSIONS
         for term, full_name in all_acronyms.items():
             if not full_name:
