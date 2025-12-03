@@ -55,11 +55,22 @@ for i in progress_bar:
     # Update progress bar description with current stats
     progress_bar.set_description(f"Batch {batch_num}/{num_batches} ({batch_num*100//num_batches}%)")
     
+    # Pre-filter: Keep ALL acronyms (3+ caps) without sending to LLM
+    acronyms_in_batch = [t for t in batch if t.isupper() and len(t) >= 3]
+    non_acronyms = [t for t in batch if not (t.isupper() and len(t) >= 3)]
+    
+    # Add acronyms directly to filtered list (don't send to LLM)
+    filtered_terms.extend(acronyms_in_batch)
+    
+    # If entire batch is acronyms, skip LLM call
+    if not non_acronyms:
+        continue
+    
     # Wait BEFORE making request (except first batch) to respect 15 RPM limit
     if i > 0:
         time.sleep(5)  # 5 seconds = 12 requests/minute (safe margin under 15 RPM)
     
-    # Create a FRESH LLM client for each batch (workaround for key invalidation issue)
+    # Create a FRESH LLM client for each batch
     llm = LLMAnswerGenerator()
     
     prompt = f"""You are filtering indexed terms for a historical banking database for hyperlinking.
@@ -84,7 +95,7 @@ Return ONLY terms that would be USEFUL and MEANINGFUL to hyperlink. Be VERY sele
 Rule: If it's a SINGLE WORD and COMMON, EXCLUDE IT.
 
 **Terms to filter:**
-{json.dumps(batch)}
+{json.dumps(non_acronyms)}
 
 **Output:** JSON array of terms to KEEP. No explanations.
 """
@@ -116,8 +127,9 @@ Rule: If it's a SINGLE WORD and COMMON, EXCLUDE IT.
         
         # Show detailed progress every 5 batches
         if batch_num % 5 == 0:
-            print(f"\n   ✅ Batch {batch_num}/{num_batches} ({overall_pct:.0f}%): Kept {len(kept_terms)}/{len(batch)} ({kept_pct:.0f}%), Removed {len(batch)-len(kept_terms)} ({removed_pct:.0f}%)")
-            print(f"      Total: {len(filtered_terms)} kept, {total_removed_so_far} removed")
+            acronyms_kept = len(acronyms_in_batch)
+            print(f"\n   ✅ Batch {batch_num}/{num_batches} ({overall_pct:.0f}%): Kept {len(kept_terms)+acronyms_kept}/{len(batch)} ({kept_pct:.0f}%), Removed {len(batch)-len(kept_terms)-acronyms_kept} ({removed_pct:.0f}%)")
+            print(f"      Total: {len(filtered_terms)} kept ({acronyms_kept} acronyms auto-kept), {total_removed_so_far} removed")
         
     except Exception as e:
         print(f"\n   [ERROR] Batch {batch_num} failed: {str(e)[:300]}")
