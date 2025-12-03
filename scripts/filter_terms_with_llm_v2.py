@@ -64,21 +64,24 @@ for i in progress_bar:
     
     prompt = f"""You are filtering indexed terms for a historical banking database for hyperlinking.
 
-Return ONLY terms that would be useful to hyperlink (specific entities, not common words).
+Return ONLY terms that would be USEFUL and MEANINGFUL to hyperlink. Be VERY selective - exclude anything common or generic.
 
-**KEEP:**
-- Multi-word phrases (e.g., "Bank of Montreal", "Panic of 1929")
-- Distinctive family names (e.g., "Rothschild", "Sassoon")
-- Identity/ethnic/religious terms (e.g., "Jewish", "Quaker", "Armenian")
-- Acronyms and law codes (e.g., "SEC", "BA1933")
+**KEEP (be selective):**
+- Multi-word entities: "Bank of Montreal", "Panic of 1929", "Edward Harriman"
+- Distinctive/rare surnames: "Rothschild", "Sassoon", "Warburg" (NOT common names like "Smith", "Johnson")
+- Identity terms: "Jewish", "Quaker", "Armenian", "widow"
+- Acronyms 3+ chars: "SEC", "FDIC", "FRS"
+- Law codes: "BA1933", "TA1813"
 
-**EXCLUDE:**
-- Generic banking/finance words (e.g., "bank", "credit", "financial")
-- Common single-word first names that appear frequently
-- Common single-word place names when standalone
-- Generic descriptive words (e.g., "dominant", "significant")
-- Common relationship words (e.g., "son", "father", "brother")
-- Generic titles (e.g., "president", "director", "governor")
+**EXCLUDE (be aggressive):**
+- ALL single-word common first names: "Edward", "Frederick", "John", "William", "George", "Charles", "James", "Robert", "Thomas", "Samuel", "Daniel", "Benjamin", "Joseph", "David", "Henry"
+- ALL common relationship/family words: "son", "daughter", "father", "mother", "brother", "sister", "widow"
+- ALL generic titles: "president", "director", "governor", "minister", "chairman", "secretary"
+- ALL generic banking words: "bank", "credit", "trust", "loan"
+- ALL common place names when standalone: "boston", "chicago", "paris" (keep "Bank of Boston")
+- Generic descriptive words: "era", "period", "significant"
+
+Rule: If it's a SINGLE WORD and COMMON, EXCLUDE IT.
 
 **Terms to filter:**
 {json.dumps(batch)}
