@@ -59,9 +59,6 @@ CONTROL_INFLUENCE_FINAL_CHUNK_LIMIT = 5  # Final chunk limit AFTER deduplication
 CONTROL_INFLUENCE_MAX_RETRIES = 2  # Reduced retries for control/influence queries (prevents long waits)
 CONTROL_INFLUENCE_SLOW_THRESHOLD_SECONDS = 120  # Threshold for warning about slow LLM calls
 
-# Broad identity query parameters (for queries like "Tell me about black" or "Tell me about women")
-BROAD_IDENTITY_EARLY_CHUNK_LIMIT = 20  # Limit chunks BEFORE augmentation for broad identity queries (increased for better coverage)
-BROAD_IDENTITY_FINAL_CHUNK_LIMIT = 15  # Final chunk limit AFTER deduplication for broad identity queries (increased for better coverage)
-BROAD_IDENTITY_MAX_RETRIES = 2  # Max retries for broad identity queries (reduced to prevent long waits)
-BROAD_IDENTITY_SLOW_THRESHOLD_SECONDS = 90  # Timeout threshold for broad identity queries (90 seconds, increased for more chunks)
+# Note: Removed BROAD_IDENTITY special-casing - all queries now use standard tiered routing
+# Identity queries are filtered for banking/finance relevance, then routed by chunk count
 
