@@ -980,25 +980,7 @@ class QueryEngine:
             # All queries now use standard routing (no special-casing)
             # Identity queries are filtered for banking/finance relevance above
             # Then routed based on chunk count: ≤20 fast, 21-30 single, 31-100 PeriodEngine, 100+ batching
-            if False:  # Removed broad_identity special-casing
-                # This block is now disabled - all queries use standard routing
-                pass
             
-            # Standard routing continues below
-                    if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
-                        answer = self._polish_answer(question, answer, chunks)
-                    return answer
-                except Exception as e:
-                    elapsed = time.time() - start_time
-                    print(f"  [ERROR] LLM call failed after {elapsed:.1f}s: {e}")
-                    if elapsed > 60:
-                        return f"⚠️ Query timed out after {elapsed:.0f} seconds. The query '{question}' is very broad. Please try a more specific question:\n\n- 'Tell me about Black bankers in 19th century America'\n- 'Tell me about Women bankers in London'\n- 'Tell me about specific Black banking families'"
-                    raise
-                finally:
-                    # Restore original max_attempts
-                    if hasattr(self.llm, '_temp_max_attempts'):
-                        delattr(self.llm, '_temp_max_attempts')
-
             # Special-case: If SEC is explicitly present, send ALL chunks in a single call (no batching)
             if any(tok == "SEC" for tok in acronyms):
                 print(f"  [FORCE] SEC query detected; sending all {len(chunks)} chunks in a single call")
