@@ -1082,7 +1082,24 @@ def deduplicate_chunks_for_term(chunks: list) -> str:
 
 
 def save_indices(indices):
-    """Save indices to disk."""
+    """Save indices to disk, deduplicating chunk lists first."""
+    # CRITICAL: Deduplicate chunk IDs for each term
+    # Many terms appear multiple times in the same chunk, causing duplicate chunk IDs
+    term_to_chunks = indices.get('term_to_chunks', {})
+    total_before = sum(len(chunks) for chunks in term_to_chunks.values())
+    duplicates_removed = 0
+    
+    for term, chunks in term_to_chunks.items():
+        if len(chunks) != len(set(chunks)):
+            unique_chunks = list(dict.fromkeys(chunks))  # Preserves order, removes duplicates
+            duplicates_removed += len(chunks) - len(unique_chunks)
+            term_to_chunks[term] = unique_chunks
+    
+    total_after = sum(len(chunks) for chunks in term_to_chunks.values())
+    
+    if duplicates_removed > 0:
+        print(f"  [DEDUP] Removed {duplicates_removed:,} duplicate chunk references ({total_before:,} -> {total_after:,})")
+    
     with open(INDICES_FILE, 'w', encoding='utf-8') as f:
         json.dump(indices, f, indent=2)
     print(f"[OK] Saved indices to {INDICES_FILE}")
