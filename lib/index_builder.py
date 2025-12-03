@@ -489,13 +489,14 @@ def build_indices(chunks, chunk_ids):
                     name_changes[old_lower].add(new_lower)
         
         # Extract surnames and middle names (middle names are often maiden/mother's names)
+        # UPDATED: Preserve capitalization to distinguish proper nouns from common words
         proper_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', chunk)
         for full_name in proper_names:
             parts = full_name.split()
-            surname_raw = parts[-1].lower()
+            surname_raw = parts[-1]  # Keep original capitalization
             surname = canonicalize_term(surname_raw)
             
-            # Index surname
+            # Index surname (preserving capitalization)
             for target in filter(None, {surname_raw, surname}):
                 term_counts[target] = term_counts.get(target, 0) + 1
                 if target not in term_to_chunks:
@@ -504,11 +505,11 @@ def build_indices(chunks, chunk_ids):
             chunk_entity_list.append(surname or surname_raw)
             
             # Index middle names (maiden/mother's names) - if there are 3+ parts
+            # UPDATED: Preserve capitalization
             if len(parts) >= 3:
                 for middle_part in parts[1:-1]:  # All parts except first and last
-                    middle_lower = middle_part.lower()
-                    middle_canonical = canonicalize_term(middle_lower)
-                    for target in filter(None, {middle_lower, middle_canonical}):
+                    middle_canonical = canonicalize_term(middle_part)
+                    for target in filter(None, {middle_part, middle_canonical}):
                         term_counts[target] = term_counts.get(target, 0) + 1
                         if target not in term_to_chunks:
                             term_to_chunks[target] = []
@@ -539,7 +540,8 @@ def build_indices(chunks, chunk_ids):
         for pattern in identity_terms:
             matches = re.finditer(pattern, visible, re.IGNORECASE)
             for match in matches:
-                identity_term = match.group(1).lower().replace(' ', '_')  # Normalize spaces to underscores
+                # Preserve case but normalize spaces to underscores
+                identity_term = match.group(1).replace(' ', '_')
                 canonical = canonicalize_term(identity_term)
                 target = canonical if canonical else identity_term
                 term_counts[target] = term_counts.get(target, 0) + 1
@@ -572,22 +574,20 @@ def build_indices(chunks, chunk_ids):
                 first_part = match.group(1).strip()
                 location_part = match.group(2).strip()
                 if len(first_part) < 50 and len(location_part) < 50:
-                    # Canonicalize both parts (canonicalize_term removes 's)
-                    first_clean = canonicalize_term(first_part)
-                    first_lower = first_clean if first_clean else first_part.lower()
-                    location_clean = canonicalize_term(location_part)
-                    location_lower = location_clean if location_clean else location_part.lower()
+                    # Canonicalize (preserves case)
+                    first_term = canonicalize_term(first_part)
+                    location_term = canonicalize_term(location_part)
                     
-                    # Index as firm name only (e.g., "first national bank" or "first nb")
-                    # Don't index location phrases like "first nb of boston"
-                    firm_name = f"{first_lower} nb"
+                    # Index as firm name only (e.g., "First National Bank" or "First NB")
+                    # Don't index location phrases like "First NB of Boston"
+                    firm_name = f"{first_term} NB"
                     term_counts[firm_name] = term_counts.get(firm_name, 0) + 1
                     if firm_name not in term_to_chunks:
                         term_to_chunks[firm_name] = []
                     term_to_chunks[firm_name].append(chunk_id)
                     
-                    # Also index expanded version: "first national bank"
-                    expanded_name = f"{first_lower} national bank"
+                    # Also index expanded version: "First National Bank"
+                    expanded_name = f"{first_term} National Bank"
                     term_counts[expanded_name] = term_counts.get(expanded_name, 0) + 1
                     if expanded_name not in term_to_chunks:
                         term_to_chunks[expanded_name] = []
@@ -607,22 +607,20 @@ def build_indices(chunks, chunk_ids):
             first_part = match.group(1).strip()
             location_part = match.group(2).strip()
             if len(first_part) < 50 and len(location_part) < 50:
-                # Canonicalize both parts (canonicalize_term removes 's)
-                first_clean = canonicalize_term(first_part)
-                first_lower = first_clean if first_clean else first_part.lower()
-                location_clean = canonicalize_term(location_part)
-                location_lower = location_clean if location_clean else location_part.lower()
+                # Canonicalize (now preserves case: "Paribas" stays "Paribas")
+                first_term = canonicalize_term(first_part)
+                location_term = canonicalize_term(location_part)
                 
-                # Index as firm name only (e.g., "first national bank" or "first nb")
-                # Don't index location phrases like "first nb of boston"
-                firm_name = f"{first_lower} nb"
+                # Index as firm name only (e.g., "First National Bank" or "First NB")
+                # Don't index location phrases like "First NB of Boston"
+                firm_name = f"{first_term} NB"
                 term_counts[firm_name] = term_counts.get(firm_name, 0) + 1
                 if firm_name not in term_to_chunks:
                     term_to_chunks[firm_name] = []
                 term_to_chunks[firm_name].append(chunk_id)
                 
-                # Also index expanded version: "first national bank"
-                expanded_name = f"{first_lower} national bank"
+                # Also index expanded version: "First National Bank"
+                expanded_name = f"{first_term} National Bank"
                 term_counts[expanded_name] = term_counts.get(expanded_name, 0) + 1
                 if expanded_name not in term_to_chunks:
                     term_to_chunks[expanded_name] = []
@@ -632,21 +630,21 @@ def build_indices(chunks, chunk_ids):
         for match in firm_pattern.finditer(chunk):
             firm = match.group(1).strip()
             if len(firm) < 100:
-                # Remove possessive/plural for indexing (canonicalize)
-                firm_clean = canonicalize_term(firm)
-                firm_lower = firm_clean if firm_clean else firm.lower()
-                # Index the firm name itself (canonicalized, without 's or s)
-                term_counts[firm_lower] = term_counts.get(firm_lower, 0) + 1
-                if firm_lower not in term_to_chunks:
-                    term_to_chunks[firm_lower] = []
-                term_to_chunks[firm_lower].append(chunk_id)
+                # Canonicalize (now preserves case)
+                firm_term = canonicalize_term(firm)
+                # Index the firm name itself (with capitalization preserved)
+                term_counts[firm_term] = term_counts.get(firm_term, 0) + 1
+                if firm_term not in term_to_chunks:
+                    term_to_chunks[firm_term] = []
+                term_to_chunks[firm_term].append(chunk_id)
                 
                 # Also index expanded version if firm contains "NB" abbreviation
                 # This allows "First National Bank of Boston" queries to match "First NB of Boston" entries
                 # Expand "NB" to "National Bank" for better matching
-                if ' nb ' in firm_lower or ' nb of ' in firm_lower or firm_lower.endswith(' nb'):
-                    firm_expanded = firm_lower.replace(' nb ', ' national bank ').replace(' nb of ', ' national bank of ').replace(' nb$', ' national bank')
-                    if firm_expanded != firm_lower and firm_expanded:
+                firm_lower_check = firm_term.lower()
+                if ' nb ' in firm_lower_check or ' nb of ' in firm_lower_check or firm_lower_check.endswith(' nb'):
+                    firm_expanded = re.sub(r'\bNB\b', 'National Bank', firm_term, flags=re.IGNORECASE)
+                    if firm_expanded != firm_term and firm_expanded:
                         term_counts[firm_expanded] = term_counts.get(firm_expanded, 0) + 1
                         if firm_expanded not in term_to_chunks:
                             term_to_chunks[firm_expanded] = []

@@ -114,8 +114,10 @@ Rule: If it's a SINGLE WORD and COMMON, EXCLUDE IT.
             'removed': total_removed_so_far
         })
         
-        print(f"\n   ✅ Batch {batch_num}/{num_batches} ({overall_pct:.0f}%): Kept {len(kept_terms)}/{len(batch)} ({kept_pct:.0f}%), Removed {len(batch)-len(kept_terms)} ({removed_pct:.0f}%)")
-        print(f"      Total: {len(filtered_terms)} kept, {total_removed_so_far} removed")
+        # Show detailed progress every 5 batches
+        if batch_num % 5 == 0:
+            print(f"\n   ✅ Batch {batch_num}/{num_batches} ({overall_pct:.0f}%): Kept {len(kept_terms)}/{len(batch)} ({kept_pct:.0f}%), Removed {len(batch)-len(kept_terms)} ({removed_pct:.0f}%)")
+            print(f"      Total: {len(filtered_terms)} kept, {total_removed_so_far} removed")
         
     except Exception as e:
         print(f"\n   [ERROR] Batch {batch_num} failed: {str(e)[:300]}")
