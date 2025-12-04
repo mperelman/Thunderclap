@@ -2443,7 +2443,7 @@ Answer:"""
             return None
         
         # Extract primary topic from question
-        subject_terms, _ = self._extract_subject_terms(question)
+        subject_terms, _ = self._extract_subject_filters(question)
         if not subject_terms:
             return None
         
