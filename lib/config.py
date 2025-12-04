@@ -30,7 +30,7 @@ MAX_CONTEXT_CHUNKS = 15  # Max chunks to use for LLM context
 
 # LLM settings (optional)
 DEFAULT_LLM_MODEL = "gpt-4o-mini"  # OpenAI model
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"  # Gemini model
+DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"  # Gemini model
 LLM_TEMPERATURE = 0.3  # Lower = more factual
 
 # Answer generation parameters

@@ -835,6 +835,10 @@ class QueryEngine:
             # Store original chunks (no filtering - send all chunks to ensure full coverage)
             original_chunks = chunks[:]
             
+            # Filter out chunks where topic appears only in comma-separated lists (passing mentions)
+            # This naturally reduces chunk counts without hardcoded limits
+            chunks = self._filter_comma_mentions(chunks, question) or chunks
+            
             # Try to use preprocessed deduplicated file if available
             chunks = self._try_use_preprocessed_file(chunks, question) or chunks
             
@@ -2423,6 +2427,103 @@ Answer:"""
         
         return subject_terms, subject_phrases
 
+    def _filter_comma_mentions(self, chunks: List[tuple], question: str) -> Optional[List[tuple]]:
+        """
+        Reduce word count in chunks where topic appears only in comma-separated lists (passing mentions).
+        Keeps only the relevant sentence(s) to reduce token usage naturally.
+        
+        Args:
+            chunks: List of (text, metadata) tuples
+            question: User's question
+            
+        Returns:
+            Modified chunks with reduced word counts for comma mentions, None if no changes
+        """
+        if not chunks or len(chunks) < 20:  # Only process if we have many chunks
+            return None
+        
+        # Extract primary topic from question
+        subject_terms, _ = self._extract_subject_terms(question)
+        if not subject_terms:
+            return None
+        
+        primary_term = subject_terms[0].lower()
+        
+        # Import sentence splitting
+        from .text_utils import split_into_sentences
+        
+        modified_chunks = []
+        reduced_count = 0
+        
+        for chunk in chunks:
+            text = chunk[0]
+            text_lower = text.lower()
+            meta = chunk[1]
+            
+            # Check if primary term appears in text
+            if primary_term not in text_lower:
+                modified_chunks.append(chunk)
+                continue
+            
+            # Detect comma-separated patterns: ", Hambro," or ", Hambro and" or "Hambro,"
+            comma_pattern = rf',\s+{re.escape(primary_term)}(?:,|\s+and|\s*$)'
+            start_comma_pattern = rf'^{re.escape(primary_term)},\s+'
+            
+            is_comma_mention = bool(re.search(comma_pattern, text_lower) or 
+                                 re.search(start_comma_pattern, text_lower))
+            
+            # Check if topic appears as main subject (not in comma list)
+            is_main_subject = (
+                re.search(rf'^[^.]*\b{re.escape(primary_term)}\b', text_lower, re.MULTILINE) or
+                re.search(rf'\b{re.escape(primary_term)}\s+(?:was|were|is|are|became|founded|established|merged|acquired)', text_lower) or
+                re.search(rf'<italic>{re.escape(primary_term)}', text, re.IGNORECASE) or
+                re.search(rf'\b{re.escape(primary_term)}\s+(?:family|families|bank|banking|firm|company)', text_lower)
+            )
+            
+            # If it's a comma mention and not main subject, reduce chunk size
+            if is_comma_mention and not is_main_subject:
+                # Split into sentences and keep only sentences containing the topic
+                sentences = split_into_sentences(text)
+                relevant_sentences = []
+                
+                for sentence in sentences:
+                    sentence_lower = sentence.lower()
+                    # Keep sentence if it contains the topic
+                    if primary_term in sentence_lower:
+                        relevant_sentences.append(sentence)
+                    # Also keep adjacent sentences for context (max 1 before, 1 after)
+                    elif relevant_sentences and len(relevant_sentences) <= 2:
+                        # Only add one context sentence
+                        if len(relevant_sentences) == 1:
+                            relevant_sentences.append(sentence)
+                
+                if relevant_sentences:
+                    # Join relevant sentences (much smaller than full chunk)
+                    reduced_text = " ".join(relevant_sentences)
+                    # Limit to ~100 words max for comma mentions
+                    words = reduced_text.split()
+                    if len(words) > 100:
+                        reduced_text = " ".join(words[:100]) + "..."
+                    modified_chunks.append((reduced_text, meta))
+                    reduced_count += 1
+                else:
+                    # If no relevant sentences found, keep original but truncate
+                    words = text.split()
+                    if len(words) > 100:
+                        modified_chunks.append((" ".join(words[:100]) + "...", meta))
+                        reduced_count += 1
+                    else:
+                        modified_chunks.append(chunk)
+            else:
+                # Keep main-subject chunks at full size
+                modified_chunks.append(chunk)
+        
+        if reduced_count > 0:
+            print(f"  [REDUCE] Reduced word count in {reduced_count} comma-separated mention chunks (kept relevant sentences only)")
+            return modified_chunks
+        
+        return None
+    
     def _filter_chunks_by_subject_terms(self, chunks: List[tuple], subject_terms: List[str]) -> List[tuple]:
         """Keep chunks mentioning subject terms first; preserve later periods even if imperfect matches."""
         if not chunks or not subject_terms:
@@ -2530,11 +2631,19 @@ Answer:"""
             subject = question_lower.replace('tell me about', '').strip()
             if subject:
                 potential_terms.append(subject)
-                # Also try plural/singular variations
-                if subject.endswith('s'):
-                    potential_terms.append(subject[:-1])  # Remove 's'
-                else:
-                    potential_terms.append(subject + 's')  # Add 's'
+                # Extract primary noun (first word, capitalized)
+                words = subject.split()
+                if words:
+                    primary_word = words[0]
+                    # Try capitalized version (proper noun)
+                    potential_terms.append(primary_word.capitalize())
+                    potential_terms.append(primary_word.lower())
+                    # Also try plural/singular variations
+                    if subject.endswith('s'):
+                        potential_terms.append(subject[:-1])  # Remove 's'
+                        potential_terms.append(subject[:-1].capitalize())
+                    else:
+                        potential_terms.append(subject + 's')  # Add 's'
         
         # Pattern 2: "What is X" or "Who is X" -> "X"
         for pattern in ['what is', 'who is', 'when is', 'where is', 'how is']:
@@ -2560,19 +2669,28 @@ Answer:"""
             potential_terms.append(phrase)
         
         # Check if any term has deduplicated content in cache
+        # Try multiple variations: exact, lowercase, capitalized, title case
         for term in potential_terms:
-            # Try exact match first
-            if term in deduplicated_cache:
-                deduplicated_text = deduplicated_cache[term]
-                if deduplicated_text and deduplicated_text.strip():
-                    return self._split_large_deduplicated_text(deduplicated_text, chunks[0][1] if chunks else {})
+            variations = [
+                term,  # Exact
+                term.lower(),  # Lowercase
+                term.capitalize(),  # Capitalized
+                term.title() if ' ' in term else term.capitalize(),  # Title case for multi-word
+            ]
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_variations = []
+            for v in variations:
+                if v not in seen:
+                    seen.add(v)
+                    unique_variations.append(v)
             
-            # Try lowercase match
-            term_lower = term.lower()
-            if term_lower in deduplicated_cache:
-                deduplicated_text = deduplicated_cache[term_lower]
-                if deduplicated_text and deduplicated_text.strip():
-                    return self._split_large_deduplicated_text(deduplicated_text, chunks[0][1] if chunks else {})
+            for variant in unique_variations:
+                if variant in deduplicated_cache:
+                    deduplicated_text = deduplicated_cache[variant]
+                    if deduplicated_text and deduplicated_text.strip():
+                        print(f"  [CACHE] Found preprocessed deduplicated text for '{variant}' ({len(deduplicated_text):,} chars)")
+                        return self._split_large_deduplicated_text(deduplicated_text, chunks[0][1] if chunks else {})
         
         return None
     
@@ -2823,12 +2941,12 @@ Answer:"""
         else:
             request_tokens = 50000  # Conservative estimate
         
-        # If adding this request would exceed limit, wait (but be more aggressive - use 95% of limit)
-        if recent_tokens + request_tokens > self._token_rate_limit * 0.95:  # Use 95% of limit (more aggressive)
-            tokens_over = (recent_tokens + request_tokens) - (self._token_rate_limit * 0.95)
+        # If adding this request would exceed limit, wait (use 90% of limit for safety)
+        if recent_tokens + request_tokens > self._token_rate_limit * 0.90:  # Use 90% of limit (more conservative)
+            tokens_over = (recent_tokens + request_tokens) - (self._token_rate_limit * 0.90)
             # Wait until we can fit this request
             wait_time = (tokens_over / self._token_rate_limit) * 60  # Convert to seconds
-            if wait_time > 2:  # Only wait if more than 2 seconds (reduced threshold)
+            if wait_time > 1:  # Wait if more than 1 second
                 print(f"  [RATE_LIMIT] Token limit: waiting {wait_time:.1f}s ({recent_tokens:,}/{self._token_rate_limit:,} tokens used)")
                 time.sleep(wait_time)
     
