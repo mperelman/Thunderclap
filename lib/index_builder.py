@@ -1079,6 +1079,7 @@ def create_deduplicated_term_files(indices, all_chunks, chunk_ids, min_chunks=25
         
         # Store in cache (keyed by term)
         deduplicated_cache[term] = deduplicated_text
+        files_created += 1  # Count terms processed (not individual files, but cache entries)
         
         # Note: Individual .txt files are no longer created - only JSON cache is used
         # This saves disk space and improves performance (33K+ files avoided)
