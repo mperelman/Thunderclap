@@ -2442,12 +2442,29 @@ Answer:"""
         if not chunks or len(chunks) < 20:  # Only process if we have many chunks
             return None
         
-        # Extract primary topic from question
-        subject_terms, _ = self._extract_subject_filters(question)
-        if not subject_terms:
+        # Extract primary topic from question (simple extraction for comma filtering)
+        # Extract first meaningful word/phrase from common query patterns
+        question_lower = question.lower().strip()
+        primary_term = None
+        
+        # Pattern 1: "Tell me about X" -> "X"
+        if 'tell me about' in question_lower:
+            subject = question_lower.replace('tell me about', '').strip()
+            if subject:
+                # Take first word as primary term
+                primary_term = subject.split()[0] if subject.split() else None
+        
+        # Pattern 2: Extract first meaningful word (not stop words)
+        if not primary_term:
+            words = question_lower.split()
+            meaningful_words = [w for w in words if w not in STOP_WORDS and len(w) > 2]
+            if meaningful_words:
+                primary_term = meaningful_words[0]
+        
+        if not primary_term:
             return None
         
-        primary_term = subject_terms[0].lower()
+        primary_term = primary_term.lower()
         
         # Import sentence splitting
         from .text_utils import split_into_sentences
