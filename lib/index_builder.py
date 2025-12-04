@@ -687,6 +687,22 @@ def build_indices(chunks, chunk_ids):
                 # Canonicalize (now preserves case)
                 firm_term = canonicalize_term(firm)
                 
+                # CRITICAL: Skip malformed terms (punctuation, fragments)
+                # Skip if:
+                # 1. Empty or just whitespace
+                # 2. Starts with punctuation (e.g., ", and", ". Siemens", "& Trust")
+                # 3. Ends with punctuation (e.g., "Chase,", "Baring.", "British &")
+                # 4. Is just punctuation (e.g., "&", ",", ".")
+                # 5. Is a single character
+                if not firm_term or len(firm_term) <= 1:
+                    continue
+                if firm_term[0] in ',.;:!?&-—–()[]{}"\'/\\|':
+                    continue
+                if firm_term[-1] in ',.;:!?&-—–"\'/\\|':  # Allow trailing ) ] } for valid phrases
+                    continue
+                if all(c in ',.;:!?&-—–()[]{}"\'/\\| ' for c in firm_term):
+                    continue
+                
                 # CRITICAL: Skip standalone generic words
                 # Only index if:
                 # 1. Multi-word (e.g., "Morgan Grenfell", "Deutsche Bank")
