@@ -50,16 +50,37 @@ def get_llm_client(api_key=None):
     print(f"  [DEBUG] Configuring genai with key: {key[:20]}... (length: {len(key)})")
     genai.configure(api_key=key)
     
-    # Try multiple model names in order of preference
-    # Start with most basic/compatible model first
-    model_names = ['gemini-pro', 'models/gemini-pro', 'gemini-1.5-pro', 'models/gemini-1.5-pro']
+    # First, try to list available models to see what's actually available
+    try:
+        print(f"  [DEBUG] Listing available models...")
+        available_models = genai.list_models()
+        model_names_available = [m.name for m in available_models if 'generateContent' in m.supported_generation_methods]
+        print(f"  [DEBUG] Available models with generateContent: {model_names_available[:5]}...")  # Show first 5
+        
+        # Try available models first
+        for model_name in model_names_available:
+            try:
+                # Remove 'models/' prefix if present for GenerativeModel
+                clean_name = model_name.replace('models/', '')
+                print(f"  [DEBUG] Trying available model: {clean_name}")
+                client = genai.GenerativeModel(
+                    model_name=clean_name,
+                    generation_config=GENERATION_CONFIG,
+                )
+                print(f"  [OK] Gemini API configured ({clean_name}), key: {key[:20]}...")
+                return client
+            except Exception as e:
+                print(f"  [DEBUG] Model {clean_name} failed: {e}")
+                continue
+    except Exception as list_error:
+        print(f"  [DEBUG] Could not list models: {list_error}, trying common names...")
     
+    # Fallback: Try common model names if listing failed
+    model_names = ['gemini-pro', 'gemini-1.5-pro', 'gemini-1.5-flash']
     last_error = None
     for model_name in model_names:
         try:
-            print(f"  [DEBUG] Trying model: {model_name}")
-            # Create client - it will use the globally configured key
-            # IMPORTANT: The client must be created AFTER configure() is called
+            print(f"  [DEBUG] Trying fallback model: {model_name}")
             client = genai.GenerativeModel(
                 model_name=model_name,
                 generation_config=GENERATION_CONFIG,
