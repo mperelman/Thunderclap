@@ -7,7 +7,13 @@ from tqdm import tqdm
 from .config import INDICES_FILE, MIN_TERM_FREQUENCY, CHUNK_SIZE, CHUNK_OVERLAP, DATA_DIR
 from .acronyms import ACRONYM_TERMS, ACRONYM_EXPANSIONS
 from .term_utils import canonicalize_term, strip_tags
-from .constants import LAW_YEAR_PREFIX_EXPANSIONS, STOP_WORDS
+from .constants import (
+    LAW_YEAR_PREFIX_EXPANSIONS, 
+    STOP_WORDS, 
+    GENERIC_WORDS_TO_EXCLUDE,
+    GENERIC_NOT_SURNAMES,
+    COMMON_FIRST_NAMES
+)
 from .text_utils import split_into_sentences, extract_phrases
 import os
 from collections import defaultdict
@@ -491,43 +497,7 @@ def build_indices(chunks, chunk_ids):
         # Extract surnames and middle names (middle names are often maiden/mother's names)
         # UPDATED: Preserve capitalization to distinguish proper nouns from common words
         proper_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', chunk)
-        # CRITICAL: Filter out generic words that are not surnames
-        # These appear in proper names but are not people's surnames
-        GENERIC_NOT_SURNAMES = {
-            'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
-            'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
-            'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
-            'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
-            'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
-            'national', 'international', 'federal', 'state', 'central', 'commercial',
-            'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
-            'exchange', 'credit', 'finance', 'capital', 'securities', 'assets',
-            # Common relationship/family words
-            'family', 'families', 'cousin', 'cousins', 'father', 'fathers', 'mother', 'mothers',
-            'brother', 'brothers', 'sister', 'sisters', 'uncle', 'uncles', 'aunt', 'aunts',
-            'nephew', 'nephews', 'niece', 'nieces', 'grandfather', 'grandmother',
-            'husband', 'husbands', 'wife', 'wives', 'spouse', 'spouses', 'widow', 'widows',
-            # Common generic words
-            'and', 'or', 'but', 'first', 'second', 'third', 'last', 'next', 'previous',
-            'employee', 'employees', 'worker', 'workers', 'staff', 'member', 'members'
-        }
-        
-        # Common first names - should NOT be indexed as middle names or surnames
-        COMMON_FIRST_NAMES = {
-            'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
-            'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
-            'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
-            'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel',
-            'frank', 'gregory', 'raymond', 'alexander', 'patrick', 'jack', 'dennis', 'jerry', 'tyler', 'aaron',
-            'jose', 'henry', 'adam', 'douglas', 'nathan', 'zachary', 'kyle', 'noah', 'ethan', 'jeremy',
-            'walter', 'christian', 'terry', 'sean', 'lawrence', 'juan', 'mason', 'roy', 'ralph', 'roger',
-            'eugene', 'wayne', 'arthur', 'louis', 'peter', 'harold', 'carl', 'alan', 'harry', 'randy', 'albert',
-            'mary', 'patricia', 'jennifer', 'linda', 'elizabeth', 'barbara', 'susan', 'jessica', 'sarah', 'karen',
-            'nancy', 'lisa', 'betty', 'margaret', 'sandra', 'ashley', 'kimberly', 'emily', 'donna', 'michelle',
-            'dorothy', 'carol', 'amanda', 'melissa', 'deborah', 'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia',
-            'kathleen', 'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma', 'nicole', 'virginia',
-            'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'virginia', 'maria', 'heather'
-        }
+        # Use centralized constants from constants.py
         
         for full_name in proper_names:
             parts = full_name.split()
@@ -868,22 +838,8 @@ def build_indices(chunks, chunk_ids):
     }
     
     # CRITICAL: Final filter - remove any generic words that slipped through
-    # This ensures "and", "family", "cousin", "first", "Bank", "employees", "Joseph" etc. are NEVER in the index
-    GENERIC_WORDS_TO_EXCLUDE = {
-        'and', 'or', 'but', 'the', 'a', 'an', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from',
-        'family', 'families', 'cousin', 'cousins', 'son', 'sons', 'daughter', 'daughters',
-        'first', 'second', 'third', 'last', 'next', 'previous', 'another', 'other', 'others',
-        'bank', 'banks', 'banking', 'employee', 'employees', 'worker', 'workers', 'staff',
-        'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
-        'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
-        'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
-        'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel',
-        'frank', 'gregory', 'raymond', 'alexander', 'patrick', 'jack', 'dennis', 'jerry', 'tyler', 'aaron',
-        'jose', 'henry', 'adam', 'douglas', 'nathan', 'zachary', 'kyle', 'noah', 'ethan', 'jeremy',
-        'walter', 'christian', 'terry', 'sean', 'lawrence', 'juan', 'mason', 'roy', 'ralph', 'roger',
-        'eugene', 'wayne', 'arthur', 'louis', 'peter', 'harold', 'carl', 'alan', 'harry', 'randy', 'albert'
-    }
-    # Remove generic words from filtered terms
+    # This ensures generic words are NEVER in the index (they should have been filtered earlier)
+    # Use centralized constant from constants.py
     term_counts_filtered = {t: c for t, c in term_counts_filtered.items() if t.lower() not in GENERIC_WORDS_TO_EXCLUDE}
     term_to_chunks_filtered = {t: ids for t, ids in term_to_chunks.items() if t in term_counts_filtered and t.lower() not in GENERIC_WORDS_TO_EXCLUDE}
     

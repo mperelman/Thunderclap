@@ -46,5 +46,69 @@ STOP_WORDS = {
     'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can',
 }
 
+# Generic words that should NEVER be indexed
+# These are excluded at indexing time - if they appear in the index, it's a bug
+GENERIC_WORDS_TO_EXCLUDE = {
+    # Common function words
+    'and', 'or', 'but', 'the', 'a', 'an', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from',
+    # Family/relationship words
+    'family', 'families', 'cousin', 'cousins', 'son', 'sons', 'daughter', 'daughters',
+    'father', 'fathers', 'mother', 'mothers', 'brother', 'brothers', 'sister', 'sisters',
+    'uncle', 'uncles', 'aunt', 'aunts', 'nephew', 'nephews', 'niece', 'nieces',
+    'grandfather', 'grandmother', 'grandson', 'granddaughter',
+    'husband', 'husbands', 'wife', 'wives', 'spouse', 'spouses', 'widow', 'widows', 'widower', 'widowers',
+    # Ordinal/generic descriptors
+    'first', 'second', 'third', 'last', 'next', 'previous', 'another', 'other', 'others',
+    # Generic banking/finance words (standalone)
+    'bank', 'banks', 'banking', 'employee', 'employees', 'worker', 'workers', 'staff', 'member', 'members',
+    # Common first names (should not be indexed as middle names or surnames)
+    'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
+    'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
+    'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
+    'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel',
+    'frank', 'gregory', 'raymond', 'alexander', 'patrick', 'jack', 'dennis', 'jerry', 'tyler', 'aaron',
+    'jose', 'henry', 'adam', 'douglas', 'nathan', 'zachary', 'kyle', 'noah', 'ethan', 'jeremy',
+    'walter', 'christian', 'terry', 'sean', 'lawrence', 'juan', 'mason', 'roy', 'ralph', 'roger',
+    'eugene', 'wayne', 'arthur', 'louis', 'peter', 'harold', 'carl', 'alan', 'harry', 'randy', 'albert',
+    'mary', 'patricia', 'jennifer', 'linda', 'elizabeth', 'barbara', 'susan', 'jessica', 'sarah', 'karen',
+    'nancy', 'lisa', 'betty', 'margaret', 'sandra', 'ashley', 'kimberly', 'emily', 'donna', 'michelle',
+    'dorothy', 'carol', 'amanda', 'melissa', 'deborah', 'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia',
+    'kathleen', 'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma', 'nicole', 'virginia',
+    'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'maria', 'heather',
+}
+
+# Generic words that are NOT surnames (used when extracting proper names)
+GENERIC_NOT_SURNAMES = {
+    'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
+    'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
+    'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
+    'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
+    'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
+    'national', 'international', 'federal', 'state', 'central', 'commercial',
+    'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
+    'exchange', 'credit', 'finance', 'capital', 'securities', 'assets',
+    # Also include family/relationship words
+    'family', 'families', 'cousin', 'cousins', 'son', 'sons', 'daughter', 'daughters',
+    'father', 'fathers', 'mother', 'mothers', 'brother', 'brothers', 'sister', 'sisters',
+    'employee', 'employees', 'worker', 'workers', 'staff', 'member', 'members',
+}
+
+# Common first names - should NOT be indexed as middle names or surnames
+COMMON_FIRST_NAMES = {
+    'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
+    'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
+    'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
+    'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel',
+    'frank', 'gregory', 'raymond', 'alexander', 'patrick', 'jack', 'dennis', 'jerry', 'tyler', 'aaron',
+    'jose', 'henry', 'adam', 'douglas', 'nathan', 'zachary', 'kyle', 'noah', 'ethan', 'jeremy',
+    'walter', 'christian', 'terry', 'sean', 'lawrence', 'juan', 'mason', 'roy', 'ralph', 'roger',
+    'eugene', 'wayne', 'arthur', 'louis', 'peter', 'harold', 'carl', 'alan', 'harry', 'randy', 'albert',
+    'mary', 'patricia', 'jennifer', 'linda', 'elizabeth', 'barbara', 'susan', 'jessica', 'sarah', 'karen',
+    'nancy', 'lisa', 'betty', 'margaret', 'sandra', 'ashley', 'kimberly', 'emily', 'donna', 'michelle',
+    'dorothy', 'carol', 'amanda', 'melissa', 'deborah', 'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia',
+    'kathleen', 'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma', 'nicole', 'virginia',
+    'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'maria', 'heather',
+}
+
 
 

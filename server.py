@@ -278,10 +278,11 @@ def get_indexed_terms():
                 data = json.load(f)
             terms = list(data.get('term_to_chunks', {}).keys())
             
-            # NOTE: Generic words should NOT be in the index (filtered at indexing time)
-            # This is just a safety net - the index builder should have already excluded them
-            # If generic words appear here, they need to be removed from the index
-            common_words = {
+            # NOTE: Generic words should NOT be in the index (filtered at indexing time in lib/index_builder.py)
+            # The index is the source of truth - if generic words appear here, they need to be removed from the index
+            # This fallback is only for legacy indices that may have generic words
+            from lib.constants import GENERIC_WORDS_TO_EXCLUDE
+            common_words = GENERIC_WORDS_TO_EXCLUDE
                 # Articles, pronouns, prepositions
                 'the', 'a', 'an', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'mine', 'yours', 'hers', 'ours', 'theirs',
                 # Common first names (exclude from hyperlinking)
