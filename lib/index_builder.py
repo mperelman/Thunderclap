@@ -866,7 +866,26 @@ def build_indices(chunks, chunk_ids):
         t: c for t, c in term_counts.items()
         if c >= MIN_TERM_FREQUENCY or t in all_acronyms.keys()
     }
-    term_to_chunks_filtered = {t: ids for t, ids in term_to_chunks.items() if t in term_counts_filtered}
+    
+    # CRITICAL: Final filter - remove any generic words that slipped through
+    # This ensures "and", "family", "cousin", "first", "Bank", "employees", "Joseph" etc. are NEVER in the index
+    GENERIC_WORDS_TO_EXCLUDE = {
+        'and', 'or', 'but', 'the', 'a', 'an', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from',
+        'family', 'families', 'cousin', 'cousins', 'son', 'sons', 'daughter', 'daughters',
+        'first', 'second', 'third', 'last', 'next', 'previous', 'another', 'other', 'others',
+        'bank', 'banks', 'banking', 'employee', 'employees', 'worker', 'workers', 'staff',
+        'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
+        'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
+        'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
+        'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel',
+        'frank', 'gregory', 'raymond', 'alexander', 'patrick', 'jack', 'dennis', 'jerry', 'tyler', 'aaron',
+        'jose', 'henry', 'adam', 'douglas', 'nathan', 'zachary', 'kyle', 'noah', 'ethan', 'jeremy',
+        'walter', 'christian', 'terry', 'sean', 'lawrence', 'juan', 'mason', 'roy', 'ralph', 'roger',
+        'eugene', 'wayne', 'arthur', 'louis', 'peter', 'harold', 'carl', 'alan', 'harry', 'randy', 'albert'
+    }
+    # Remove generic words from filtered terms
+    term_counts_filtered = {t: c for t, c in term_counts_filtered.items() if t.lower() not in GENERIC_WORDS_TO_EXCLUDE}
+    term_to_chunks_filtered = {t: ids for t, ids in term_to_chunks.items() if t in term_counts_filtered and t.lower() not in GENERIC_WORDS_TO_EXCLUDE}
     
     # Apply term grouping - merge related terms
     # CRITICAL: Collect chunks from ALL variants (both filtered and unfiltered) to create union
