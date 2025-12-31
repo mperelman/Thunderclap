@@ -1315,8 +1315,20 @@
             for (const [lowerTerm, originalTerm] of sortedTerms) {
                 // Escape special regex characters
                 const escaped = lowerTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                // Match whole words only (word boundaries), case-insensitive
-                const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+                
+                // For multi-word terms, use a more flexible pattern that doesn't require word boundaries
+                // between words (e.g., "Warburg New York" should match even if there's punctuation)
+                // For single-word terms, use strict word boundaries
+                let regex;
+                if (lowerTerm.includes(' ')) {
+                    // Multi-word: allow spaces, hyphens, and punctuation between words
+                    // But require word boundaries at start and end
+                    const flexiblePattern = escaped.replace(/\s+/g, '[\\s\\-.,;:!?]*');
+                    regex = new RegExp(`\\b${flexiblePattern}\\b`, 'gi');
+                } else {
+                    // Single-word: strict word boundaries
+                    regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+                }
                 
                 let match;
                 while ((match = regex.exec(text)) !== null) {
@@ -1331,21 +1343,28 @@
             }
             
             // Sort matches by: 1) length (longest first), then 2) position (earliest first)
-            // This ensures "Corn Exchange Bank Trust" beats "Exchange Bank"
+            // This ensures "Warburg New York" beats "Warburg" or "New York"
             matches.sort((a, b) => {
                 if (b.length !== a.length) return b.length - a.length;  // Longer first
                 return a.index - b.index;  // If same length, earlier first
             });
             
             // Remove overlapping/nested matches (keep the longest/earliest one)
+            // CRITICAL: This prevents "Warburg" and "New York" from being matched when "Warburg New York" is already matched
             const nonOverlapping = [];
             for (const match of matches) {
-                const overlaps = nonOverlapping.some(existing => 
-                    // Check if this match overlaps or is nested within an existing match
-                    (match.index >= existing.index && match.index < existing.index + existing.length) ||
-                    (match.index + match.length > existing.index && match.index + match.length <= existing.index + existing.length) ||
-                    (match.index <= existing.index && match.index + match.length >= existing.index + existing.length)
-                );
+                const overlaps = nonOverlapping.some(existing => {
+                    const matchStart = match.index;
+                    const matchEnd = match.index + match.length;
+                    const existingStart = existing.index;
+                    const existingEnd = existing.index + existing.length;
+                    
+                    // Check if this match overlaps with or is nested within an existing match
+                    // Overlap if: match starts inside existing, match ends inside existing, or match completely contains existing
+                    return (matchStart >= existingStart && matchStart < existingEnd) ||
+                           (matchEnd > existingStart && matchEnd <= existingEnd) ||
+                           (matchStart <= existingStart && matchEnd >= existingEnd);
+                });
                 if (!overlaps) {
                     nonOverlapping.push(match);
                 }
