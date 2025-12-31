@@ -11,7 +11,7 @@ load_dotenv()
 
 # API Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-GEMINI_MODEL = 'gemini-1.5-flash'  # The model that works with your API key
+GEMINI_MODEL = 'gemini-1.5-pro'  # Try gemini-1.5-pro first, fallback to gemini-pro if needed
 
 # Generation configuration
 GENERATION_CONFIG = {
@@ -22,9 +22,12 @@ GENERATION_CONFIG = {
     "candidate_count": 1,
 }
 
-def get_llm_client():
+def get_llm_client(api_key=None):
     """
     Get a configured Gemini LLM client.
+    
+    Args:
+        api_key: Optional API key. If not provided, uses GEMINI_API_KEY from env/.env
     
     Returns:
         genai.GenerativeModel: Configured Gemini model
@@ -32,16 +35,42 @@ def get_llm_client():
     Raises:
         Exception: If API key is not set or model initialization fails
     """
-    if not GEMINI_API_KEY:
+    # Use provided key, or fall back to env/.env
+    key = api_key or GEMINI_API_KEY
+    if not key:
         raise Exception("No API key found. Set GEMINI_API_KEY environment variable.")
     
-    genai.configure(api_key=GEMINI_API_KEY)
+    # Strip whitespace and validate key format
+    key = key.strip()
+    if not key.startswith('AIza'):
+        raise Exception(f"Invalid API key format. Key should start with 'AIza'. Got: {key[:10]}...")
     
-    client = genai.GenerativeModel(
-        model_name=GEMINI_MODEL,
-        generation_config=GENERATION_CONFIG,
-    )
+    # Configure globally - this is required for GenerativeModel to work
+    # The configure() method stores the key internally
+    print(f"  [DEBUG] Configuring genai with key: {key[:20]}... (length: {len(key)})")
+    genai.configure(api_key=key)
     
-    print(f"  [OK] Gemini API configured ({GEMINI_MODEL})")
-    return client
+    # Try multiple model names in order of preference
+    # Start with configured model, then try common alternatives
+    model_names = list(dict.fromkeys([GEMINI_MODEL, 'gemini-pro', 'gemini-1.5-pro']))  # Remove duplicates while preserving order
+    
+    last_error = None
+    for model_name in model_names:
+        try:
+            print(f"  [DEBUG] Trying model: {model_name}")
+            # Create client - it will use the globally configured key
+            # IMPORTANT: The client must be created AFTER configure() is called
+            client = genai.GenerativeModel(
+                model_name=model_name,
+                generation_config=GENERATION_CONFIG,
+            )
+            print(f"  [OK] Gemini API configured ({model_name}), key: {key[:20]}...")
+            return client
+        except Exception as e:
+            last_error = e
+            print(f"  [DEBUG] Model {model_name} failed: {e}")
+            continue
+    
+    # If all models failed, raise the last error
+    raise Exception(f"Failed to create Gemini client with any model. Last error: {last_error}")
 

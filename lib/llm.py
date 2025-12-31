@@ -23,10 +23,22 @@ class LLMAnswerGenerator:
         # Try Gemini first
         if self.api_key:
             try:
+                # Strip and validate key
+                self.api_key = self.api_key.strip()
+                if not self.api_key.startswith('AIza'):
+                    raise Exception(f"Invalid API key format. Key should start with 'AIza'. Got: {self.api_key[:20]}...")
+                
                 from lib.llm_config import get_llm_client
-                self.client = get_llm_client()
+                self.client = get_llm_client(api_key=self.api_key)
+                
+                # Verify client was created
+                if not self.client:
+                    raise Exception("Failed to create Gemini client")
+                    
             except Exception as e:
                 print(f"  [ERROR] Gemini setup failed: {e}")
+                import traceback
+                traceback.print_exc()
                 self.client = None
         else:
             print("  [WARNING] No Gemini API key found")
@@ -114,6 +126,34 @@ class LLMAnswerGenerator:
                 raise Exception(f"API call timed out after {elapsed:.1f}s (max {max_total_time}s). Quota may be exhausted.")
             
             try:
+                # Ensure API key is configured before each call
+                if not self.api_key:
+                    raise Exception("No API key available for API call")
+                
+                # Import and configure in one go to avoid state issues
+                import google.generativeai as genai
+                key_to_use = self.api_key.strip()
+                
+                # CRITICAL: Configure BEFORE importing anything else that might use genai
+                # This ensures the key is set in genai's internal state
+                print(f"  [DEBUG] Configuring API key: {key_to_use[:20]}... (length: {len(key_to_use)})")
+                genai.configure(api_key=key_to_use)
+                
+                # Verify the key was set by checking genai's internal client
+                # The genai library stores the key in _client_config
+                if hasattr(genai, '_client_config'):
+                    print(f"  [DEBUG] genai._client_config exists")
+                else:
+                    print(f"  [DEBUG] WARNING: genai._client_config not found, but continuing...")
+                
+                # ALWAYS recreate the client after reconfiguring
+                # The client must be created AFTER configure() to use the new key
+                # Use get_llm_client which has model fallback built in
+                from lib.llm_config import get_llm_client
+                self.client = get_llm_client(api_key=key_to_use)
+                print(f"  [DEBUG] Client created, making API call with key: {key_to_use[:20]}...")
+                
+                # Make the API call
                 response = self.client.generate_content(prompt)
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
                 if response.candidates and len(response.candidates) > 0:
@@ -247,6 +287,16 @@ class LLMAnswerGenerator:
             if elapsed > max_total_time:
                 raise Exception(f"Async API call timed out after {elapsed:.1f}s (max {max_total_time}s). Quota may be exhausted.")
             try:
+                # Ensure API key is configured before each async call
+                if not self.api_key:
+                    raise Exception("No API key available for API call")
+                
+                import google.generativeai as genai
+                # CRITICAL: Always reconfigure before each async call
+                # Use get_llm_client which has model fallback built in
+                from lib.llm_config import get_llm_client
+                self.client = get_llm_client(api_key=self.api_key.strip())
+                
                 response = await self.client.generate_content_async(prompt)
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
                 if response.candidates and len(response.candidates) > 0:

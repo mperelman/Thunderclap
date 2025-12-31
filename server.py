@@ -8,6 +8,10 @@ import os
 # Ensure lib is in path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -41,16 +45,18 @@ app.add_middleware(
     expose_headers=["*"],  # expose X-Request-ID to browser
 )
 
-# Store API key for creating QueryEngine instances
+# Store API key for creating QueryEngine instances (from env var or .env file)
 gemini_key = os.getenv('GEMINI_API_KEY')
 if not gemini_key:
     print("ERROR: GEMINI_API_KEY environment variable not set!")
+    print("  Set it with: $env:GEMINI_API_KEY='your-key' (PowerShell)")
+    print("  Or add it to .env file: GEMINI_API_KEY=your-key")
     sys.exit(1)
+
+print(f"API Key loaded: {gemini_key[:20]}... (length: {len(gemini_key)})")
 
 print("Initializing Thunderclap AI...")
 print("Server ready! (QueryEngine created per-request)\n")
-
-from lib.config import MAX_ANSWER_LENGTH
 
 class QueryRequest(BaseModel):
     question: str
@@ -96,6 +102,12 @@ def trace_event(request_id: str, event: str, **fields):
 
 @app.get("/")
 async def root():
+    """Serve the frontend HTML file."""
+    import os
+    html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(html_path):
+        from fastapi.responses import FileResponse
+        return FileResponse(html_path, media_type="text/html")
     return {
         "service": "Thunderclap AI",
         "version": "2.0",
@@ -119,8 +131,27 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         print(f"[JOB {job_id}] Starting query processing...")
         sys.stdout.flush()
         
+        # Reload .env file to pick up API key changes
+        from dotenv import load_dotenv
+        load_dotenv(override=True)  # override=True forces reload
+        current_key = os.getenv('GEMINI_API_KEY') or gemini_key
+        print(f"[JOB {job_id}] Using API key: {current_key[:20]}... (from .env: {os.getenv('GEMINI_API_KEY') is not None})")
+        
+        # Force reload modules to pick up code changes without server restart
+        # BUT: Don't reload google.generativeai - it will reset its configuration
+        # The genai module should be configured fresh in each request anyway
+        import importlib
+        if 'lib.query_engine' in sys.modules:
+            importlib.reload(sys.modules['lib.query_engine'])
+        if 'lib.llm' in sys.modules:
+            importlib.reload(sys.modules['lib.llm'])
+        if 'lib.llm_config' in sys.modules:
+            importlib.reload(sys.modules['lib.llm_config'])
+        # DO NOT reload google.generativeai - it resets configuration
+        # The configure() call in llm.py will set it fresh for each request
+        
         from lib.query_engine import QueryEngine
-        qe = QueryEngine(gemini_api_key=gemini_key, use_async=False)
+        qe = QueryEngine(gemini_api_key=current_key, use_async=False)
         answer = qe.query(question, use_llm=True)
         
         # Store chunk count for time estimation (if available)
