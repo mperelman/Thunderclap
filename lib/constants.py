@@ -70,6 +70,9 @@ GENERIC_WORDS_TO_EXCLUDE = {
     'silver', 'gold', 'steel', 'iron', 'metal', 'metals', 'ship', 'ships', 'vessel', 'vessels',
     'american', 'america', 'british', 'french', 'german', 'european', 'asian', 'african',
     'cities', 'city', 'town', 'towns', 'place', 'places', 'region', 'regions',
+    # Generic titles/roles (standalone)
+    'director', 'directors', 'president', 'presidents', 'chairman', 'chairmen', 'governor', 'governors',
+    'minister', 'ministers', 'secretary', 'secretaries', 'manager', 'managers', 'officer', 'officers',
     # Common first names (should not be indexed as middle names or surnames)
     'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
     'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',

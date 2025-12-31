@@ -602,8 +602,10 @@ def build_indices(chunks, chunk_ids):
                     first_term = canonicalize_term(first_part)
                     location_term = canonicalize_term(location_part)
                     
-                    # Index as firm name only (e.g., "First National Bank" or "First NB")
-                    # Don't index location phrases like "First NB of Boston"
+                    # CRITICAL: Index BOTH the firm name alone AND the complete firm name with location
+                    # This allows "First National Bank" queries AND "First National Bank of Cleveland" queries
+                    
+                    # Index firm name alone (e.g., "First NB", "First National Bank")
                     firm_name = f"{first_term} NB"
                     term_counts[firm_name] = term_counts.get(firm_name, 0) + 1
                     if firm_name not in term_to_chunks:
@@ -616,6 +618,20 @@ def build_indices(chunks, chunk_ids):
                     if expanded_name not in term_to_chunks:
                         term_to_chunks[expanded_name] = []
                     term_to_chunks[expanded_name].append(chunk_id)
+                    
+                    # CRITICAL: Also index the COMPLETE firm name with location (e.g., "First NB of Cleveland", "First National Bank of Cleveland")
+                    # This prevents splitting "First National Bank of Cleveland" into separate parts
+                    complete_firm_nb = f"{first_term} NB of {location_term}"
+                    term_counts[complete_firm_nb] = term_counts.get(complete_firm_nb, 0) + 1
+                    if complete_firm_nb not in term_to_chunks:
+                        term_to_chunks[complete_firm_nb] = []
+                    term_to_chunks[complete_firm_nb].append(chunk_id)
+                    
+                    complete_firm_expanded = f"{first_term} National Bank of {location_term}"
+                    term_counts[complete_firm_expanded] = term_counts.get(complete_firm_expanded, 0) + 1
+                    if complete_firm_expanded not in term_to_chunks:
+                        term_to_chunks[complete_firm_expanded] = []
+                    term_to_chunks[complete_firm_expanded].append(chunk_id)
         
         # Pattern 2c: Standalone abbreviations: <italic>Park</italic> NB, <italic>Morgan</italic> IHC, etc.
         for match in nb_pattern_standalone.finditer(chunk):
@@ -655,20 +671,36 @@ def build_indices(chunks, chunk_ids):
                 first_term = canonicalize_term(first_part)
                 location_term = canonicalize_term(location_part)
                 
-                # Index as firm name only (e.g., "First National Bank" or "First NB")
-                # Don't index location phrases like "First NB of Boston"
+                # CRITICAL: Index BOTH the firm name alone AND the complete firm name with location
+                # This allows "First National Bank" queries AND "First National Bank of Cleveland" queries
+                
+                # Index firm name alone (e.g., "First NB", "First National Bank")
                 firm_name = f"{first_term} NB"
                 term_counts[firm_name] = term_counts.get(firm_name, 0) + 1
                 if firm_name not in term_to_chunks:
                     term_to_chunks[firm_name] = []
-                term_to_chunks[firm_name].append(chunk_id)
+                    term_to_chunks[firm_name].append(chunk_id)
                 
                 # Also index expanded version: "First National Bank"
                 expanded_name = f"{first_term} National Bank"
                 term_counts[expanded_name] = term_counts.get(expanded_name, 0) + 1
                 if expanded_name not in term_to_chunks:
                     term_to_chunks[expanded_name] = []
-                term_to_chunks[expanded_name].append(chunk_id)
+                    term_to_chunks[expanded_name].append(chunk_id)
+                
+                # CRITICAL: Also index the COMPLETE firm name with location (e.g., "First NB of Cleveland", "First National Bank of Cleveland")
+                # This prevents splitting "First National Bank of Cleveland" into separate parts
+                complete_firm_nb = f"{first_term} NB of {location_term}"
+                term_counts[complete_firm_nb] = term_counts.get(complete_firm_nb, 0) + 1
+                if complete_firm_nb not in term_to_chunks:
+                    term_to_chunks[complete_firm_nb] = []
+                    term_to_chunks[complete_firm_nb].append(chunk_id)
+                
+                complete_firm_expanded = f"{first_term} National Bank of {location_term}"
+                term_counts[complete_firm_expanded] = term_counts.get(complete_firm_expanded, 0) + 1
+                if complete_firm_expanded not in term_to_chunks:
+                    term_to_chunks[complete_firm_expanded] = []
+                    term_to_chunks[complete_firm_expanded].append(chunk_id)
         
         # Pattern 1: Standard firm names in <italic> tags
         # CRITICAL: Only index multi-word italicized terms or non-generic single words
