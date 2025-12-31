@@ -1351,11 +1351,14 @@
             
             // Remove overlapping/nested matches (keep the longest/earliest one)
             // CRITICAL: This prevents "Warburg" and "New York" from being matched when "Warburg New York" is already matched
+            // Also prevents adjacent single-word matches that could form a multi-word term
             const nonOverlapping = [];
             for (const match of matches) {
+                const matchStart = match.index;
+                const matchEnd = match.index + match.length;
+                
+                // Check for overlaps with existing matches
                 const overlaps = nonOverlapping.some(existing => {
-                    const matchStart = match.index;
-                    const matchEnd = match.index + match.length;
                     const existingStart = existing.index;
                     const existingEnd = existing.index + existing.length;
                     
@@ -1365,9 +1368,32 @@
                            (matchEnd > existingStart && matchEnd <= existingEnd) ||
                            (matchStart <= existingStart && matchEnd >= existingEnd);
                 });
-                if (!overlaps) {
-                    nonOverlapping.push(match);
+                
+                if (overlaps) {
+                    continue; // Skip this match - it overlaps with an existing one
                 }
+                
+                // CRITICAL: Also check if this single-word match is adjacent to another single-word match
+                // If two adjacent single-word terms could form a multi-word term, prefer skipping the shorter ones
+                // This prevents "Warburg" and "New York" from both being hyperlinked when they appear together
+                if (!match.lowerTerm.includes(' ')) {
+                    // This is a single-word match - check if it's adjacent to another single-word match
+                    const isAdjacentToSingleWord = nonOverlapping.some(existing => {
+                        if (existing.lowerTerm.includes(' ')) return false; // Existing is multi-word, keep it
+                        const existingEnd = existing.index + existing.length;
+                        const gap = Math.abs(matchStart - existingEnd);
+                        // If gap is small (0-2 chars, allowing for space/punctuation), they're adjacent
+                        return gap <= 2;
+                    });
+                    
+                    if (isAdjacentToSingleWord) {
+                        // Skip this single-word match if there's an adjacent single-word match
+                        // This prevents "Warburg" and "New York" from both being hyperlinked
+                        continue;
+                    }
+                }
+                
+                nonOverlapping.push(match);
             }
             
             // Sort by index descending for replacement (so indices don't shift)

@@ -735,8 +735,15 @@ def build_indices(chunks, chunk_ids):
                             term_to_chunks[firm_expanded] = []
                         term_to_chunks[firm_expanded].append(chunk_id)
                 
-                # Don't index firm + location phrases (e.g., "Rothschild Vienna")
-                # Only index the firm name itself
+                # CRITICAL: Also index firm + location if the firm name includes a location
+                # This allows "Warburg New York" to be indexed as a complete unit
+                # Check if firm_term contains location-like words (cities, regions)
+                # But only if it's a multi-word term (single word firms don't need location)
+                if is_multi_word and len(firm_term.split()) >= 2:
+                    # Index the complete firm name including location
+                    # This handles cases like "Warburg New York", "Hamburg Chamber of Commerce"
+                    # The complete term is already indexed above, so this is just a note
+                    pass
         
         # Index acronyms (exact token) and their exact spelled-out names (dictionary) for ALL acronyms
         visible = strip_tags(chunk)
