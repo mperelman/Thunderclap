@@ -124,5 +124,12 @@ COMMON_FIRST_NAMES = {
     'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'maria', 'heather',
 }
 
+# Multi-word generic phrases that should be excluded
+GENERIC_PHRASES_TO_EXCLUDE = {
+    'american cities', 'american city', 'british cities', 'european cities',
+    'financial markets', 'financial market', 'political system',
+    'chamber of commerce', 'board of directors', 'president of', 'director of',
+}
+
 
 
