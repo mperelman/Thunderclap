@@ -105,6 +105,8 @@ GENERIC_NOT_SURNAMES = {
 # Common first names - should NOT be indexed as middle names or surnames
 COMMON_FIRST_NAMES = {
     'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
+    # Biblical/religious names that are too common
+    'abraham', 'isaac', 'jacob', 'moses', 'solomon', 'samuel', 'esther', 'ruth', 'hannah', 'anna',
     'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
     'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
     'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel',
