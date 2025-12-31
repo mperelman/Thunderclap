@@ -918,10 +918,11 @@ CRITICAL: Address the question comprehensively using information explicitly stat
 FINAL SELF-CHECK BEFORE SUBMITTING (MANDATORY):
 
 1. NO SOURCE MATERIAL MENTIONS (CRITICAL - ABSOLUTE PROHIBITION):
-   - Search your answer for: "documents", "chunks", "sources", "provided", "according to", "based on", "historical documents", "historical records", "historical evidence", "records show", "evidence indicates", "the provided documents", "as depicted in these documents", "the documents indicate", "the documents explicitly state"
+   - Search your answer for: "documents", "chunks", "sources", "provided", "according to", "based on", "historical documents", "historical records", "historical evidence", "records show", "evidence indicates", "the provided documents", "as depicted in these documents", "the documents indicate", "the documents explicitly state", "the provided historical document", "the document does not contain", "the document mentions", "the document states"
    - If you find ANY mention of source material (even "the provided documents" or "as depicted in"), DELETE IT and rewrite directly about the topic
-   - BAD: "The documents indicate...", "According to documents...", "The provided documents show...", "The provided documents explicitly state...", "as depicted in these documents...", "The historical documents indicate...", "Historical records show...", "Evidence indicates..."
+   - BAD: "The documents indicate...", "According to documents...", "The provided documents show...", "The provided documents explicitly state...", "as depicted in these documents...", "The historical documents indicate...", "Historical records show...", "Evidence indicates...", "The provided historical document does not contain information about X", "The document mentions X"
    - GOOD: Write directly about the subject - never mention how you know it
+   - GOOD: If there's no information about a topic, simply don't mention it - don't say "the document doesn't contain" or "the documents don't mention"
    - Focus on the TOPIC, not the source material
    - Write as if you are a historian directly narrating history - never reference your sources
    - CRITICAL: If your answer contains ANY phrase referencing source material, it is WRONG and must be rewritten
