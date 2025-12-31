@@ -1286,20 +1286,9 @@
                     return;
                 }
                 
-                // Exclude common words that shouldn't be hyperlinked
-                const commonWordsToExclude = [
-                    'and', 'or', 'but', 'the', 'a', 'an', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from',
-                    'family', 'families', 'cousin', 'cousins', 'son', 'sons', 'daughter', 'daughters',
-                    'first', 'second', 'third', 'last', 'next', 'previous', 'another', 'other', 'others',
-                    'bank', 'banks', 'banking', 'employee', 'employees', 'worker', 'workers', 'staff',
-                    'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
-                    'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
-                    'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
-                    'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel'
-                ];
-                if (commonWordsToExclude.includes(lower)) {
-                    return;
-                }
+                // NOTE: Generic words should NOT be in the index (filtered at indexing time)
+                // This is just a safety net - if generic words appear here, they need to be removed from the index
+                // The index is the source of truth for what should be hyperlinked
                 
                 // ONLY hyperlink if:
                 // 1. Multi-word term (e.g., "Bank of Montreal", "David David")
