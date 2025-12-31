@@ -12,7 +12,8 @@ from .constants import (
     STOP_WORDS, 
     GENERIC_WORDS_TO_EXCLUDE,
     GENERIC_NOT_SURNAMES,
-    COMMON_FIRST_NAMES
+    COMMON_FIRST_NAMES,
+    GENERIC_PHRASES_TO_EXCLUDE
 )
 from .text_utils import split_into_sentences, extract_phrases
 import os
@@ -840,8 +841,19 @@ def build_indices(chunks, chunk_ids):
     # CRITICAL: Final filter - remove any generic words that slipped through
     # This ensures generic words are NEVER in the index (they should have been filtered earlier)
     # Use centralized constant from constants.py
-    term_counts_filtered = {t: c for t, c in term_counts_filtered.items() if t.lower() not in GENERIC_WORDS_TO_EXCLUDE}
-    term_to_chunks_filtered = {t: ids for t, ids in term_to_chunks.items() if t in term_counts_filtered and t.lower() not in GENERIC_WORDS_TO_EXCLUDE}
+    def should_exclude_term(term):
+        """Check if term should be excluded (word or phrase)."""
+        term_lower = term.lower()
+        # Check single words
+        if term_lower in GENERIC_WORDS_TO_EXCLUDE:
+            return True
+        # Check multi-word phrases
+        if term_lower in GENERIC_PHRASES_TO_EXCLUDE:
+            return True
+        return False
+    
+    term_counts_filtered = {t: c for t, c in term_counts_filtered.items() if not should_exclude_term(t)}
+    term_to_chunks_filtered = {t: ids for t, ids in term_to_chunks.items() if t in term_counts_filtered and not should_exclude_term(t)}
     
     # Apply term grouping - merge related terms
     # CRITICAL: Collect chunks from ALL variants (both filtered and unfiltered) to create union
