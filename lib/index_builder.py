@@ -501,7 +501,32 @@ def build_indices(chunks, chunk_ids):
             'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
             'national', 'international', 'federal', 'state', 'central', 'commercial',
             'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
-            'exchange', 'credit', 'finance', 'capital', 'securities', 'assets'
+            'exchange', 'credit', 'finance', 'capital', 'securities', 'assets',
+            # Common relationship/family words
+            'family', 'families', 'cousin', 'cousins', 'father', 'fathers', 'mother', 'mothers',
+            'brother', 'brothers', 'sister', 'sisters', 'uncle', 'uncles', 'aunt', 'aunts',
+            'nephew', 'nephews', 'niece', 'nieces', 'grandfather', 'grandmother',
+            'husband', 'husbands', 'wife', 'wives', 'spouse', 'spouses', 'widow', 'widows',
+            # Common generic words
+            'and', 'or', 'but', 'first', 'second', 'third', 'last', 'next', 'previous',
+            'employee', 'employees', 'worker', 'workers', 'staff', 'member', 'members'
+        }
+        
+        # Common first names - should NOT be indexed as middle names or surnames
+        COMMON_FIRST_NAMES = {
+            'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
+            'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
+            'brian', 'george', 'edward', 'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob', 'gary',
+            'nicholas', 'eric', 'stephen', 'jonathan', 'larry', 'justin', 'scott', 'brandon', 'benjamin', 'samuel',
+            'frank', 'gregory', 'raymond', 'alexander', 'patrick', 'jack', 'dennis', 'jerry', 'tyler', 'aaron',
+            'jose', 'henry', 'adam', 'douglas', 'nathan', 'zachary', 'kyle', 'noah', 'ethan', 'jeremy',
+            'walter', 'christian', 'terry', 'sean', 'lawrence', 'juan', 'mason', 'roy', 'ralph', 'roger',
+            'eugene', 'wayne', 'arthur', 'louis', 'peter', 'harold', 'carl', 'alan', 'harry', 'randy', 'albert',
+            'mary', 'patricia', 'jennifer', 'linda', 'elizabeth', 'barbara', 'susan', 'jessica', 'sarah', 'karen',
+            'nancy', 'lisa', 'betty', 'margaret', 'sandra', 'ashley', 'kimberly', 'emily', 'donna', 'michelle',
+            'dorothy', 'carol', 'amanda', 'melissa', 'deborah', 'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia',
+            'kathleen', 'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma', 'nicole', 'virginia',
+            'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'virginia', 'maria', 'heather'
         }
         
         for full_name in proper_names:
@@ -523,8 +548,15 @@ def build_indices(chunks, chunk_ids):
             
             # Index middle names (maiden/mother's names) - if there are 3+ parts
             # UPDATED: Preserve capitalization
+            # CRITICAL: Skip common first names - they shouldn't be indexed as middle names
             if len(parts) >= 3:
                 for middle_part in parts[1:-1]:  # All parts except first and last
+                    # Skip if it's a common first name
+                    if middle_part.lower() in COMMON_FIRST_NAMES:
+                        continue
+                    # Skip if it's a generic word
+                    if middle_part.lower() in GENERIC_NOT_SURNAMES:
+                        continue
                     middle_canonical = canonicalize_term(middle_part)
                     for target in filter(None, {middle_part, middle_canonical}):
                         term_counts[target] = term_counts.get(target, 0) + 1
