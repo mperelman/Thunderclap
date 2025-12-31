@@ -11,7 +11,7 @@ load_dotenv()
 
 # API Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-GEMINI_MODEL = 'gemini-1.5-pro'  # Try gemini-1.5-pro first, fallback to gemini-pro if needed
+GEMINI_MODEL = 'gemini-pro'  # Use gemini-pro (most widely supported, works with all API versions)
 
 # Generation configuration
 GENERATION_CONFIG = {
@@ -51,8 +51,8 @@ def get_llm_client(api_key=None):
     genai.configure(api_key=key)
     
     # Try multiple model names in order of preference
-    # Start with configured model, then try common alternatives
-    model_names = list(dict.fromkeys([GEMINI_MODEL, 'gemini-pro', 'gemini-1.5-pro']))  # Remove duplicates while preserving order
+    # Start with most basic/compatible model first
+    model_names = ['gemini-pro', 'models/gemini-pro', 'gemini-1.5-pro', 'models/gemini-1.5-pro']
     
     last_error = None
     for model_name in model_names:
