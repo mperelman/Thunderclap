@@ -51,6 +51,8 @@ STOP_WORDS = {
 GENERIC_WORDS_TO_EXCLUDE = {
     # Common function words
     'and', 'or', 'but', 'the', 'a', 'an', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from',
+    'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+    'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can',
     # Family/relationship words
     'family', 'families', 'cousin', 'cousins', 'son', 'sons', 'daughter', 'daughters',
     'father', 'fathers', 'mother', 'mothers', 'brother', 'brothers', 'sister', 'sisters',
@@ -61,6 +63,13 @@ GENERIC_WORDS_TO_EXCLUDE = {
     'first', 'second', 'third', 'last', 'next', 'previous', 'another', 'other', 'others',
     # Generic banking/finance words (standalone)
     'bank', 'banks', 'banking', 'employee', 'employees', 'worker', 'workers', 'staff', 'member', 'members',
+    'financial', 'finance', 'financing', 'credit', 'credits', 'capital', 'securities', 'assets',
+    # Generic descriptive words
+    'political', 'politics', 'economic', 'economy', 'commercial', 'trade', 'trading', 'commerce',
+    'war', 'wars', 'conflict', 'conflicts', 'battle', 'battles',
+    'silver', 'gold', 'steel', 'iron', 'metal', 'metals', 'ship', 'ships', 'vessel', 'vessels',
+    'american', 'america', 'british', 'french', 'german', 'european', 'asian', 'african',
+    'cities', 'city', 'town', 'towns', 'place', 'places', 'region', 'regions',
     # Common first names (should not be indexed as middle names or surnames)
     'joseph', 'john', 'william', 'james', 'robert', 'thomas', 'david', 'richard', 'charles', 'daniel',
     'matthew', 'anthony', 'mark', 'donald', 'paul', 'steven', 'andrew', 'kenneth', 'joshua', 'kevin',
