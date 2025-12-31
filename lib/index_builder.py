@@ -745,6 +745,15 @@ def build_indices(chunks, chunk_ids):
                 is_multi_word = ' ' in firm_term
                 is_generic = firm_term.lower() in GENERIC_FIRM_WORDS
                 
+                # CRITICAL: Also check if it's a generic word from GENERIC_WORDS_TO_EXCLUDE
+                # This prevents "bank", "director", "president" from being indexed standalone
+                if firm_term.lower() in GENERIC_WORDS_TO_EXCLUDE:
+                    continue
+                
+                # CRITICAL: Check if it's a generic phrase
+                if firm_term.lower() in GENERIC_PHRASES_TO_EXCLUDE:
+                    continue
+                
                 if is_generic and not is_multi_word:
                     # Skip standalone generic words like "Bank", "Trust", "Co"
                     continue
