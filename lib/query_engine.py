@@ -846,7 +846,28 @@ class QueryEngine:
             if chunks == original_chunks:  # No preprocessed file was used
                 chunks = self._deduplicate_and_combine_chunks(chunks)
                 print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
-            else:
+            
+            # CRITICAL: Limit chunks based on token estimates BEFORE sending to LLM
+            # This prevents token quota exceeded errors
+            estimated_tokens = self._estimate_tokens_for_chunks(chunks)
+            hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.90)  # Use 90% of limit for safety
+            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.90)  # Use 90% of minute limit
+            effective_limit = min(hard_input_limit, minute_budget)
+            
+            if estimated_tokens > effective_limit:
+                # Calculate how many chunks we can fit
+                tokens_per_chunk = estimated_tokens / len(chunks) if chunks else 0
+                max_chunks = int(effective_limit / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)
+                max_chunks = max(1, max_chunks)  # At least 1 chunk
+                
+                if len(chunks) > max_chunks:
+                    print(f"  [TOKEN_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks} to stay under token limit (~{estimated_tokens:,} > {effective_limit:,} tokens)")
+                    # Prioritize: keep first chunks (they're usually most relevant)
+                    chunks = chunks[:max_chunks]
+                    estimated_tokens = self._estimate_tokens_for_chunks(chunks)
+                    print(f"  [TOKEN_LIMIT] After limiting: {len(chunks)} chunks (~{estimated_tokens:,} tokens)")
+            
+            if chunks == original_chunks:  # No preprocessed file was used
                 print(f"  [DEDUP] Used preprocessed deduplicated file ({len(chunks)} chunks)")
             
             # Detect special query types
