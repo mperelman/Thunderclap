@@ -985,6 +985,10 @@ def build_indices(chunks, chunk_ids):
                 if complete_firm not in term_to_chunks:
                     term_to_chunks[complete_firm] = []
                 term_to_chunks[complete_firm].append(chunk_id)
+                
+                # CRITICAL: Also index significant words from the firm name separately
+                # This allows "Reinach" queries to find "Reinach Bank of Paris", etc.
+                _index_significant_words_from_firm(complete_firm, term_counts, term_to_chunks, chunk_id, GENERIC_FIRM_WORDS)
         
         # Pattern 1: Standard firm names in <italic> tags
         # CRITICAL: Only index multi-word italicized terms or non-generic single words
