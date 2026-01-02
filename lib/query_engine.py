@@ -683,8 +683,14 @@ class QueryEngine:
                                             later_period_ids.add(chunk_id)
                             
                             if later_period_ids:
-                                chunk_ids.update(later_period_ids)
-                                print(f"  [AUGMENT] Added {len(later_period_ids)} later-period chunks (after {current_latest}) mentioning subject terms")
+                                # CRITICAL: Limit later period chunks to prevent token quota errors
+                                # Cap at 30 chunks max (crisis is 20, so 30 is reasonable for later periods)
+                                limited_later_period_ids = list(later_period_ids)[:30]
+                                chunk_ids.update(limited_later_period_ids)
+                                if len(later_period_ids) > 30:
+                                    print(f"  [AUGMENT] Added {len(limited_later_period_ids)} later-period chunks (limited from {len(later_period_ids)} to prevent token quota errors) (after {current_latest}) mentioning subject terms")
+                                else:
+                                    print(f"  [AUGMENT] Added {len(limited_later_period_ids)} later-period chunks (after {current_latest}) mentioning subject terms")
             except Exception as e:
                 print(f"  [WARN] Later period augmentation failed: {e}")
         
