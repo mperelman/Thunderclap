@@ -732,6 +732,16 @@ class QueryEngine:
         
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
+        # CRITICAL: Apply early hard limit on chunk IDs to prevent token quota errors
+        # This limits chunks BEFORE fetching them, saving memory and processing time
+        # Use a conservative limit based on token estimates (rough: ~400 words/chunk * 1.3 tokens/word = ~520 tokens/chunk)
+        # With 40% of 250k tokens/minute = 100k tokens, minus overhead = ~95k tokens for chunks
+        # 95k / 520 = ~180 chunks max, but be more conservative: 150 chunks
+        MAX_CHUNKS_BEFORE_FETCH = 150
+        if len(chunk_ids_list) > MAX_CHUNKS_BEFORE_FETCH:
+            print(f"  [EARLY_LIMIT] Limiting chunk IDs from {len(chunk_ids_list)} to {MAX_CHUNKS_BEFORE_FETCH} before fetching (prevents token quota errors)")
+            chunk_ids_list = chunk_ids_list[:MAX_CHUNKS_BEFORE_FETCH]
+        
         # Augment with endnotes if results are sparse (< 10 chunks)
         # Endnotes provide additional bibliographic detail and source context
         endnote_chunks = []
