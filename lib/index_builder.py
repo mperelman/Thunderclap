@@ -941,14 +941,21 @@ def build_indices(chunks, chunk_ids):
                 term_counts[firm_name] = term_counts.get(firm_name, 0) + 1
                 if firm_name not in term_to_chunks:
                     term_to_chunks[firm_name] = []
-                    term_to_chunks[firm_name].append(chunk_id)
+                term_to_chunks[firm_name].append(chunk_id)
+                
+                # CRITICAL: Also index significant words from the firm name separately
+                # This allows "First" queries to find "First NB", etc.
+                _index_significant_words_from_firm(firm_name, term_counts, term_to_chunks, chunk_id, GENERIC_FIRM_WORDS)
                 
                 # Also index expanded version: "First National Bank"
                 expanded_name = f"{first_term} National Bank"
                 term_counts[expanded_name] = term_counts.get(expanded_name, 0) + 1
                 if expanded_name not in term_to_chunks:
                     term_to_chunks[expanded_name] = []
-                    term_to_chunks[expanded_name].append(chunk_id)
+                term_to_chunks[expanded_name].append(chunk_id)
+                
+                # CRITICAL: Also index significant words from the expanded name
+                _index_significant_words_from_firm(expanded_name, term_counts, term_to_chunks, chunk_id, GENERIC_FIRM_WORDS)
                 
                 # CRITICAL: Also index the COMPLETE firm name with location (e.g., "First NB of Cleveland", "First National Bank of Cleveland")
                 # This prevents splitting "First National Bank of Cleveland" into separate parts
