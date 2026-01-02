@@ -491,6 +491,30 @@ class QueryEngine:
             chunk_ids = phrase_chunk_ids
             print(f"  [PHRASE] Using {len(chunk_ids)} chunks from firm name phrases")
             
+            # AUGMENT: Also search for significant words from multi-word firm names
+            # This catches chunks that only mention part of the firm name (e.g., "Lyonnais" when querying "Crédit Lyonnais")
+            # Only do this for multi-word firm names (2+ words)
+            for phrase in all_firm_phrases:
+                words = phrase.split()
+                if len(words) >= 2:
+                    # For each significant word (skip generic words like "of", "the", "bank", "nb")
+                    generic_words = {'of', 'the', 'and', 'bank', 'nb', 'national', 'first', 'second', 'third'}
+                    for word in words:
+                        word_lower = word.lower()
+                        # Skip generic words and very short words
+                        if word_lower in generic_words or len(word) < 4:
+                            continue
+                        # Try to find this word in the index (case-insensitive variants)
+                        word_variants = [word_lower, word_lower.capitalize(), word]
+                        for variant in word_variants:
+                            if variant in self.term_to_chunks:
+                                before_count = len(chunk_ids)
+                                chunk_ids.update(self.term_to_chunks[variant])
+                                added_count = len(chunk_ids) - before_count
+                                if added_count > 0:
+                                    print(f"  [AUGMENT] Added {added_count} chunks from firm name word '{variant}' (from phrase '{phrase}')")
+                                break  # Found a variant, no need to try others
+            
             # CRITICAL: If query mentions "National Bank" but we matched "first boston" (without "national"),
             # exclude "first boston" chunks to avoid mixing CSFB with First National Bank
             if 'national bank' in question_lower or 'national' in question_lower:
