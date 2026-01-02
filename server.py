@@ -322,14 +322,14 @@ def get_indexed_terms():
             # 2. Proper nouns (start with capital letter)
             elif term[0].isupper():
                 filtered_terms.append(term)
-                # 3. Acronyms (all caps, at least 2 chars)
-                elif term.isupper() and len(term) >= 2:
-                    filtered_terms.append(term)
-                # 4. Mixed case (e.g., "iPhone", "McDonald")
-                elif any(c.isupper() for c in term[1:]):
-                    filtered_terms.append(term)
-                # 5. Lowercase but long and not a common word (likely specific entity)
-                elif len(term) >= 8 and term_lower not in common_words:
+            # 3. Acronyms (all caps, at least 2 chars)
+            elif term.isupper() and len(term) >= 2:
+                filtered_terms.append(term)
+            # 4. Mixed case (e.g., "iPhone", "McDonald")
+            elif any(c.isupper() for c in term[1:]):
+                filtered_terms.append(term)
+            # 5. Lowercase but long and not a common word (likely specific entity)
+            elif len(term) >= 8 and term_lower not in common_words:
                     # Double-check it's not a common word we missed
                     if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
                         filtered_terms.append(term)
