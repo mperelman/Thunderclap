@@ -251,6 +251,24 @@ class LLMAnswerGenerator:
         Returns:
             Generated narrative answer
         """
+        # CRITICAL: Limit chunks here as a safety net (in case query_engine.py didn't limit)
+        # This prevents token quota errors even if limiting was missed earlier
+        from lib.config import MAX_TOKENS_PER_REQUEST, MAX_TOKENS_PER_MINUTE, TOKENS_PER_WORD
+        estimated_tokens = sum(len(chunk[0].split()) for chunk in chunks) * TOKENS_PER_WORD
+        prompt_overhead = 5000
+        response_estimate = 15000
+        available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.60) - prompt_overhead - response_estimate
+        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.60) - prompt_overhead - response_estimate
+        effective_limit = min(available_for_chunks, minute_budget)
+        
+        if estimated_tokens > effective_limit:
+            tokens_per_chunk = estimated_tokens / len(chunks) if chunks else 0
+            max_chunks = int(effective_limit / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)
+            max_chunks = max(1, max_chunks)
+            if len(chunks) > max_chunks:
+                print(f"  [LLM_SAFETY_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks} in generate_answer (~{estimated_tokens:,} > {effective_limit:,} tokens)")
+                chunks = chunks[:max_chunks]
+        
         from lib.prompts import build_prompt
         prompt = build_prompt(question, chunks)
         return self.call_api(prompt)

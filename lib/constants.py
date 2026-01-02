@@ -68,6 +68,7 @@ GENERIC_WORDS_TO_EXCLUDE = {
     'political', 'politics', 'economic', 'economy', 'commercial', 'trade', 'trading', 'commerce',
     'war', 'wars', 'conflict', 'conflicts', 'battle', 'battles',
     'silver', 'gold', 'steel', 'iron', 'metal', 'metals', 'ship', 'ships', 'vessel', 'vessels',
+    'oil', 'oils', 'rival', 'rivals', 'orient', 'gained', 'gain', 'gains',
     'american', 'america', 'british', 'french', 'german', 'european', 'asian', 'african',
     'cities', 'city', 'town', 'towns', 'place', 'places', 'region', 'regions',
     # Generic titles/roles (standalone)

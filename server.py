@@ -257,43 +257,53 @@ def get_status():
 @app.get("/terms")
 def get_indexed_terms():
     """Get list of indexed terms for hyperlinking in responses.
-    Updated: 2025-12-02 - Load from lib/filtered_terms.json (LLM-filtered)."""
+    CRITICAL: Always filter generic terms here - this is the single point of filtering.
+    Hyperlinking is based on what this endpoint returns, so filtering here is simpler than
+    filtering at multiple stages during indexing."""
     from lib.config import INDICES_FILE
+    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
+    
+    def should_exclude_term(term):
+        """Check if term should be excluded (word or phrase)."""
+        term_lower = term.lower().strip()
+        if term_lower in GENERIC_WORDS_TO_EXCLUDE:
+            return True
+        if term_lower in GENERIC_PHRASES_TO_EXCLUDE:
+            return True
+        return False
+    
+    # Load terms from index (or filtered_terms.json if it exists)
+    terms = []
     try:
         # Try to load pre-filtered terms first (LLM-filtered list)
-        # Check lib/ first (deployed with code), then data/ (local only)
         filtered_file = 'lib/filtered_terms.json'
         if not os.path.exists(filtered_file):
             filtered_file = 'data/filtered_terms.json'
         
         if os.path.exists(filtered_file):
             with open(filtered_file, 'r', encoding='utf-8') as f:
-                filtered_terms = json.load(f)
-            print(f"[TERMS] Loaded {len(filtered_terms)} filtered terms from {filtered_file}")
-            return {"terms": filtered_terms}
+                terms = json.load(f)
+            print(f"[TERMS] Loaded {len(terms)} terms from {filtered_file}")
+        else:
+            # Load from indices
+            if os.path.exists(INDICES_FILE):
+                with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                terms = list(data.get('term_to_chunks', {}).keys())
+                print(f"[TERMS] Loaded {len(terms)} terms from indices")
         
-        # Fallback: load from indices and apply basic filtering
-        if os.path.exists(INDICES_FILE):
-            with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            terms = list(data.get('term_to_chunks', {}).keys())
-            
-            # NOTE: Generic words should NOT be in the index (filtered at indexing time in lib/index_builder.py)
-            # The index is the source of truth - if generic words appear here, they need to be removed from the index
-            # This fallback is only for legacy indices that may have generic words
-            from lib.constants import GENERIC_WORDS_TO_EXCLUDE
-            common_words = GENERIC_WORDS_TO_EXCLUDE
-            
-            # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
-            filtered_terms = []
-            for term in terms:
-                term_lower = term.lower().strip()
-                # Skip if too short
-                if len(term) < 4:
-                    continue
-                # Skip common words (comprehensive list)
-                if term_lower in common_words:
-                    continue
+        # CRITICAL: Always filter generic terms here (single point of filtering)
+        # This is simpler than filtering at multiple stages during indexing
+        # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
+        filtered_terms = []
+        for term in terms:
+            # Skip if too short
+            if len(term) < 4:
+                continue
+            # Skip generic words/phrases (comprehensive list)
+            if should_exclude_term(term):
+                continue
+            term_lower = term.lower().strip()
                 # Skip if it's just a number
                 if term_lower.isdigit():
                     continue

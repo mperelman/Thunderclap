@@ -17,6 +17,7 @@ from .constants import (
 )
 from .text_utils import split_into_sentences, extract_phrases
 import os
+import time
 from collections import defaultdict
 
 
@@ -448,6 +449,191 @@ def deduplicate_chunks(chunks, chunk_ids, chunk_metadatas):
     return deduplicated_chunks, deduplicated_chunk_ids, deduplicated_chunk_metadatas, id_mapping
 
 
+def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=500):
+    """
+    Filter indexed terms using LLM to remove generic/common terms.
+    This replaces hardcoded exclusion lists with intelligent LLM-based filtering.
+    
+    Args:
+        term_counts: Dict of {term: count}
+        term_to_chunks: Dict of {term: [chunk_ids]}
+        all_acronyms: Dict of acronyms to keep (auto-kept without LLM)
+        batch_size: Number of terms to process per LLM call
+    
+    Returns:
+        Tuple of (filtered_term_counts, filtered_term_to_chunks)
+    """
+    try:
+        from .llm import LLMAnswerGenerator
+    except ImportError:
+        print("  [WARN] LLM module not available, skipping LLM filtering")
+        return term_counts, term_to_chunks
+    
+    terms = list(term_counts.keys())
+    if not terms:
+        return term_counts, term_to_chunks
+    
+    print(f"  Total terms to filter: {len(terms)}")
+    
+    # Test LLM initialization
+    try:
+        test_llm = LLMAnswerGenerator()
+        if not test_llm.client:
+            print("  [WARN] LLM initialization failed, skipping LLM filtering")
+            return term_counts, term_to_chunks
+    except Exception as e:
+        print(f"  [WARN] LLM initialization failed: {e}, skipping LLM filtering")
+        return term_counts, term_to_chunks
+    
+    # OPTIMIZATION: Pre-filter using hardcoded lists BEFORE sending to LLM
+    # This reduces API calls significantly
+    from .constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
+    
+    # Pre-filter: Remove terms that are definitely generic (no LLM needed)
+    pre_filtered_terms = []
+    pre_removed = 0
+    for term in terms:
+        term_lower = term.lower()
+        # Keep if NOT in exclusion lists
+        if term_lower not in GENERIC_WORDS_TO_EXCLUDE and term_lower not in GENERIC_PHRASES_TO_EXCLUDE:
+            pre_filtered_terms.append(term)
+        else:
+            pre_removed += 1
+    
+    print(f"  Pre-filtered: {pre_removed:,} generic terms removed (no LLM needed)")
+    print(f"  Remaining terms to LLM filter: {len(pre_filtered_terms):,}")
+    
+    filtered_terms = []
+    num_batches = (len(pre_filtered_terms) + batch_size - 1) // batch_size
+    
+    print(f"  Processing {num_batches} batches of {batch_size} terms each")
+    print(f"  Rate limit: 15 requests/minute (4 seconds between batches)")
+    print()
+    
+    # Create progress bar with proper configuration
+    # Always show progress bar - it will adapt to terminal or show as text if redirected
+    import sys
+    progress_bar = tqdm(
+        range(0, len(terms), batch_size), 
+        desc="LLM Filtering", 
+        unit="batch", 
+        dynamic_ncols=True,
+        mininterval=0.1,  # Update frequently
+        maxinterval=1.0,  # But not too frequently
+        file=sys.stdout  # Explicitly use stdout
+    )
+    
+    for i in range(0, len(pre_filtered_terms), batch_size):
+        batch = pre_filtered_terms[i:i+batch_size]
+        batch_num = i//batch_size + 1
+        
+        # Pre-filter: Keep ALL acronyms (3+ caps) without sending to LLM
+        acronyms_in_batch = [t for t in batch if t.isupper() and len(t) >= 3]
+        non_acronyms = [t for t in batch if not (t.isupper() and len(t) >= 3)]
+        
+        # Add acronyms directly to filtered list (don't send to LLM)
+        filtered_terms.extend(acronyms_in_batch)
+        
+        # If entire batch is acronyms, skip LLM call
+        if not non_acronyms:
+            progress_bar.set_postfix({
+                'status': f'{len(acronyms_in_batch)} acronyms auto-kept',
+                'total_kept': len(filtered_terms)
+            })
+            progress_bar.update(1)
+            continue
+        
+        # Wait BEFORE making request (except first batch) to respect 15 RPM limit
+        if i > 0:
+            time.sleep(4)  # 4 seconds = 15 requests/minute (optimized)
+        
+        # Create a FRESH LLM client for each batch
+        try:
+            llm = LLMAnswerGenerator()
+            
+            # OPTIMIZED: Shorter, more focused prompt
+            # OPTIMIZED: Limit to 400 terms per batch to avoid token limits
+            terms_to_send = non_acronyms[:400]
+            
+            prompt = f"""Filter terms for hyperlinking. Return JSON array of terms to KEEP.
+
+KEEP: Multi-word entities, rare surnames (Rothschild/Sassoon), identity terms (Jewish/Quaker), law codes (BA1933).
+EXCLUDE: Common first names, family words, generic titles, common places, function words.
+
+Terms: {json.dumps(terms_to_send)}
+
+Output: JSON array only, no explanations."""
+            
+            response_text = llm.call_api(prompt).strip()
+            
+            # Extract JSON from response
+            if '```json' in response_text:
+                response_text = response_text.split('```json')[1].split('```')[0].strip()
+            elif '```' in response_text:
+                response_text = response_text.split('```')[1].split('```')[0].strip()
+            
+            kept_terms = json.loads(response_text)
+            filtered_terms.extend(kept_terms)
+            
+            # Update progress bar
+            kept_pct = (len(kept_terms) / len(batch)) * 100
+            removed_count = len(batch) - len(kept_terms)
+            progress_bar.set_postfix({
+                'kept': f'{len(kept_terms)}/{len(batch)} ({kept_pct:.0f}%)',
+                'removed': removed_count,
+                'total_kept': len(filtered_terms)
+            })
+            progress_bar.update(1)  # Explicitly update progress
+        
+        except Exception as e:
+            error_msg = str(e)
+            # Check if it's a quota/rate limit error
+            is_quota_error = '429' in error_msg or 'quota' in error_msg.lower() or 'rate limit' in error_msg.lower()
+            
+            if is_quota_error:
+                # Quota exceeded - skip remaining batches gracefully
+                print(f"\n  [WARN] API quota exceeded. Skipping remaining {num_batches - batch_num} batches.")
+                print(f"  [INFO] Keeping {len(filtered_terms):,} terms filtered so far.")
+                print(f"  [INFO] {len(pre_filtered_terms) - len(filtered_terms):,} terms not filtered (will use hardcoded filters)")
+                # Add remaining terms that weren't filtered (they'll be filtered by hardcoded lists later)
+                remaining_terms = pre_filtered_terms[i:]
+                filtered_terms.extend([t for t in remaining_terms if t.isupper() and len(t) >= 3])  # Keep acronyms
+                break  # Stop processing, don't retry
+            else:
+                # Other error - keep this batch and continue
+                progress_bar.set_postfix({
+                    'status': 'ERROR - keeping batch',
+                    'total_kept': len(filtered_terms)
+                })
+                filtered_terms.extend(batch)
+                progress_bar.update(1)
+                time.sleep(10)  # Wait after error, but shorter
+    
+    # Close progress bar
+    progress_bar.close()
+    
+    # Create filtered dictionaries
+    filtered_term_set = set(filtered_terms)
+    filtered_term_counts = {t: c for t, c in term_counts.items() if t in filtered_term_set}
+    filtered_term_to_chunks = {t: ids for t, ids in term_to_chunks.items() if t in filtered_term_set}
+    
+    removed = len(term_counts) - len(filtered_term_counts)
+    total_removed = pre_removed + removed
+    print(f"  [OK] LLM filtering complete: {len(filtered_term_counts):,} terms kept, {total_removed:,} removed ({100*total_removed/len(term_counts):.1f}%)")
+    print(f"       ({pre_removed:,} pre-filtered + {removed:,} LLM-filtered)")
+    
+    # Save filtered terms list for server.py to use
+    try:
+        filtered_terms_file = os.path.join(DATA_DIR, 'filtered_terms.json')
+        with open(filtered_terms_file, 'w', encoding='utf-8') as f:
+            json.dump(sorted(filtered_term_set), f, indent=2, ensure_ascii=False)
+        print(f"  [OK] Saved filtered terms to {filtered_terms_file}")
+    except Exception as e:
+        print(f"  [WARN] Could not save filtered terms: {e}")
+    
+    return filtered_term_counts, filtered_term_to_chunks
+
+
 def build_indices(chunks, chunk_ids):
     """
     Build term→chunk_id indices with smart term grouping.
@@ -495,18 +681,48 @@ def build_indices(chunks, chunk_ids):
                         name_changes[old_lower] = set()
                     name_changes[old_lower].add(new_lower)
         
-        # Extract surnames and middle names (middle names are often maiden/mother's names)
-        # UPDATED: Preserve capitalization to distinguish proper nouns from common words
+        # CRITICAL CHANGE: Only index IMPORTANT banking family surnames, not all surnames
+        # Focus on key banking families from cousinhoods, not every person mentioned
+        # Important banking family surnames (from cousinhoods and key banking history)
+        IMPORTANT_BANKING_SURNAMES = {
+            # Jewish banking families
+            'rothschild', 'warburg', 'kuhn', 'loeb', 'schiff', 'seligman', 'lazard', 'goldschmidt',
+            'mendes', 'sassoon', 'delbanco', 'oppenheim', 'wertheimer', 'goldman', 'sachs',
+            'lehman', 'katz', 'katzenellenbogen', 'cohen', 'kagan', 'abrabanel', 'seneor',
+            # Quaker banking families
+            'barclay', 'bevan', 'tritton', 'lloyd',
+            # Huguenot banking families
+            'hope', 'mallet', 'thellusson',
+            # Puritan/Boston Brahmin
+            'morgan', 'cabot', 'lowell', 'forbes', 'perkins', 'higginson',
+            # Knickerbocker (New York elite)
+            'rensselaer', 'schuyler', 'schaack', 'roosevelt', 'livingston',
+            # Protestant Cologne
+            'stein', 'schaaffhausen',
+            # Gentile British
+            'baring', 'grenfell',
+            # Armenian banking families
+            'balian', 'dadian', 'gulbenkian',
+            # Black banking families
+            'brimmer', 'lewis', 'raines', 'ferguson', 'jordan', 'ogunlesi', 'cole', 'johnson',
+            'parsons', 'wright', 'walker', 'perry', 'church', 'gaston', 'weston', 'turner',
+            'dibble', 'vaughan',
+            # Other important banking families
+            'chase', 'rockefeller', 'vanderbilt', 'harriman', 'hill', 'gould', 'frick',
+            'mellon', 'du pont', 'ford', 'astor', 'guggenheim'
+        }
+        
+        # Extract surnames from proper names, but ONLY index if they're important banking families
         proper_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', chunk)
-        # Use centralized constants from constants.py
         
         for full_name in proper_names:
             parts = full_name.split()
             surname_raw = parts[-1]  # Keep original capitalization
             surname = canonicalize_term(surname_raw)
+            surname_lower = surname.lower()
             
-            # CRITICAL: Skip if surname is a generic word (not a person's name)
-            if surname.lower() in GENERIC_NOT_SURNAMES:
+            # CRITICAL: Only index if surname is an important banking family
+            if surname_lower not in IMPORTANT_BANKING_SURNAMES:
                 continue
             
             # Index surname (preserving capitalization)
@@ -517,23 +733,7 @@ def build_indices(chunks, chunk_ids):
                 term_to_chunks[target].append(chunk_id)
             chunk_entity_list.append(surname or surname_raw)
             
-            # Index middle names (maiden/mother's names) - if there are 3+ parts
-            # UPDATED: Preserve capitalization
-            # CRITICAL: Skip common first names - they shouldn't be indexed as middle names
-            if len(parts) >= 3:
-                for middle_part in parts[1:-1]:  # All parts except first and last
-                    # Skip if it's a common first name
-                    if middle_part.lower() in COMMON_FIRST_NAMES:
-                        continue
-                    # Skip if it's a generic word
-                    if middle_part.lower() in GENERIC_NOT_SURNAMES:
-                        continue
-                    middle_canonical = canonicalize_term(middle_part)
-                    for target in filter(None, {middle_part, middle_canonical}):
-                        term_counts[target] = term_counts.get(target, 0) + 1
-                        if target not in term_to_chunks:
-                            term_to_chunks[target] = []
-                        term_to_chunks[target].append(chunk_id)
+            # REMOVED: No longer indexing middle names (maiden names) - not needed for hyperlinking
         
         # Index identity terms directly from text (Jewish, female, widow, Black, etc.)
         # These are important searchable terms even without identity detector
@@ -663,6 +863,10 @@ def build_indices(chunks, chunk_ids):
         # Fix: Use a lookahead to ensure we stop at word boundary before lowercase words, punctuation, or end of string
         # The pattern now explicitly stops before: lowercase words, numbers, punctuation, or end of string
         nb_pattern_plain = re.compile(r'\b([A-Z][a-z]+)\s+NB\s+of\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?:\'s)?(?=\s+[a-z]|\s+\d|\s*[.,;:!?)]|\s*$|\b)', re.IGNORECASE)
+        
+        # Pattern 3b: Firm names with "Bank of [Location]" - e.g., "Reinach Bank of Paris", "Deutsche Bank of London"
+        # CRITICAL: This captures complete firm names to prevent splitting "Bank of Paris" separately
+        bank_of_pattern = re.compile(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)\s+Bank\s+of\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?:\'s)?(?=\s+[a-z]|\s+\d|\s*[.,;:!?)]|\s*$|\b)', re.IGNORECASE)
         for match in nb_pattern_plain.finditer(visible_text):
             first_part = match.group(1).strip()
             location_part = match.group(2).strip()
@@ -701,6 +905,21 @@ def build_indices(chunks, chunk_ids):
                 if complete_firm_expanded not in term_to_chunks:
                     term_to_chunks[complete_firm_expanded] = []
                     term_to_chunks[complete_firm_expanded].append(chunk_id)
+        
+        # Pattern 3b: Index "Name Bank of Location" as complete firm names (e.g., "Reinach Bank of Paris")
+        for match in bank_of_pattern.finditer(visible_text):
+            firm_name_part = match.group(1).strip()
+            location_part = match.group(2).strip()
+            if len(firm_name_part) < 50 and len(location_part) < 50:
+                # Skip if firm_name_part is generic (e.g., "First", "Second", "National")
+                if firm_name_part.lower() in ['first', 'second', 'third', 'national', 'federal', 'state', 'central', 'commercial', 'investment', 'merchant', 'private', 'public', 'royal', 'imperial']:
+                    continue
+                # Index complete firm name: "Reinach Bank of Paris"
+                complete_firm = f"{canonicalize_term(firm_name_part)} Bank of {canonicalize_term(location_part)}"
+                term_counts[complete_firm] = term_counts.get(complete_firm, 0) + 1
+                if complete_firm not in term_to_chunks:
+                    term_to_chunks[complete_firm] = []
+                term_to_chunks[complete_firm].append(chunk_id)
         
         # Pattern 1: Standard firm names in <italic> tags
         # CRITICAL: Only index multi-word italicized terms or non-generic single words
@@ -788,9 +1007,18 @@ def build_indices(chunks, chunk_ids):
         
         # Index acronyms (exact token) and their exact spelled-out names (dictionary) for ALL acronyms
         visible = strip_tags(chunk)
+        visible_lower = visible.lower()
+        # OPTIMIZATION: Pre-check if acronym term appears in text before running expensive regex
+        # This reduces 1.6M regex searches to only ~few thousand
         # Use all_acronym_patterns (extracted + hardcoded) instead of ACRONYM_PATTERNS
         for term, pattern in all_acronym_patterns.items():
-            # Exact token match for the acronym (e.g., \bSEC\b)
+            # Fast pre-check: only run regex if term appears in text (case-insensitive)
+            # This skips 99%+ of patterns immediately
+            term_lower = term.lower()
+            if term_lower not in visible_lower:
+                continue
+            
+            # Exact token match for the acronym (e.g., \bSEC\b) - only runs if term found
             if pattern.search(visible):
                 term_counts[term] = term_counts.get(term, 0) + 1
                 term_to_chunks.setdefault(term, []).append(chunk_id)
@@ -802,11 +1030,12 @@ def build_indices(chunks, chunk_ids):
                 # CRITICAL: Also index acronym + location patterns (e.g., "FRS New York", "SEC Chicago")
                 # These are specific entities: FRS New York = Federal Reserve Bank of New York
                 # Pattern: ACRONYM followed by a capitalized place name
+                # NOTE: Only index if location is part of a specific entity (Federal Reserve cities, major financial centers)
                 acronym_location_pattern = re.compile(rf"\b{re.escape(term)}\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b")
                 for match in acronym_location_pattern.finditer(visible):
                     location = match.group(1).strip()
-                    # Only index if location is a recognizable place (not a generic word)
-                    # Common US cities/regions and international financial centers
+                    # Only index if location is a Federal Reserve city or major financial center
+                    # These are specific banking entities, not generic place names
                     valid_locations = {
                         'new york', 'boston', 'chicago', 'philadelphia', 'cleveland', 'richmond',
                         'atlanta', 'st louis', 'minneapolis', 'kansas city', 'dallas', 'san francisco',
@@ -815,12 +1044,18 @@ def build_indices(chunks, chunk_ids):
                         'tokyo', 'hong kong', 'singapore', 'shanghai', 'beijing', 'mumbai', 'dubai'
                     }
                     if location.lower() in valid_locations:
+                        # Index as specific entity: "FRS New York" = Federal Reserve Bank of New York
                         full_term = f"{term} {location}"
                         term_counts[full_term] = term_counts.get(full_term, 0) + 1
                         term_to_chunks.setdefault(full_term, []).append(chunk_id)
         # Use all_acronyms (extracted + hardcoded) instead of ACRONYM_EXPANSIONS
+        # OPTIMIZATION: Pre-check if full name appears in text before running expensive regex
         for term, full_name in all_acronyms.items():
             if not full_name:
+                continue
+            # Fast pre-check: only run regex if full name appears in text (case-insensitive)
+            full_name_lower = full_name.lower()
+            if full_name_lower not in visible_lower:
                 continue
             full_pat = re.compile(rf"\b{re.escape(full_name)}\b", re.IGNORECASE)
             amp_pat = None
@@ -900,8 +1135,18 @@ def build_indices(chunks, chunk_ids):
             return True
         return False
     
+    # First pass: hardcoded exclusion (fast, catches obvious cases)
     term_counts_filtered = {t: c for t, c in term_counts_filtered.items() if not should_exclude_term(t)}
     term_to_chunks_filtered = {t: ids for t, ids in term_to_chunks.items() if t in term_counts_filtered and not should_exclude_term(t)}
+    
+    # Second pass: LLM-based filtering (removes generic terms that hardcoded list missed)
+    print("\n" + "="*80)
+    print("FILTERING TERMS WITH LLM (removing generic/common terms)")
+    print("="*80)
+    term_counts_filtered, term_to_chunks_filtered = filter_terms_with_llm(
+        term_counts_filtered, term_to_chunks_filtered, all_acronyms
+    )
+    print("="*80 + "\n")
     
     # Apply term grouping - merge related terms
     # CRITICAL: Collect chunks from ALL variants (both filtered and unfiltered) to create union

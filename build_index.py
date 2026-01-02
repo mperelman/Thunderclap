@@ -108,7 +108,22 @@ def build_complete_index():
                 variants_to_update = list(set(variants_to_update))
                 
                 # Add chunks to ALL variants to preserve TERM_GROUPS merges
+                # CRITICAL: Skip generic terms that should not be in the index
+                from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
+                def should_exclude_term(term):
+                    """Check if term should be excluded (word or phrase)."""
+                    term_lower = term.lower()
+                    if term_lower in GENERIC_WORDS_TO_EXCLUDE:
+                        return True
+                    if term_lower in GENERIC_PHRASES_TO_EXCLUDE:
+                        return True
+                    return False
+                
                 for variant in variants_to_update:
+                    # CRITICAL: Skip generic terms - they should not be in the index
+                    if should_exclude_term(variant):
+                        continue
+                    
                     if variant in indices['term_to_chunks']:
                         existing = set(indices['term_to_chunks'][variant])
                         for chunk_id in chunk_ids_str:
@@ -157,10 +172,27 @@ def build_complete_index():
         traceback.print_exc()
         print(f"  [SKIP] Continuing without identity augmentation\n")
     
-    # Step 3d: Term filtering - run scripts/filter_terms_with_llm_v2.py manually after index build
-    print("Step 3d: Term filtering...")
-    print(f"  [SKIP] Run 'python scripts/filter_terms_with_llm_v2.py' manually to filter terms with LLM")
-    print(f"  [INFO] Index contains {len(indices['term_to_chunks']):,} terms (unfiltered)\n")
+    # Step 3d: Final filter - remove generic terms that may have been added by identity augmentation
+    # CRITICAL: This runs AFTER identity augmentation to ensure generic terms are never in the index
+    # Hyperlinking is based on what's in the index, so we must remove generic terms here
+    print("Step 3d: Final filtering (removing generic terms)...")
+    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
+    def should_exclude_term(term):
+        """Check if term should be excluded (word or phrase)."""
+        term_lower = term.lower()
+        if term_lower in GENERIC_WORDS_TO_EXCLUDE:
+            return True
+        if term_lower in GENERIC_PHRASES_TO_EXCLUDE:
+            return True
+        return False
+    
+    # Remove generic terms from index
+    terms_before = len(indices['term_to_chunks'])
+    indices['term_to_chunks'] = {t: chunks for t, chunks in indices['term_to_chunks'].items() if not should_exclude_term(t)}
+    terms_after = len(indices['term_to_chunks'])
+    removed = terms_before - terms_after
+    print(f"  [OK] Removed {removed} generic terms (final filter)")
+    print(f"  [INFO] Index contains {terms_after:,} terms (filtered)\n")
     
     # Save indices (now with identity augmentation)
     save_indices(indices)

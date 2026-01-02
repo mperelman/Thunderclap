@@ -849,10 +849,16 @@ class QueryEngine:
             
             # CRITICAL: Limit chunks based on token estimates BEFORE sending to LLM
             # This prevents token quota exceeded errors
+            # Use very conservative limits (60% instead of 75%) to account for:
+            # - Token estimation inaccuracy (can be off by 20-30%)
+            # - Prompt overhead (question + instructions)
+            # - Response tokens (can be large for long answers)
             estimated_tokens = self._estimate_tokens_for_chunks(chunks)
-            hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.90)  # Use 90% of limit for safety
-            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.90)  # Use 90% of minute limit
-            effective_limit = min(hard_input_limit, minute_budget)
+            prompt_overhead = 5000  # Question + instructions + formatting
+            response_estimate = 15000  # Estimated response tokens (increased for long answers)
+            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.60) - prompt_overhead - response_estimate
+            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.60) - prompt_overhead - response_estimate
+            effective_limit = min(available_for_chunks, minute_budget)
             
             if estimated_tokens > effective_limit:
                 # Calculate how many chunks we can fit
@@ -862,6 +868,7 @@ class QueryEngine:
                 
                 if len(chunks) > max_chunks:
                     print(f"  [TOKEN_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks} to stay under token limit (~{estimated_tokens:,} > {effective_limit:,} tokens)")
+                    print(f"  [TOKEN_LIMIT] Using 60% of limits with overhead: {available_for_chunks:,} tokens available for chunks")
                     # Prioritize: keep first chunks (they're usually most relevant)
                     chunks = chunks[:max_chunks]
                     estimated_tokens = self._estimate_tokens_for_chunks(chunks)
@@ -3008,8 +3015,14 @@ Answer:"""
         
         # FAST FAIL: If this query would obviously exceed our safe token limits,
         # abort BEFORE calling the LLM so the user doesn't wait 300s for a failure.
-        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.95)
-        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.95)
+        # Use very conservative limits (60% instead of 95%) to account for:
+        # - Prompt overhead (question + instructions)
+        # - Response tokens
+        # - Token estimation inaccuracy
+        prompt_overhead = 5000
+        response_estimate = 10000
+        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.60) - prompt_overhead - response_estimate
+        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.60) - prompt_overhead - response_estimate
         effective_limit = min(hard_input_limit, minute_budget)
         if estimated_input_tokens > effective_limit:
             print(
