@@ -906,7 +906,7 @@ class QueryEngine:
                 for text_chunk, _ in original_chunks:
                     matches = re.findall(r'\b(1[6-9]\d{2}|20[0-2]\d)\b', text_chunk)
                     chunk_years.update(int(m) for m in matches)
-                needs = self._needs_grounding(text) or self._answer_stops_early(text, original_chunks) or self._paragraphs_exceed_limit(text)
+                needs = self._needs_grounding(text, original_chunks) or self._answer_stops_early(text, original_chunks) or self._paragraphs_exceed_limit(text)
                 if needs:
                     print(f"  [RE-ASK] Market query: detected issues; re-asking with all {len(original_chunks)} chunks")
                     text = self._call_llm_with_rate_limit(question, original_chunks)
@@ -972,7 +972,7 @@ class QueryEngine:
                 for text_chunk, _ in original_chunks:
                     matches = re.findall(r'\b(1[6-9]\d{2}|20[0-2]\d)\b', text_chunk)
                     chunk_years.update(int(m) for m in matches)
-                needs = self._needs_grounding(answer) or self._answer_stops_early(answer, original_chunks) or self._paragraphs_exceed_limit(answer)
+                needs = self._needs_grounding(answer, original_chunks) or self._answer_stops_early(answer, original_chunks) or self._paragraphs_exceed_limit(answer)
                 if needs:
                     print(f"  [RE-ASK] Ideology query: detected issues; re-asking with all {len(original_chunks)} chunks")
                     answer = self._call_llm_with_rate_limit(question, original_chunks)
@@ -1080,7 +1080,7 @@ class QueryEngine:
                         chunk_years.update(int(m) for m in matches)
                     # Skip expensive re-ask logic for small/medium queries (≤20 chunks) to avoid timeout
                     if len(original_chunks) > 20:
-                        needs = self._needs_grounding(ans) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
+                        needs = self._needs_grounding(ans, original_chunks) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
                         if needs:
                             # If answer stops early, try re-retrieving with UNION to get all chunks
                             answer_latest = self._get_latest_year_in_answer(ans)
@@ -1166,7 +1166,7 @@ class QueryEngine:
                     for text, _ in original_chunks:
                         matches = re.findall(r'\b(1[6-9]\d{2}|20[0-2]\d)\b', text)
                         chunk_years.update(int(m) for m in matches)
-                    needs = self._needs_grounding(ans) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
+                    needs = self._needs_grounding(ans, original_chunks) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
                     if needs:
                         # If answer stops early, try re-retrieving with UNION to get all chunks
                         answer_latest = self._get_latest_year_in_answer(ans)
@@ -1221,7 +1221,7 @@ class QueryEngine:
                         ans = ans.strip() + "\n\n" + "**Crisis Episodes (from sources):**\n- Include relevant panics/crises linked to this subject and explain liquidity/margin/benchmark changes.\n"
                 except Exception:
                     pass
-                needs = self._needs_grounding(ans) or (self._chunks_have_late_era(chunks) and not self._answer_covers_late_era(ans, chunks)) or self._paragraphs_exceed_limit(ans)
+                needs = self._needs_grounding(ans, chunks) or (self._chunks_have_late_era(chunks) and not self._answer_covers_late_era(ans, chunks)) or self._paragraphs_exceed_limit(ans)
                 if needs:
                     ans = self._call_llm_with_rate_limit(question, chunks)
                 # Review and fix answer against criteria
@@ -1288,7 +1288,7 @@ class QueryEngine:
                     for text_chunk, _ in original_chunks:
                         matches = re.findall(r'\b(1[6-9]\d{2}|20[0-2]\d)\b', text_chunk)
                         chunk_years.update(int(m) for m in matches)
-                    needs = self._needs_grounding(ans) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
+                    needs = self._needs_grounding(ans, original_chunks) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
                     if needs:
                         print(f"  [RE-ASK] Low-volume query: detected issues; re-asking with all {len(original_chunks)} chunks")
                         ans = self._call_llm_with_rate_limit(question, original_chunks)
@@ -1856,7 +1856,7 @@ ENTITY INTRODUCTIONS (MANDATORY):
             pass
         return False
     
-    def _needs_grounding(self, text: str) -> bool:
+    def _needs_grounding(self, text: str, chunks: Optional[List] = None) -> bool:
         """Decide if we should re-ask with a strictly grounded prompt."""
         try:
             if not isinstance(text, str):
@@ -1875,6 +1875,48 @@ ENTITY INTRODUCTIONS (MANDATORY):
                     avg_para_len = sum(len(p) for p in paras) / len(paras)
                     if avg_para_len < 150:  # Average paragraph is too short
                         print(f"  [SPARSE] Answer has {para_count} paragraphs but average length is only {avg_para_len:.0f} chars - too sparse")
+                        return True
+            
+            # CRITICAL: Check if answer is missing significant time periods from chunks
+            # This catches cases where answer has minimum length but is missing information
+            if chunks:
+                chunk_years = set()
+                for chunk_text, _ in chunks:
+                    for m in re.finditer(r"\b(1[6-9]\d{2}|20[0-2]\d)\b", chunk_text):
+                        chunk_years.add(int(m.group(1)))
+                
+                if chunk_years:
+                    chunk_earliest = min(chunk_years)
+                    chunk_latest = max(chunk_years)
+                    chunk_span = chunk_latest - chunk_earliest
+                    
+                    answer_years = set()
+                    for m in re.finditer(r"\b(1[6-9]\d{2}|20[0-2]\d)\b", text):
+                        answer_years.add(int(m.group(1)))
+                    
+                    if answer_years:
+                        answer_earliest = min(answer_years)
+                        answer_latest = max(answer_years)
+                        answer_span = answer_latest - answer_earliest
+                        
+                        # If chunks span a significant period (>50 years) but answer only covers a small portion
+                        # OR if answer is missing early periods (starts too late)
+                        # OR if answer is missing late periods (ends too early)
+                        if chunk_span > 50:  # Chunks span significant period
+                            coverage_ratio = answer_span / chunk_span if chunk_span > 0 else 0
+                            early_gap = answer_earliest - chunk_earliest
+                            late_gap = chunk_latest - answer_latest
+                            
+                            # Answer is missing information if:
+                            # 1. It covers less than 40% of the time span
+                            # 2. It starts more than 20 years after chunks start
+                            # 3. It ends more than 20 years before chunks end
+                            if coverage_ratio < 0.40 or early_gap > 20 or late_gap > 20:
+                                print(f"  [MISSING_INFO] Answer covers {answer_span} years ({coverage_ratio:.0%} of {chunk_span}-year span), missing early: {early_gap} years, missing late: {late_gap} years")
+                                return True
+                    else:
+                        # Answer has no years but chunks do - likely missing information
+                        print(f"  [MISSING_INFO] Answer has no years but chunks span {chunk_earliest}-{chunk_latest}")
                         return True
         except Exception:
             return True
