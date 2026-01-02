@@ -329,7 +329,7 @@ def get_indexed_terms():
             elif any(c.isupper() for c in term[1:]):
                 filtered_terms.append(term)
             # 5. Lowercase but long and not a common word (likely specific entity)
-            elif len(term) >= 8 and term_lower not in common_words:
+            elif len(term) >= 8 and not should_exclude_term(term):
                     # Double-check it's not a common word we missed
                     if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
                         filtered_terms.append(term)
