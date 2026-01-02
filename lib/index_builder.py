@@ -634,6 +634,50 @@ Output: JSON array only, no explanations."""
     return filtered_term_counts, filtered_term_to_chunks
 
 
+def _index_significant_words_from_firm(firm_term: str, term_counts: dict, term_to_chunks: dict, chunk_id: str, generic_words: set):
+    """
+    Index significant words from a firm name separately.
+    For example: "Chase NB" → also index "Chase"
+                 "Goldman Sachs" → also index "Goldman" and "Sachs"
+                 "Crédit Lyonnais" → also index "Crédit" and "Lyonnais"
+    
+    Args:
+        firm_term: The complete firm name (e.g., "Chase NB", "Goldman Sachs")
+        term_counts: Dictionary of term counts
+        term_to_chunks: Dictionary mapping terms to chunk IDs
+        chunk_id: Current chunk ID
+        generic_words: Set of generic words to skip (from GENERIC_FIRM_WORDS)
+    """
+    from .constants import GENERIC_WORDS_TO_EXCLUDE
+    
+    # Split firm name into words
+    words = firm_term.split()
+    
+    # For each word, check if it's significant and index it separately
+    for word in words:
+        word_lower = word.lower()
+        
+        # Skip if:
+        # 1. Too short (< 4 characters)
+        # 2. Generic firm word (bank, trust, nb, etc.)
+        # 3. Generic word from exclusion list
+        # 4. Common location words (unless it's a significant part of the name)
+        if len(word) < 4:
+            continue
+        if word_lower in generic_words:
+            continue
+        if word_lower in GENERIC_WORDS_TO_EXCLUDE:
+            continue
+        
+        # Index the word (preserve original capitalization)
+        word_term = canonicalize_term(word)
+        if word_term and word_term != firm_term:  # Don't duplicate if it's the same
+            term_counts[word_term] = term_counts.get(word_term, 0) + 1
+            if word_term not in term_to_chunks:
+                term_to_chunks[word_term] = []
+            term_to_chunks[word_term].append(chunk_id)
+
+
 def build_indices(chunks, chunk_ids):
     """
     Build term→chunk_id indices with smart term grouping.
@@ -812,12 +856,19 @@ def build_indices(chunks, chunk_ids):
                         term_to_chunks[firm_name] = []
                     term_to_chunks[firm_name].append(chunk_id)
                     
+                    # CRITICAL: Also index significant words from the firm name separately
+                    # This allows "First" queries to find "First NB", etc.
+                    _index_significant_words_from_firm(firm_name, term_counts, term_to_chunks, chunk_id, GENERIC_FIRM_WORDS)
+                    
                     # Also index expanded version: "First National Bank"
                     expanded_name = f"{first_term} National Bank"
                     term_counts[expanded_name] = term_counts.get(expanded_name, 0) + 1
                     if expanded_name not in term_to_chunks:
                         term_to_chunks[expanded_name] = []
                     term_to_chunks[expanded_name].append(chunk_id)
+                    
+                    # CRITICAL: Also index significant words from the expanded name
+                    _index_significant_words_from_firm(expanded_name, term_counts, term_to_chunks, chunk_id, GENERIC_FIRM_WORDS)
                     
                     # CRITICAL: Also index the COMPLETE firm name with location (e.g., "First NB of Cleveland", "First National Bank of Cleveland")
                     # This prevents splitting "First National Bank of Cleveland" into separate parts
@@ -845,6 +896,10 @@ def build_indices(chunks, chunk_ids):
                 term_to_chunks[full_term] = []
             term_to_chunks[full_term].append(chunk_id)
             
+            # CRITICAL: Also index significant words from the firm name separately
+            # This allows "Park" queries to find "Park NB", "Morgan" to find "Morgan IHC", etc.
+            _index_significant_words_from_firm(full_term, term_counts, term_to_chunks, chunk_id, GENERIC_FIRM_WORDS)
+            
             # Also create expanded version for NB
             if abbrev == 'NB':
                 expanded = f"{canonicalize_term(firm_name)} National Bank"
@@ -852,6 +907,9 @@ def build_indices(chunks, chunk_ids):
                 if expanded not in term_to_chunks:
                     term_to_chunks[expanded] = []
                 term_to_chunks[expanded].append(chunk_id)
+                
+                # CRITICAL: Also index significant words from the expanded name
+                _index_significant_words_from_firm(expanded, term_counts, term_to_chunks, chunk_id, GENERIC_FIRM_WORDS)
         
         # Pattern 3: Firm name in plain text (no italics): "First NB of Boston", "Second NB of New York", etc.
         # These appear in regular text and should be indexed as phrases
