@@ -1866,6 +1866,16 @@ ENTITY INTRODUCTIONS (MANDATORY):
             # Too short or too few paragraphs
             if len(text.strip()) < 300 or self._para_count(text) < 3:
                 return True
+            # Check if answer is sparse: has minimum paragraphs but very short content per paragraph
+            # If average paragraph length is < 150 chars, it's likely too sparse
+            para_count = self._para_count(text)
+            if para_count >= 3 and para_count <= 6:  # In the minimum range
+                paras = [p.strip() for p in re.split(r"\n\s*\n+", text.strip()) if p.strip()]
+                if paras:
+                    avg_para_len = sum(len(p) for p in paras) / len(paras)
+                    if avg_para_len < 150:  # Average paragraph is too short
+                        print(f"  [SPARSE] Answer has {para_count} paragraphs but average length is only {avg_para_len:.0f} chars - too sparse")
+                        return True
         except Exception:
             return True
         return False
