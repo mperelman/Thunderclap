@@ -253,13 +253,13 @@ class LLMAnswerGenerator:
         """
         # CRITICAL: Limit chunks here as a safety net (in case query_engine.py didn't limit)
         # This prevents token quota errors even if limiting was missed earlier
-        # Use same conservative limits (50%) as query_engine.py
+        # Use same conservative limits (40%) as query_engine.py
         from lib.config import MAX_TOKENS_PER_REQUEST, MAX_TOKENS_PER_MINUTE, TOKENS_PER_WORD
         estimated_tokens = sum(len(chunk[0].split()) for chunk in chunks) * TOKENS_PER_WORD
         prompt_overhead = 5000
         response_estimate = 15000
-        available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.50) - prompt_overhead - response_estimate
-        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.50) - prompt_overhead - response_estimate
+        available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.40) - prompt_overhead - response_estimate
+        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.40) - prompt_overhead - response_estimate
         effective_limit = min(available_for_chunks, minute_budget)
         
         if estimated_tokens > effective_limit:
