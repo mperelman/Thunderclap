@@ -1218,10 +1218,10 @@ class QueryEngine:
                             if answer_latest > 0 and subject_terms:
                                 print(f"  [RE-RETRIEVE] Answer stops at {answer_latest} - re-retrieving with UNION of subject terms")
                                 # Re-retrieve using UNION instead of intersection
+                                # Use entity associations to expand each subject term
                                 union_chunk_ids = set()
                                 for term in subject_terms:
-                                    if term in self.term_to_chunks:
-                                        union_chunk_ids.update(self.term_to_chunks[term])
+                                    union_chunk_ids.update(get_chunks_with_associations(term))
                                 
                                 # Also try primary term only (e.g., just "Rothschild" to get all Rothschild chunks)
                                 primary_term = subject_terms[0] if subject_terms else None
