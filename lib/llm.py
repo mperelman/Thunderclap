@@ -147,7 +147,7 @@ class LLMAnswerGenerator:
             try:
                 # Get API key (from manager if available, otherwise use stored key)
                 if self.key_manager:
-                    current_key = self.key_manager.get_next_key(delay_seconds=4.0)  # 4s = 15 RPM
+                    current_key = self.key_manager.get_next_key(delay_seconds=5.0)  # 5s = 12 RPM (more conservative to avoid rate limits)
                     if not current_key:
                         # If no key available, check if we have any keys at all
                         available = self.key_manager.get_available_count()
@@ -426,7 +426,7 @@ class LLMAnswerGenerator:
             try:
                 # Get API key (from manager if available, otherwise use stored key)
                 if self.key_manager:
-                    current_key = self.key_manager.get_next_key(delay_seconds=4.0)  # 4s = 15 RPM
+                    current_key = self.key_manager.get_next_key(delay_seconds=5.0)  # 5s = 12 RPM (more conservative to avoid rate limits)
                     if not current_key:
                         # If no key available, check if we have any keys at all
                         available = self.key_manager.get_available_count()
