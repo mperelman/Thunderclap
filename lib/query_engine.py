@@ -1042,9 +1042,18 @@ class QueryEngine:
                     chunks = chunks[:max_chunks_pre]
             
             # Deduplicate and merge overlapping chunks before sending to LLM (if no preprocessed file)
+            # BUT: For firm queries with many chunks, skip aggressive deduplication - it destroys context
+            # The global sentence deduplication removes sentences that appear in multiple chunks,
+            # which loses important context from different time periods
             if chunks == original_chunks:  # No preprocessed file was used
-                chunks = self._deduplicate_and_combine_chunks(chunks)
-                print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
+                if is_firm_query and len(original_chunks) > 50:
+                    # For large firm queries, only remove exact duplicate chunks (preserve all content)
+                    print(f"  [DEDUP] Large firm query ({len(original_chunks)} chunks) - using chunk-level deduplication only (preserving all content)")
+                    chunks = self._deduplicate_exact_chunks_only(chunks)
+                    print(f"  [DEDUP] After exact-chunk dedup: {len(chunks)} chunks")
+                else:
+                    chunks = self._deduplicate_and_combine_chunks(chunks)
+                    print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
             
             # CRITICAL: Limit chunks based on token estimates AFTER deduplication
             # This prevents token quota exceeded errors AND timeouts
