@@ -425,7 +425,7 @@ class LLMAnswerGenerator:
                 # Check for expired/invalid key first - mark as exhausted immediately
                 if self._is_key_expired_error(e):
                     if self.key_manager and current_key:
-                        print(f"  [KEY_EXPIRED] Marking {current_key[:20]}...} as exhausted (expired/invalid)")
+                        print(f"  [KEY_EXPIRED] Marking {current_key[:20]}... as exhausted (expired/invalid)")
                         self.key_manager.mark_key_exhausted(current_key)
                         # Try to get next key immediately
                         next_key = self.key_manager.get_next_key(delay_seconds=0)
