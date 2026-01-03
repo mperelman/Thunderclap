@@ -549,13 +549,27 @@ class QueryEngine:
                         "case_insensitive_matches": []
                     }
                     # Also check if any case-insensitive variant exists
+                    # Use Unicode normalization to handle different é representations
+                    import unicodedata
+                    potential_firm_normalized = unicodedata.normalize('NFC', potential_firm.lower())
                     for term in self.term_to_chunks.keys():
-                        if term.lower() == potential_firm.lower():
+                        term_normalized = unicodedata.normalize('NFC', term.lower())
+                        if term_normalized == potential_firm_normalized:
                             debug_info["case_insensitive_matches"].append({
                                 "term": term,
-                                "chunk_count": len(self.term_to_chunks[term])
+                                "chunk_count": len(self.term_to_chunks[term]),
+                                "term_bytes": term.encode('utf-8').hex(),
+                                "potential_firm_bytes": potential_firm.encode('utf-8').hex()
                             })
                             break
+                    # Also try direct lookup with normalization
+                    potential_firm_nfc = unicodedata.normalize('NFC', potential_firm)
+                    if potential_firm_nfc != potential_firm and potential_firm_nfc in self.term_to_chunks:
+                        debug_info["case_insensitive_matches"].append({
+                            "term": potential_firm_nfc,
+                            "chunk_count": len(self.term_to_chunks[potential_firm_nfc]),
+                            "note": "Found via NFC normalization"
+                        })
                     self.query_diagnostics["firm_detection_debug"].append(debug_info)
                     print(f"  [DEBUG] Firm name detection tried for '{potential_firm}':")
                     print(f"    - Original: '{potential_firm}' in index? {debug_info['original_in_index']}")
