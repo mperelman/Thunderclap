@@ -486,10 +486,24 @@ class QueryEngine:
                 import unicodedata
                 potential_firm_nfc = unicodedata.normalize('NFC', potential_firm)
                 lookup_term = None
-                if potential_firm in self.term_to_chunks:
+                
+                # DEBUG: Check what's actually in term_to_chunks
+                direct_check = potential_firm in self.term_to_chunks
+                nfc_check = potential_firm_nfc in self.term_to_chunks
+                
+                if direct_check:
                     lookup_term = potential_firm
-                elif potential_firm_nfc in self.term_to_chunks:
+                elif nfc_check:
                     lookup_term = potential_firm_nfc
+                else:
+                    # DEBUG: Try to find any case-insensitive match
+                    potential_firm_lower_norm = unicodedata.normalize('NFC', potential_firm.lower())
+                    for term in self.term_to_chunks.keys():
+                        term_lower_norm = unicodedata.normalize('NFC', term.lower())
+                        if term_lower_norm == potential_firm_lower_norm:
+                            lookup_term = term
+                            print(f"  [DEBUG] Found case-insensitive match: '{term}' (was looking for '{potential_firm}')")
+                            break
                 
                 if lookup_term:
                     # Double-check: if original is an identity term, skip
