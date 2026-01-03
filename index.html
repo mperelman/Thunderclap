@@ -697,8 +697,10 @@
                 debugDiv.style.marginTop = '12px';
                 debugDiv.style.fontSize = '0.85em';
                 debugDiv.style.color = '#666';
+                const apiBase = API_URL.replace('/query', '');
                 debugDiv.innerHTML = `
                     <div>Request ID: ${tab.jobId}</div>
+                    <div><a href="${apiBase}/debug/job/${tab.jobId}" target="_blank" style="color:#c9a227;">View diagnostics</a></div>
                 `;
                 contentDiv.appendChild(debugDiv);
             }

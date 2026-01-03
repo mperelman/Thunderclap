@@ -326,6 +326,28 @@ def debug_last(n: int = 50):
     n = max(1, min(200, n))
     return list(TRACE_BUFFER)[-n:]
 
+@app.get("/debug/job/{job_id}")
+def debug_job(job_id: str):
+    """Get diagnostic information for a specific job."""
+    # Get job info
+    job_info = JOB_STORE.get(job_id, {})
+    
+    # Get traces for this job
+    job_traces = [t for t in TRACE_BUFFER if t.get("request_id") == job_id]
+    
+    return {
+        "job_id": job_id,
+        "job_info": {
+            "status": job_info.get("status"),
+            "question": job_info.get("question"),
+            "elapsed": job_info.get("elapsed"),
+            "chunk_count": job_info.get("chunk_count"),
+            "error": job_info.get("error"),
+        },
+        "traces": job_traces,
+        "trace_count": len(job_traces)
+    }
+
 @app.get("/status")
 def get_status():
     """Get current server status and last query progress."""
@@ -367,49 +389,49 @@ def get_indexed_terms():
             print(f"[TERMS] Loaded {len(terms)} terms from {filtered_file}")
         else:
             # Load from indices
-            if os.path.exists(INDICES_FILE):
-                with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                terms = list(data.get('term_to_chunks', {}).keys())
+        if os.path.exists(INDICES_FILE):
+            with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            terms = list(data.get('term_to_chunks', {}).keys())
                 print(f"[TERMS] Loaded {len(terms)} terms from indices")
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
-        # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
-        filtered_terms = []
-        for term in terms:
-            # Skip if too short
-            if len(term) < 4:
-                continue
+            # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
+            filtered_terms = []
+            for term in terms:
+                # Skip if too short
+                if len(term) < 4:
+                    continue
             # Skip generic words/phrases (comprehensive list)
             if should_exclude_term(term):
-                continue
-            term_lower = term.lower().strip()
-            # Skip if it's just a number
-            if term_lower.isdigit():
-                continue
-            # Skip if it's a single character repeated
-            if len(set(term_lower)) == 1:
-                continue
-            # Skip if it's a common verb form (ends in -ed, -ing, -s, etc.)
-            if term_lower.endswith(('ed', 'ing', 'ly', 'er', 'est', 'tion', 'sion', 'ment', 'ness', 'ity', 'ies', 'ied')):
-                # But allow if it's capitalized (might be a name)
-                if not term[0].isupper():
                     continue
-            # ONLY include terms that are clearly entities:
-            # 1. Multi-word phrases (e.g., "Bank of Montreal", "David David")
-            if ' ' in term:
-                filtered_terms.append(term)
-            # 2. Proper nouns (start with capital letter)
-            elif term[0].isupper():
-                filtered_terms.append(term)
-            # 3. Acronyms (all caps, at least 2 chars)
-            elif term.isupper() and len(term) >= 2:
-                filtered_terms.append(term)
-            # 4. Mixed case (e.g., "iPhone", "McDonald")
-            elif any(c.isupper() for c in term[1:]):
-                filtered_terms.append(term)
-            # 5. Lowercase but long and not a common word (likely specific entity)
+            term_lower = term.lower().strip()
+                # Skip if it's just a number
+                if term_lower.isdigit():
+                    continue
+                # Skip if it's a single character repeated
+                if len(set(term_lower)) == 1:
+                    continue
+                # Skip if it's a common verb form (ends in -ed, -ing, -s, etc.)
+                if term_lower.endswith(('ed', 'ing', 'ly', 'er', 'est', 'tion', 'sion', 'ment', 'ness', 'ity', 'ies', 'ied')):
+                    # But allow if it's capitalized (might be a name)
+                    if not term[0].isupper():
+                        continue
+                # ONLY include terms that are clearly entities:
+                # 1. Multi-word phrases (e.g., "Bank of Montreal", "David David")
+                if ' ' in term:
+                    filtered_terms.append(term)
+                # 2. Proper nouns (start with capital letter)
+                elif term[0].isupper():
+                    filtered_terms.append(term)
+                # 3. Acronyms (all caps, at least 2 chars)
+                elif term.isupper() and len(term) >= 2:
+                    filtered_terms.append(term)
+                # 4. Mixed case (e.g., "iPhone", "McDonald")
+                elif any(c.isupper() for c in term[1:]):
+                    filtered_terms.append(term)
+                # 5. Lowercase but long and not a common word (likely specific entity)
             elif len(term) >= 8 and not should_exclude_term(term):
                     # Double-check it's not a common word we missed
                     if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
