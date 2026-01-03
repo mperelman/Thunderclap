@@ -1445,7 +1445,14 @@ class QueryEngine:
                             print(f"  [RE-ASK] Detected early stopping or quality issues; re-asking with all {len(original_chunks)} chunks (span: {min(chunk_years) if chunk_years else 'N/A'}-{max(chunk_years) if chunk_years else 'N/A'})")
                             ans = self._call_llm_with_rate_limit(question, original_chunks)
                     # Review and fix answer against criteria
-                    ans = self._review_and_fix_answer(ans, original_chunks, question)
+                    # Use same review logic as other paths
+                    if len(original_chunks) > 100:
+                        max_review_iter = 1  # Minimal review for very large queries
+                    elif len(original_chunks) > 50:
+                        max_review_iter = 1  # Single review for large queries
+                    else:
+                        max_review_iter = MAX_REVIEW_ITERATIONS  # Full review for smaller queries
+                    ans = self._review_and_fix_answer(ans, original_chunks, question, max_iterations=max_review_iter, query_start_time=query_start)
                     return ans
             elif len(chunks) > 30:
                 # Medium-volume: Standard batching (PeriodEngine handles 31-50 chunks)
