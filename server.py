@@ -56,6 +56,20 @@ if not gemini_key:
 print(f"API Key loaded: {gemini_key[:20]}... (length: {len(gemini_key)})")
 
 print("Initializing Thunderclap AI...")
+
+# Auto-rebuild index if source documents changed
+try:
+    from scripts.auto_rebuild_on_startup import check_and_rebuild
+    print("\n[STARTUP] Checking if index needs rebuild...")
+    rebuild_success = check_and_rebuild()
+    if rebuild_success:
+        print("[STARTUP] Index check complete\n")
+    else:
+        print("[STARTUP] WARNING: Index rebuild failed, but continuing with existing index\n")
+except Exception as e:
+    print(f"[STARTUP] WARNING: Could not check/rebuild index: {e}")
+    print("[STARTUP] Continuing with existing index (if available)\n")
+
 print("Server ready! (QueryEngine created per-request)\n")
 
 class QueryRequest(BaseModel):
