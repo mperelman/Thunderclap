@@ -1355,9 +1355,10 @@ class QueryEngine:
                     else:
                         print(f"  [OPTIMIZE] Skipping re-ask logic for small query ({len(original_chunks)} chunks)")
                     # Review and fix answer against criteria (reduced iterations for small/medium/large queries)
-                    # Skip review for very large queries (>100 chunks) to avoid timeouts
+                    # CRITICAL: Even for very large queries, we need at least 1 review iteration to ensure comprehensive coverage
+                    # Reduced from 0 to 1 to ensure quality, but keep it minimal to avoid timeouts
                     if len(original_chunks) > 100:
-                        max_review_iter = 0  # Skip review for very large queries
+                        max_review_iter = 1  # Minimal review for very large queries (was 0, but that caused limited responses)
                     elif len(original_chunks) > 50:
                         max_review_iter = 1  # Single review for large queries
                     elif len(original_chunks) <= 20:
