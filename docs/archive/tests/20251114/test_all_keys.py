@@ -1,27 +1,27 @@
 """Test all API keys provided by user"""
 import google.generativeai as genai
 
-# All keys provided by user
+# SECURITY: All keys removed - use environment variables only
+# Never commit real API keys to git
+# This file is kept for reference but should not contain real keys
 keys = [
-    # SECURITY: Keys removed - use environment variables only
-    # Never commit real API keys to git
     ("Key #1", "REVOKED_KEY_REMOVED"),
     ("Key #2", "REVOKED_KEY_REMOVED"),
     ("Key #3", "REVOKED_KEY_REMOVED"),
     ("Key #4", "REVOKED_KEY_REMOVED"),
-    ("Key #5", "AIzaSyD-xExhXC66P-eUuYzx5wwXifBvCwZYGMw"),
-    ("Key #6", "AIzaSyBcl-noOJDWb3tTXSQYibMsH6kOf9uQn0o"),
-    ("Key #7 (new)", "AIzaSyArWNIqSYcmh_KvWLxlxew2TZxj4lASfo4"),
-    ("Key #8 (fresh)", "AIzaSyBwFhYh5ri6tBvFPtpuFgV1SzyEbObt1lo"),
-    ("Key #9 (replaced)", "AIzaSyAYF4mxq6tnL_eYWU0JVHVUOEXTVCfo1vU"),
-    ("Key #10 (diff proj)", "AIzaSyC2Rwp54ZJFVK173fMV2G6agGIjqjG0-aA"),
-    ("Key #11 (diff acct)", "REVOKED_KEY_REMOVED"),  # REMOVED: Exposed key revoked
-    ("Key #12 (new)", "AIzaSyBCFDWaXScB3Da9JzkWQKr7YdzvdPyYhfg"),  # New key created after revoking Key #11
-    ("Key #13", "AIzaSyCnqzks44i0YRoKTNISuzKFsWO7TeK4nO8"),  # New key (replaced exposed key)
-    ("Key #14", "AIzaSyCdiaYw8WDVMHJzyVcwE0MKv7XwN7n3-HY"),  # New key (replaced exposed key)
-    ("Key #15", "AIzaSyB6dV7ltiedJ7m37Dt61I4rQNavz5-RoXo"),  # New key (replaced exposed key)
-    ("Key #16", "AIzaSyBiTjP0b0m7Dc26VnLsnXbjtpkNxWCewlo"),  # New key (replaced exposed key)
-    ("Key #17", "AIzaSyBWBg-vd6SkWCeLz386d8R7oUaHrkEesQg"),  # New key (replaced exposed key)
+    ("Key #5", "REVOKED_KEY_REMOVED"),
+    ("Key #6", "REVOKED_KEY_REMOVED"),
+    ("Key #7", "REVOKED_KEY_REMOVED"),
+    ("Key #8", "REVOKED_KEY_REMOVED"),
+    ("Key #9", "REVOKED_KEY_REMOVED"),
+    ("Key #10", "REVOKED_KEY_REMOVED"),
+    ("Key #11", "REVOKED_KEY_REMOVED"),
+    ("Key #12", "REVOKED_KEY_REMOVED"),
+    ("Key #13", "REVOKED_KEY_REMOVED"),
+    ("Key #14", "REVOKED_KEY_REMOVED"),
+    ("Key #15", "REVOKED_KEY_REMOVED"),
+    ("Key #16", "REVOKED_KEY_REMOVED"),
+    ("Key #17", "REVOKED_KEY_REMOVED"),
 ]
 
 print("="*70)
