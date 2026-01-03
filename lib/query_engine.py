@@ -522,12 +522,21 @@ class QueryEngine:
             chunks = set()
             if term in self.term_to_chunks:
                 chunks.update(self.term_to_chunks[term])
-            # Expand using entity associations
-            if self.entity_associations and term in self.entity_associations:
-                for associated_term in self.entity_associations[term]:
-                    if associated_term in self.term_to_chunks:
-                        chunks.update(self.term_to_chunks[associated_term])
-                        print(f"  [EXPAND] Expanded '{term}' to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
+            # Expand using entity associations (check both original and lowercase)
+            if self.entity_associations:
+                # Check original term
+                if term in self.entity_associations:
+                    for associated_term in self.entity_associations[term]:
+                        if associated_term in self.term_to_chunks:
+                            chunks.update(self.term_to_chunks[associated_term])
+                            print(f"  [EXPAND] Expanded '{term}' to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
+                # Also check lowercase version (for case-insensitive matching)
+                term_lower = term.lower()
+                if term_lower in self.entity_associations and term_lower != term:
+                    for associated_term in self.entity_associations[term_lower]:
+                        if associated_term in self.term_to_chunks:
+                            chunks.update(self.term_to_chunks[associated_term])
+                            print(f"  [EXPAND] Expanded '{term}' (via lowercase) to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
             return chunks
         
         # Always assign term_sets unconditionally first to avoid scoping issues
