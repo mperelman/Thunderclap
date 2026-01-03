@@ -482,15 +482,24 @@ class QueryEngine:
                 
                 # Try matching as firm name (try original case first, then canonicalized)
                 # Index preserves capitalization, so try original first
+                # Also try Unicode normalization (NFC) in case index uses different normalization
+                import unicodedata
+                potential_firm_nfc = unicodedata.normalize('NFC', potential_firm)
+                lookup_term = None
                 if potential_firm in self.term_to_chunks:
+                    lookup_term = potential_firm
+                elif potential_firm_nfc in self.term_to_chunks:
+                    lookup_term = potential_firm_nfc
+                
+                if lookup_term:
                     # Double-check: if original is an identity term, skip
                     if potential_firm_lower in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term: '{potential_firm}'")
                         break
-                    firm_name_phrases.append(potential_firm)
-                    chunk_count = len(self.term_to_chunks[potential_firm])
-                    print(f"  [FIRM_NAME] Found indexed firm name: '{potential_firm}' ({chunk_count} chunks)")
-                    self.query_diagnostics["firm_phrases_found"].append(f"{potential_firm} ({chunk_count} chunks)")
+                    firm_name_phrases.append(lookup_term)
+                    chunk_count = len(self.term_to_chunks[lookup_term])
+                    print(f"  [FIRM_NAME] Found indexed firm name: '{lookup_term}' ({chunk_count} chunks)")
+                    self.query_diagnostics["firm_phrases_found"].append(f"{lookup_term} ({chunk_count} chunks)")
                     break
                 
                 # Try canonicalized version (removes possessives but preserves case)
