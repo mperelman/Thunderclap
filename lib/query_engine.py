@@ -2292,8 +2292,9 @@ STRICT RULES:
             # This ensures comprehensive coverage and proper prompt structure
             if len(filtered_chunks) > 50:
                 print(f"  [AUTO] Single-era subject detected but {len(filtered_chunks)} chunks - using PeriodEngine for comprehensive coverage")
+                print(f"  [DEBUG] use_async={self.use_async}, filtered_chunks={len(filtered_chunks)}, original_chunks={len(chunks)}")
                 # Use PeriodEngine even for single-era to ensure comprehensive coverage
-                return processor.process_iterative(
+                result = processor.process_iterative(
                     question=question,
                     chunks=chunks,  # Use original chunks, not filtered
                     prompt_builder=lambda q, c, ctx: self._build_prompt(q, c),
@@ -2301,6 +2302,8 @@ STRICT RULES:
                     subject_terms=subject_terms,
                     subject_phrases=subject_phrases
                 )
+                print(f"  [DEBUG] PeriodEngine (single-era) returned: {len(result)} chars, {len(result.split(chr(10)+chr(10)))} paragraphs")
+                return result
             print("  [AUTO] Single-era subject detected; skipping century splitting.")
             print(f"  [DEBUG] use_async={self.use_async}, filtered_chunks={len(filtered_chunks)} (<=50, using simple path)")
             # If institutional acronym present, stratify evidence across decades
