@@ -429,6 +429,34 @@ def debug_job(job_id: str):
 @app.get("/status")
 def get_status():
     """Get current server status and last query progress."""
+    
+@app.get("/debug/rebuild-status")
+def get_rebuild_status():
+    """Get ChromaDB and rebuild status for debugging."""
+    from lib.config import VECTORDB_DIR, COLLECTION_NAME, INDICES_FILE
+    
+    status = {
+        "rebuild_in_progress": rebuild_in_progress,
+        "index_json_exists": os.path.exists(INDICES_FILE),
+        "vectordb_dir_exists": os.path.exists(VECTORDB_DIR),
+        "chromadb_exists": False,
+        "chromadb_error": None,
+    }
+    
+    # Check ChromaDB
+    try:
+        import chromadb
+        chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+        try:
+            collection = chroma_client.get_collection(name=COLLECTION_NAME)
+            status["chromadb_exists"] = True
+            status["chromadb_chunk_count"] = collection.count()
+        except Exception as e:
+            status["chromadb_error"] = str(e)
+    except Exception as e:
+        status["chromadb_error"] = f"Failed to connect: {str(e)}"
+    
+    return status
     return {
         "status": "running",
         "last_traces": list(TRACE_BUFFER)[-20:],
