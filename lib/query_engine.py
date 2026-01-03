@@ -2368,8 +2368,40 @@ STRICT RULES:
         paras = [p for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
         return len(paras)
     
+    def _remove_source_references(self, text: str) -> str:
+        """Remove any phrases that reference source material (post-processing safety net)."""
+        import re
+        # Patterns to remove
+        patterns = [
+            r'No [^.]* are explicitly mentioned in relation to [^.]* in the provided information[^.]*\.',
+            r'The documents do not detail[^.]*\.',
+            r'The provided information does not[^.]*\.',
+            r'No [^.]* are explicitly mentioned[^.]* in the provided information[^.]*\.',
+            r'[Tt]he documents do not[^.]*\.',
+            r'[Tt]he provided information[^.]*\.',
+            r'[Aa]ccording to (?:the )?documents[^.]*\.',
+            r'[Tt]he documents indicate[^.]*\.',
+            r'[Tt]he documents mention[^.]*\.',
+            r'[Tt]he documents show[^.]*\.',
+            r'[Tt]he documents state[^.]*\.',
+            r'[Tt]he documents detail[^.]*\.',
+            r'[Tt]he provided documents[^.]*\.',
+            r'[Hh]istorical documents[^.]*\.',
+            r'[Hh]istorical records[^.]*\.',
+            r'[Hh]istorical evidence[^.]*\.',
+        ]
+        result = text
+        for pattern in patterns:
+            result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+        # Clean up double spaces and periods
+        result = re.sub(r'\.\s*\.', '.', result)
+        result = re.sub(r'\s+', ' ', result)
+        return result.strip()
+    
     def _polish_answer(self, question: str, text: str, chunks: Optional[List[tuple]] = None) -> str:
         """Append a Related Questions section if missing (answerable from chunks) and ensure minimum paragraph count."""
+        # CRITICAL: Remove any source references that slipped through
+        text = self._remove_source_references(text)
         output = text or ""
         # Ensure minimum paragraphs
         if self._para_count(output) < 3:
