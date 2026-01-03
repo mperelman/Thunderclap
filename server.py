@@ -394,6 +394,10 @@ def get_indexed_terms():
                     data = json.load(f)
                 terms = list(data.get('term_to_chunks', {}).keys())
                 print(f"[TERMS] Loaded {len(terms)} terms from indices")
+            else:
+                # No index file - use empty list
+                terms = []
+                print(f"[TERMS] No index file found - using empty terms list")
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
