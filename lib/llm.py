@@ -149,7 +149,17 @@ class LLMAnswerGenerator:
                 if self.key_manager:
                     current_key = self.key_manager.get_next_key(delay_seconds=4.0)  # 4s = 15 RPM
                     if not current_key:
-                        raise Exception("All API keys exhausted or rate-limited")
+                        # If no key available, check if we have any keys at all
+                        available = self.key_manager.get_available_count()
+                        if available == 0:
+                            raise Exception("All API keys exhausted. Please add new keys or wait for quotas to reset.")
+                        else:
+                            # Keys exist but are rate-limited, wait and retry
+                            import time
+                            time.sleep(5)
+                            current_key = self.key_manager.get_next_key(delay_seconds=0)
+                            if not current_key:
+                                raise Exception("All API keys rate-limited. Please wait a moment and try again.")
                     key_to_use = current_key.strip()
                 else:
                     current_key = self.api_key
