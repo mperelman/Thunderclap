@@ -427,10 +427,10 @@ def get_indexed_terms():
                 filtered_terms.append(term)
             # 3. Acronyms (all caps, at least 2 chars)
             elif term.isupper() and len(term) >= 2:
-                    filtered_terms.append(term)
-                # 4. Mixed case (e.g., "iPhone", "McDonald")
-                elif any(c.isupper() for c in term[1:]):
-                    filtered_terms.append(term)
+                filtered_terms.append(term)
+            # 4. Mixed case (e.g., "iPhone", "McDonald")
+            elif any(c.isupper() for c in term[1:]):
+                filtered_terms.append(term)
                 # 5. Lowercase but long and not a common word (likely specific entity)
             elif len(term) >= 8 and not should_exclude_term(term):
                     # Double-check it's not a common word we missed
