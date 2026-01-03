@@ -575,14 +575,27 @@ class QueryEngine:
                     # Add sample of terms that might be relevant
                     words = potential_firm.lower().split()
                     sample_count = 0
+                    all_lyonnais_terms = []
                     for term in self.term_to_chunks.keys():
                         term_lower = term.lower()
-                        if any(word in term_lower for word in words if len(word) >= 4) and sample_count < 5:
-                            debug_info["index_sample"].append({
-                                "term": term,
-                                "chunk_count": len(self.term_to_chunks[term])
-                            })
+                        if any(word in term_lower for word in words if len(word) >= 4):
+                            if sample_count < 5:
+                                debug_info["index_sample"].append({
+                                    "term": term,
+                                    "chunk_count": len(self.term_to_chunks[term])
+                                })
+                            # Also collect ALL terms with "lyonnais" for debugging
+                            if 'lyonnais' in term_lower:
+                                all_lyonnais_terms.append({
+                                    "term": term,
+                                    "chunk_count": len(self.term_to_chunks[term]),
+                                    "exact_match": term == potential_firm,
+                                    "case_insensitive_match": term.lower() == potential_firm.lower()
+                                })
                             sample_count += 1
+                    # Add all lyonnais terms to debug info
+                    if all_lyonnais_terms:
+                        debug_info["all_lyonnais_terms"] = all_lyonnais_terms
                     # Also check if any case-insensitive variant exists
                     # Use Unicode normalization to handle different é representations
                     import unicodedata
