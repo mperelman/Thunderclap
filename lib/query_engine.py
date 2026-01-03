@@ -1370,6 +1370,7 @@ class QueryEngine:
                     # Note: original_chunks should be defined above
                     print(f"  [AUTO] High-volume topic query detected ({len(chunks)} chunks)")
                     print(f"  [AUTO] Routing to PeriodEngine...")
+                    print(f"  [DEBUG] use_async={self.use_async}, chunks={len(chunks)}, original_chunks={len(original_chunks) if 'original_chunks' in locals() else 'N/A'}")
                     try:
                         ans = PeriodEngine(self).generate(
                             question,
@@ -1377,6 +1378,7 @@ class QueryEngine:
                             subject_terms=subject_terms,
                             subject_phrases=subject_phrases
                         )
+                        print(f"  [DEBUG] PeriodEngine returned answer: {len(ans)} chars, {len(ans.split(chr(10)+chr(10)))} paragraphs")
                     except Exception as _e:
                         print(f"  [WARN] PeriodEngine failed: {_e}")
                         import traceback
@@ -2300,14 +2302,19 @@ STRICT RULES:
                     subject_phrases=subject_phrases
                 )
             print("  [AUTO] Single-era subject detected; skipping century splitting.")
+            print(f"  [DEBUG] use_async={self.use_async}, filtered_chunks={len(filtered_chunks)} (<=50, using simple path)")
             # If institutional acronym present, stratify evidence across decades
             acronym_terms = [tok for tok in (subject_phrases or []) if tok.isupper()]
             if acronym_terms:
                 filtered_chunks = self._stratify_institutional_evidence(filtered_chunks, acronym_terms, cap_per_decade=5, max_total=50)
+                print(f"  [DEBUG] After stratification: {len(filtered_chunks)} chunks")
             if len(filtered_chunks) > 30:
+                print(f"  [DEBUG] Using _generate_batched_narrative ({len(filtered_chunks)} chunks)")
                 answer = self._generate_batched_narrative(question, filtered_chunks)
             else:
+                print(f"  [DEBUG] Using simple LLM call ({len(filtered_chunks)} chunks)")
                 answer = self.llm.generate_answer(question, filtered_chunks)
+            print(f"  [DEBUG] Simple path returned: {len(answer)} chars, {len(answer.split(chr(10)+chr(10)))} paragraphs")
             # Check for empty answer (can happen if LLM hits token limit)
             if not answer or not answer.strip():
                 print(f"  [WARN] Empty answer detected, attempting retry with reduced chunks...")
