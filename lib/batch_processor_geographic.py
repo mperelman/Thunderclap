@@ -301,6 +301,8 @@ class GeographicProcessor:
         """
         Process a single region that has many chunks by batching concurrently.
         
+        Uses centralized parallel_batch_processor for all parallel processing logic.
+        
         Args:
             question: User's question
             region: Region name
@@ -309,61 +311,17 @@ class GeographicProcessor:
         Returns:
             Narrative for this region
         """
-        batch_size = 20
-        total_batches = (len(chunks) + batch_size - 1) // batch_size
+        from lib.parallel_batch_processor import process_batches_parallel
         
-        print(f"    Batching {len(chunks)} chunks into {total_batches} sub-batches (concurrent)...")
-        
-        # Create all batch tasks
-        batch_tasks = []
-        for j in range(0, len(chunks), batch_size):
-            batch = chunks[j:j + batch_size]
-            batch_num = j // batch_size + 1
-            
-            # Create async task with rate limiting
-            # Each batch gets a different key via key manager rotation
-            async def process_batch_with_limit(b=batch, bn=batch_num):
-                async with self.semaphore:
-                    print(f"      [{bn}/{total_batches}] Processing {len(b)} chunks...")
-                    # Add small delay between batches to respect rate limits
-                    if bn > 1:
-                        await asyncio.sleep(0.5)  # 500ms delay between concurrent batches
-                    result = await self.llm.generate_answer_async(question, b)
-                    print(f"      [{bn}/{total_batches}] Done")
-                    return result
-            
-            batch_tasks.append(process_batch_with_limit())
-        
-        # Process all batches concurrently
-        narratives = await asyncio.gather(*batch_tasks)
-        
-        # Combine batches for this region
-        if len(narratives) == 1:
-            return narratives[0]
-        
-        print(f"    Merging {len(narratives)} sub-batches for {region}...")
-        
-        # Merge sub-batches
-        combined_text = "\n\n---\n\n".join(narratives)
-        merge_prompt = f"""Combine these {len(narratives)} sections about {question} in {region} into ONE coherent narrative.
-
-{combined_text}
-
-RULES:
-- Thematically organize (group by sector/institution, not just list facts)
-- Explain causal connections (what triggered what)
-- Compare different responses/impacts within this region
-- Short paragraphs (3 sentences max)
-- Maintain analytical framework
-
-Synthesize:"""
-        
-        try:
-            async with self.semaphore:
-                response = await self.llm.client.generate_content_async(merge_prompt)
-                return response.text
-        except:
-            return combined_text
+        return await process_batches_parallel(
+            question=question,
+            chunks=chunks,
+            llm_generator=self.llm,
+            semaphore=self.semaphore,
+            batch_size=20,
+            batch_delay=0.5,
+            context_name=region
+        )
     
     def _process_region_batched(self, question: str, region: str, chunks: list) -> str:
         """Process a single region with many chunks."""
