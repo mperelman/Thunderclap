@@ -3142,6 +3142,20 @@ Answer:"""
         
         return [(chunk_text, metadata) for chunk_text in verified_chunks]
     
+    def _deduplicate_exact_chunks_only(self, chunks: List[tuple]) -> List[tuple]:
+        """
+        Remove only exact duplicate chunks (same text), preserving all content.
+        This is less aggressive than _deduplicate_and_combine_chunks which removes sentences.
+        """
+        seen_texts = set()
+        result = []
+        for text, meta in chunks:
+            text_normalized = text.strip().lower()
+            if text_normalized not in seen_texts:
+                seen_texts.add(text_normalized)
+                result.append((text, meta))
+        return result
+    
     def _deduplicate_and_combine_chunks(self, chunks: List[tuple]) -> List[tuple]:
         """
         Deduplicate and combine chunks before sending to LLM.
