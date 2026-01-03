@@ -425,8 +425,8 @@ def get_indexed_terms():
             # 2. Proper nouns (start with capital letter)
             elif term[0].isupper():
                 filtered_terms.append(term)
-                # 3. Acronyms (all caps, at least 2 chars)
-                elif term.isupper() and len(term) >= 2:
+            # 3. Acronyms (all caps, at least 2 chars)
+            elif term.isupper() and len(term) >= 2:
                     filtered_terms.append(term)
                 # 4. Mixed case (e.g., "iPhone", "McDonald")
                 elif any(c.isupper() for c in term[1:]):
