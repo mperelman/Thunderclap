@@ -260,6 +260,25 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         # DO NOT reload google.generativeai - it resets configuration
         # The configure() call in llm.py will set it fresh for each request
         
+        # Check if ChromaDB exists before creating QueryEngine
+        from lib.config import VECTORDB_DIR, COLLECTION_NAME
+        try:
+            import chromadb
+            chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+            try:
+                chroma_client.get_collection(name=COLLECTION_NAME)
+                chromadb_exists = True
+            except Exception:
+                chromadb_exists = False
+        except Exception:
+            chromadb_exists = False
+        
+        if not chromadb_exists:
+            if rebuild_in_progress:
+                raise RuntimeError("Database is being rebuilt. Please wait a few minutes and try again. Check Railway logs for progress.")
+            else:
+                raise RuntimeError("Database not initialized. The rebuild should start automatically. Please wait a few minutes and try again, or check Railway logs.")
+        
         from lib.query_engine import QueryEngine
         
         # Wrap query in timeout to prevent runaway queries
