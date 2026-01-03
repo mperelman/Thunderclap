@@ -236,6 +236,14 @@ class IterativePeriodProcessor:
         Returns:
             Comprehensive narrative covering all periods
         """
+        # CRITICAL: Respect use_async flag - if False, use sequential processing
+        if not self.use_async:
+            print(f"  [DEBUG] use_async=False - using sequential processing")
+            return self.process_iterative_sequential(
+                question, chunks, prompt_builder, max_chunks_per_period, subject_terms, subject_phrases
+            )
+        
+        # use_async=True - use async processing
         # Check if we're already in an async context
         try:
             loop = asyncio.get_running_loop()
