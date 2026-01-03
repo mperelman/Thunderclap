@@ -240,6 +240,37 @@ class LLMAnswerGenerator:
                 error_msg = str(e)
                 print(f"  [ERROR] API call failed: {error_msg}")
                 
+                # Check for expired/invalid key first - mark as exhausted immediately
+                if self._is_key_expired_error(e):
+                    if self.key_manager and current_key:
+                        print(f"  [KEY_EXPIRED] Marking {current_key[:20]}... as exhausted (expired/invalid)")
+                        self.key_manager.mark_key_exhausted(current_key)
+                        # Try to get next key immediately (skip rate limiting for expired keys)
+                        next_key = self.key_manager.get_next_key(delay_seconds=0)
+                        if next_key and next_key != current_key:
+                            print(f"  [KEY_ROTATE] Rotating to next key: {next_key[:20]}... (attempt {attempts + 1}/{max_attempts})")
+                            # Reset error count since we're trying a new key
+                            quota_error_count = 0
+                            attempts += 1
+                            continue
+                        else:
+                            # No next key available - check status
+                            available = self.key_manager.get_available_count()
+                            total = len(self.key_manager.keys)
+                            exhausted = total - available
+                            print(f"  [KEY_STATUS] {exhausted}/{total} keys exhausted, {available} available")
+                            if available == 0:
+                                raise Exception(f"All {total} API keys are expired or invalid. Please add new keys to Railway environment variables (GEMINI_API_KEY, GEMINI_API_KEY_1, etc.).")
+                            else:
+                                # Keys exist but might be rate-limited, wait and retry
+                                print(f"  [KEY_RETRY] Waiting 2s and retrying with available keys...")
+                                time.sleep(2)
+                                attempts += 1
+                                continue
+                    else:
+                        # Single key mode - can't rotate
+                        raise Exception(f"API key expired or invalid. Please update your API key in Railway environment variables.\n\nError: {error_msg[:200]}")
+                
                 if self._is_rate_limit_error(e):
                     # If using key manager, mark this key as having an error and try next key
                     if self.key_manager and current_key:
