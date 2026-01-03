@@ -382,7 +382,9 @@ class LLMAnswerGenerator:
         if estimated_tokens > effective_limit:
             tokens_per_chunk = estimated_tokens / len(chunks) if chunks else 0
             max_chunks = int(effective_limit / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)
-            max_chunks = max(1, max_chunks)
+            # CRITICAL: Ensure minimum chunks for comprehensive coverage
+            from lib.config import MIN_CHUNKS_FOR_LLM
+            max_chunks = max(MIN_CHUNKS_FOR_LLM, max_chunks)  # At least minimum chunks
             if len(chunks) > max_chunks:
                 print(f"  [LLM_SAFETY_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks} in generate_answer (~{estimated_tokens:,} > {effective_limit:,} tokens)")
                 chunks = chunks[:max_chunks]

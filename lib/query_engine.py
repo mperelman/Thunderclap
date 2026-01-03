@@ -1036,7 +1036,13 @@ class QueryEngine:
             if estimated_tokens_pre > effective_limit_pre * 1.3:  # 30% over limit (more aggressive)
                 tokens_per_chunk = estimated_tokens_pre / len(chunks) if chunks else 0
                 max_chunks_pre = int(effective_limit_pre * 1.1 / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)  # Allow 10% buffer for dedup reduction
-                max_chunks_pre = max(1, max_chunks_pre)
+                # CRITICAL: For firm queries, ensure minimum chunks for comprehensive coverage
+                from lib.config import MIN_CHUNKS_FOR_LLM, MIN_CHUNKS_FOR_FIRM_QUERY
+                if is_firm_query:
+                    min_chunks = MIN_CHUNKS_FOR_FIRM_QUERY
+                else:
+                    min_chunks = MIN_CHUNKS_FOR_LLM
+                max_chunks_pre = max(min_chunks, max_chunks_pre)  # At least minimum chunks
                 if len(chunks) > max_chunks_pre:
                     print(f"  [PRE_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks_pre} BEFORE deduplication (saves processing time, prevents timeouts)")
                     chunks = chunks[:max_chunks_pre]
@@ -1080,7 +1086,13 @@ class QueryEngine:
                 # Calculate how many chunks we can fit
                 tokens_per_chunk = estimated_tokens / len(chunks) if chunks else 0
                 max_chunks = int(effective_limit / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)
-                max_chunks = max(1, max_chunks)  # At least 1 chunk
+                # CRITICAL: For firm queries, ensure minimum chunks for comprehensive coverage
+                from lib.config import MIN_CHUNKS_FOR_LLM, MIN_CHUNKS_FOR_FIRM_QUERY
+                if is_firm_query:
+                    min_chunks = MIN_CHUNKS_FOR_FIRM_QUERY
+                else:
+                    min_chunks = MIN_CHUNKS_FOR_LLM
+                max_chunks = max(min_chunks, max_chunks)  # At least minimum chunks
                 
                 if len(chunks) > max_chunks:
                     print(f"  [TOKEN_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks} to stay under token limit (~{estimated_tokens:,} > {effective_limit:,} tokens)")
@@ -1470,6 +1482,12 @@ class QueryEngine:
                         pass  # Trace optional
                     # Use generate_answer to get proper narrative structure (not _call_llm_with_rate_limit which uses simpler prompt)
                     # But add rate limiting wrapper
+                    from lib.config import MIN_CHUNKS_FOR_LLM, MIN_CHUNKS_FOR_FIRM_QUERY
+                    min_required = MIN_CHUNKS_FOR_FIRM_QUERY if is_firm_query else MIN_CHUNKS_FOR_LLM
+                    if len(chunks) < min_required:
+                        print(f"  [WARNING] Only {len(chunks)} chunks being sent to LLM (minimum: {min_required}) - response may be incomplete!")
+                    else:
+                        print(f"  [OK] Sending {len(chunks)} chunks to LLM (minimum: {min_required})")
                     self._wait_for_token_rate_limit(chunks)
                     ans = self.llm.generate_answer(question, chunks)
                     estimated_output_tokens = len(ans.split()) * TOKENS_PER_WORD

@@ -27,6 +27,8 @@ EMBEDDING_MODEL = 'all-MiniLM-L6-v2'  # SentenceTransformers model
 # Query parameters  
 DEFAULT_TOP_K = 10  # Default number of results
 MAX_CONTEXT_CHUNKS = 15  # Max chunks to use for LLM context
+MIN_CHUNKS_FOR_LLM = 5  # Minimum chunks to send to LLM (ensures comprehensive coverage)
+MIN_CHUNKS_FOR_FIRM_QUERY = 50  # Minimum chunks for firm queries (ensures comprehensive coverage)
 
 # LLM settings (optional)
 DEFAULT_LLM_MODEL = "gpt-4o-mini"  # OpenAI model
