@@ -156,7 +156,9 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         from lib.query_engine import QueryEngine
         
         # Wrap query in timeout to prevent runaway queries
+        qe = None
         def run_query():
+            nonlocal qe
             qe = QueryEngine(gemini_api_key=current_key, use_async=False)
             return qe.query(question, use_llm=True)
         
@@ -178,7 +180,7 @@ async def process_query_job(job_id: str, question: str, max_length: int):
             return
         
         # Store chunk count for time estimation (if available)
-        if hasattr(qe, 'last_chunk_count'):
+        if qe and hasattr(qe, 'last_chunk_count'):
             JOB_STORE[job_id]["chunk_count"] = qe.last_chunk_count
         
         if len(answer) > max_length:
