@@ -397,34 +397,34 @@ def get_indexed_terms():
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
-            # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
-            filtered_terms = []
-            for term in terms:
-                # Skip if too short
-                if len(term) < 4:
-                    continue
+        # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
+        filtered_terms = []
+        for term in terms:
+            # Skip if too short
+            if len(term) < 4:
+                continue
             # Skip generic words/phrases (comprehensive list)
             if should_exclude_term(term):
-                    continue
+                continue
             term_lower = term.lower().strip()
-                # Skip if it's just a number
-                if term_lower.isdigit():
+            # Skip if it's just a number
+            if term_lower.isdigit():
+                continue
+            # Skip if it's a single character repeated
+            if len(set(term_lower)) == 1:
+                continue
+            # Skip if it's a common verb form (ends in -ed, -ing, -s, etc.)
+            if term_lower.endswith(('ed', 'ing', 'ly', 'er', 'est', 'tion', 'sion', 'ment', 'ness', 'ity', 'ies', 'ied')):
+                # But allow if it's capitalized (might be a name)
+                if not term[0].isupper():
                     continue
-                # Skip if it's a single character repeated
-                if len(set(term_lower)) == 1:
-                    continue
-                # Skip if it's a common verb form (ends in -ed, -ing, -s, etc.)
-                if term_lower.endswith(('ed', 'ing', 'ly', 'er', 'est', 'tion', 'sion', 'ment', 'ness', 'ity', 'ies', 'ied')):
-                    # But allow if it's capitalized (might be a name)
-                    if not term[0].isupper():
-                        continue
-                # ONLY include terms that are clearly entities:
-                # 1. Multi-word phrases (e.g., "Bank of Montreal", "David David")
-                if ' ' in term:
-                    filtered_terms.append(term)
-                # 2. Proper nouns (start with capital letter)
-                elif term[0].isupper():
-                    filtered_terms.append(term)
+            # ONLY include terms that are clearly entities:
+            # 1. Multi-word phrases (e.g., "Bank of Montreal", "David David")
+            if ' ' in term:
+                filtered_terms.append(term)
+            # 2. Proper nouns (start with capital letter)
+            elif term[0].isupper():
+                filtered_terms.append(term)
                 # 3. Acronyms (all caps, at least 2 chars)
                 elif term.isupper() and len(term) >= 2:
                     filtered_terms.append(term)
