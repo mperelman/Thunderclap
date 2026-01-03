@@ -679,6 +679,18 @@ def _index_significant_words_from_firm(firm_term: str, term_counts: dict, term_t
 
 
 def build_indices(chunks, chunk_ids):
+    # Define GENERIC_FIRM_WORDS at the top of the function (used throughout)
+    GENERIC_FIRM_WORDS = {
+        'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
+        'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
+        'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
+        'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
+        'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
+        'national', 'federal', 'state', 'central', 'commercial', 'investment', 'merchant',
+        'private', 'public', 'royal', 'imperial', 'first', 'second', 'third', 'fourth',
+        'savings', 'loan', 'credit', 'finance', 'financial', 'capital', 'equity',
+        'securities', 'asset', 'assets', 'management', 'services', 'solutions'
+    }
     """
     Build term→chunk_id indices with smart term grouping.
     """
