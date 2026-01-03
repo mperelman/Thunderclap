@@ -592,9 +592,9 @@ CRITICAL REQUIREMENTS:
    - Does narrative mention topic in only 1-2 sentences? If YES -> DELETE
    
    ONLY SUGGEST:
-   ✓ Entities discussed across multiple periods with substantive detail (5+ mentions)
-   ✓ Topics where documents provide analysis, not just facts
-   ✓ Specific institutions/events covered in depth across the narrative
+   - Entities discussed across multiple periods with substantive detail (5+ mentions)
+   - Topics where documents provide analysis, not just facts
+   - Specific institutions/events covered in depth across the narrative
 
 Now synthesize into ONE coherent narrative with CULTURAL ANALYSIS and THEMATIC FLOW.
 """
