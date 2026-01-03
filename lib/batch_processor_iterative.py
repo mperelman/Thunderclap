@@ -480,7 +480,7 @@ YOUR TASK: Create ONE comprehensive narrative that is THEMATICALLY COHERENT with
 CRITICAL REQUIREMENTS:
 1. You MUST cover ALL {len(period_narratives)} periods listed above. Do not skip any period.
 2. Move chronologically through all periods from earliest to latest: {period_list}
-3. If you mention a later period (e.g., 20th century), you cannot then jump back to an earlier period (e.g., 19th century).
+3. If you mention a later period (e.g., twentieth century), you cannot then jump back to an earlier period (e.g., nineteenth century).
 4. Each period should get at least 1-2 paragraphs of coverage.
 
 **CRITICAL INSTRUCTIONS:**
