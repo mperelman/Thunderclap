@@ -10,7 +10,7 @@ import re
 from typing import List, Tuple, Dict, Optional
 
 # Constants
-MAX_CONCURRENT_REQUESTS = 10  # Max concurrent API calls (Gemini allows 15 RPM)
+MAX_CONCURRENT_REQUESTS = 5  # Max concurrent API calls (reduced from 10 to avoid rate limits with large queries)
 
 # Time period definitions (flexible boundaries)
 TIME_PERIODS = [
@@ -424,28 +424,6 @@ class IterativePeriodProcessor:
             batch_delay=0.5,
             context_name=period
         )
-
-{combined_text}
-
-RULES:
-- Thematically organize (group by region/theme, not just list facts)
-- Explain cultural/sociological WHY (exclusion, kinship, legal restrictions)
-- Remove redundancies
-- Maintain analytical framework
-- SHORT PARAGRAPHS (ABSOLUTELY CRITICAL): 
-  * MAXIMUM 3-4 sentences per paragraph
-  * ONE topic per paragraph
-  * If you have 10 sentences, split into 3-4 paragraphs
-  * Long paragraphs hide poor organization
-
-Synthesize:"""
-        
-        try:
-            async with self.semaphore:
-                response = await self.llm.client.generate_content_async(merge_prompt)
-                return response.text
-        except:
-            return combined_text
     
     async def _combine_period_narratives_async(
         self,
