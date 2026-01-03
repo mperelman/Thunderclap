@@ -389,10 +389,10 @@ def get_indexed_terms():
             print(f"[TERMS] Loaded {len(terms)} terms from {filtered_file}")
         else:
             # Load from indices
-        if os.path.exists(INDICES_FILE):
-            with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            terms = list(data.get('term_to_chunks', {}).keys())
+            if os.path.exists(INDICES_FILE):
+                with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                terms = list(data.get('term_to_chunks', {}).keys())
                 print(f"[TERMS] Loaded {len(terms)} terms from indices")
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
