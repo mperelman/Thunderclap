@@ -16,7 +16,6 @@ from lib.index_builder import build_indices, build_endnote_mappings, save_indice
 from lib.panic_indexer import augment_index_with_panics
 from lib.config import DATA_DIR, COLLECTION_NAME
 import chromadb
-from chromadb.config import Settings
 import json
 
 def build_complete_index():
