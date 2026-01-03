@@ -2579,12 +2579,19 @@ CRITICAL - NO PLATITUDES:
    - SUBJECT ACTIVE: *Rothschild* hired (NOT was hired by)
    - Institutions italicized: *Rothschild*, *Hope*, *Securities and Exchange Commission (SEC)* when relevant
    - People regular: e.g., Joseph P. Kennedy Sr.
-   - NO PLATITUDES
+   - NO PLATITUDES - Every sentence must contain concrete facts
 
 7. COVERAGE & CONSISTENCY:
-   - Cover all eras present in the provided documents; do not stop at an early decade if later decades are present.
+   - Cover all eras present in the chunks; do not stop at an early decade if later decades are present.
    - For city/branch or successor cases, include the successor era if mentioned or add a "See also" in Related Questions.
    - End with "Related Questions:" (3–5 precise, document-grounded items; no generic "impact/why" questions).
+   - USE ALL AVAILABLE FACTS from the chunks - do not summarize or generalize when specific details are available
+
+8. FACT DENSITY:
+   - Every paragraph must contain multiple specific facts (dates, names, events, numbers)
+   - Avoid filler sentences that don't add information
+   - If chunks mention specific years, events, or relationships, include them
+   - Do not replace facts with vague generalizations
 
 Generate a thematically organized narrative with cultural explanations:"""
     
