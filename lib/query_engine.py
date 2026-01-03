@@ -465,9 +465,12 @@ class QueryEngine:
             r'^(.+)$'  # Fallback: entire question
         ]
         for pattern in firm_name_patterns:
-            match = re.search(pattern, question_lower)
+            # CRITICAL: Match against lowercased question to find the pattern, but extract from ORIGINAL question to preserve capitalization
+            match = re.search(pattern, question_lower, re.IGNORECASE)
             if match:
-                potential_firm = match.group(1).strip()
+                # Extract from ORIGINAL question (not lowercased) to preserve capitalization like "Crédit Lyonnais"
+                start, end = match.span(1)
+                potential_firm = question[start:end].strip()
                 # Remove trailing question marks, periods
                 potential_firm = potential_firm.rstrip('?.!')
                 
