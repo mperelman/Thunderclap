@@ -469,11 +469,39 @@ def get_rebuild_status():
         status["chromadb_error"] = f"Failed to connect: {str(e)}"
     
     return status
-    return {
-        "status": "running",
-        "last_traces": list(TRACE_BUFFER)[-20:],
-        "trace_count": len(TRACE_BUFFER)
-    }
+
+@app.post("/debug/trigger-rebuild")
+def trigger_rebuild():
+    """Manually trigger a rebuild of ChromaDB."""
+    global rebuild_in_progress
+    
+    if rebuild_in_progress:
+        return {"status": "error", "message": "Rebuild already in progress"}
+    
+    # Run rebuild in background thread
+    def run_rebuild():
+        global rebuild_in_progress
+        try:
+            rebuild_in_progress = True
+            from scripts.auto_rebuild_on_startup import rebuild_index
+            print(f"[MANUAL REBUILD] Starting at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            success = rebuild_index()
+            rebuild_in_progress = False
+            if success:
+                print(f"[MANUAL REBUILD] ✅ Completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                print(f"[MANUAL REBUILD] ⚠️ Failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        except Exception as e:
+            rebuild_in_progress = False
+            print(f"[MANUAL REBUILD] ❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    import threading
+    thread = threading.Thread(target=run_rebuild, daemon=True)
+    thread.start()
+    
+    return {"status": "started", "message": "Rebuild triggered in background. Check logs for progress."}
 
 @app.get("/terms")
 def get_indexed_terms():
