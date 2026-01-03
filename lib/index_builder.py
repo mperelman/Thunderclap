@@ -1175,6 +1175,8 @@ def build_indices(chunks, chunk_ids):
     entity_associations = {}
     
     # 1. Co-occurrence associations (entities appearing together in chunks)
+    # Enhanced: Also check if single words appear near multi-word phrases that contain them
+    print("  Building co-occurrence associations...")
     for chunk_id, entities in chunk_entities.items():
         unique = list(set(entities))
         for i, e1 in enumerate(unique):
@@ -1185,6 +1187,82 @@ def build_indices(chunks, chunk_ids):
                 if e2 not in entity_cooccurrence:
                     entity_cooccurrence[e2] = {}
                 entity_cooccurrence[e2][e1] = entity_cooccurrence[e2].get(e1, 0) + 1
+    
+    # Enhanced: Check for word-phrase proximity associations
+    # If a single word appears near a multi-word phrase that contains it, associate them
+    # Only if they appear together in multiple chunks (not just once)
+    print("  Building word-phrase proximity associations...")
+    word_phrase_cooccurrence = {}
+    
+    # Get chunk text for proximity checking
+    chunk_text_map = {chunk_id: chunk for chunk_id, chunk in zip(chunk_ids, chunks)}
+    
+    for chunk_id, chunk_text in chunk_text_map.items():
+        chunk_lower = chunk_text.lower()
+        # Get all terms that appear in this chunk
+        chunk_terms = []
+        for term in term_to_chunks.keys():
+            if chunk_id in term_to_chunks[term]:
+                chunk_terms.append(term)
+        
+        # Check for word-phrase pairs where word is part of phrase
+        for term1 in chunk_terms:
+            words1 = term1.split()
+            # term1 is a single word
+            if len(words1) == 1:
+                word1 = words1[0].lower()
+                # Look for multi-word phrases that contain this word
+                for term2 in chunk_terms:
+                    if term1 == term2:
+                        continue
+                    words2 = term2.split()
+                    # term2 is a multi-word phrase
+                    if len(words2) > 1:
+                        # Check if term2 contains word1
+                        term2_lower = term2.lower()
+                        if word1 in term2_lower:
+                            # Check proximity: are they within 50 words of each other?
+                            # Find positions of both terms in the chunk
+                            import re
+                            word1_pattern = re.compile(rf'\b{re.escape(word1)}\b', re.IGNORECASE)
+                            term2_pattern = re.compile(rf'\b{re.escape(term2)}\b', re.IGNORECASE)
+                            
+                            word1_matches = list(word1_pattern.finditer(chunk_text))
+                            term2_matches = list(term2_pattern.finditer(chunk_text))
+                            
+                            # Check if any word1 match is within 50 words of any term2 match
+                            for w_match in word1_matches:
+                                w_pos = w_match.start()
+                                w_word_count = len(chunk_text[:w_pos].split())
+                                for t_match in term2_matches:
+                                    t_pos = t_match.start()
+                                    t_word_count = len(chunk_text[:t_pos].split())
+                                    word_distance = abs(w_word_count - t_word_count)
+                                    if word_distance <= 50:  # Within 50 words
+                                        # Found proximity - count this co-occurrence
+                                        key = (term1, term2)
+                                        if key not in word_phrase_cooccurrence:
+                                            word_phrase_cooccurrence[key] = 0
+                                        word_phrase_cooccurrence[key] += 1
+                                        break
+                                else:
+                                    continue
+                                break
+    
+    # Merge word-phrase proximity associations into entity_cooccurrence
+    # Only include if they co-occur in at least 2 chunks (to avoid spurious matches)
+    proximity_count = 0
+    for (word, phrase), count in word_phrase_cooccurrence.items():
+        if count >= 2:  # Must appear together in at least 2 chunks
+            if word not in entity_cooccurrence:
+                entity_cooccurrence[word] = {}
+            entity_cooccurrence[word][phrase] = entity_cooccurrence[word].get(phrase, 0) + count
+            if phrase not in entity_cooccurrence:
+                entity_cooccurrence[phrase] = {}
+            entity_cooccurrence[phrase][word] = entity_cooccurrence[phrase].get(word, 0) + count
+            proximity_count += 1
+    
+    print(f"  [OK] Created {proximity_count} word-phrase proximity associations (≥2 co-occurrences)")
     
     # Filter by frequency (must happen before firm associations to get filtered terms)
     term_counts_filtered = {
@@ -1263,66 +1341,6 @@ def build_indices(chunks, chunk_ids):
                 term_to_chunks_filtered[variant] = merged_chunks_list.copy()
             # Also store underscore version pointing to same chunks
             term_to_chunks_filtered[main_term_underscore] = merged_chunks_list.copy()
-    
-    # 2. Firm name part associations (structural relationships)
-    # When we indexed firm names, we also indexed individual words from them
-    # Now create associations: "Lyonnais" <-> "Crédit Lyonnais", "Donaldson" <-> "Donaldson Lufkin Jenrette"
-    # NOTE: This must happen AFTER filtering and term grouping so we only associate filtered terms
-    print("  Building firm name part associations...")
-    firm_part_associations = {}
-    GENERIC_FIRM_WORDS = {
-        'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
-        'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
-        'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
-        'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
-        'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
-        'national', 'international', 'federal', 'state', 'central', 'commercial',
-        'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
-        'exchange', 'credit', 'finance', 'capital', 'securities', 'assets'
-    }
-    
-    for term in term_to_chunks_filtered.keys():
-        # Check if this term is a multi-word firm name
-        words = term.split()
-        if len(words) > 1 and term[0].isupper():  # Multi-word, starts with capital (likely firm name)
-            # For each word in the firm name, create bidirectional association
-            for word in words:
-                word_lower = word.lower()
-                # Skip generic words
-                if len(word) < 4:
-                    continue
-                if word_lower in GENERIC_FIRM_WORDS:
-                    continue
-                if word_lower in GENERIC_WORDS_TO_EXCLUDE:
-                    continue
-                
-                # Canonicalize the word to match how it was indexed
-                word_term = canonicalize_term(word)
-                if word_term and word_term != term and word_term in term_to_chunks_filtered:
-                    # Create bidirectional association
-                    if word_term not in firm_part_associations:
-                        firm_part_associations[word_term] = []
-                    if term not in firm_part_associations[word_term]:
-                        firm_part_associations[word_term].append(term)
-                    
-                    if term not in firm_part_associations:
-                        firm_part_associations[term] = []
-                    if word_term not in firm_part_associations[term]:
-                        firm_part_associations[term].append(word_term)
-    
-    # Merge firm part associations into entity_cooccurrence (with high weight)
-    # This ensures firm name parts are strongly associated with their full names
-    for part, firms in firm_part_associations.items():
-        if part not in entity_cooccurrence:
-            entity_cooccurrence[part] = {}
-        for firm in firms:
-            # Use high weight (100) to ensure firm name associations are prioritized
-            entity_cooccurrence[part][firm] = entity_cooccurrence[part].get(firm, 0) + 100
-            if firm not in entity_cooccurrence:
-                entity_cooccurrence[firm] = {}
-            entity_cooccurrence[firm][part] = entity_cooccurrence[firm].get(part, 0) + 100
-    
-    print(f"  [OK] Created {sum(len(firms) for firms in firm_part_associations.values())} firm name part associations")
     
     # Top associations
     for entity, cooccur in entity_cooccurrence.items():
