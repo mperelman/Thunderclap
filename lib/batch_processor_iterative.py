@@ -47,7 +47,7 @@ class IterativePeriodProcessor:
         question: str,
         chunks: List[Tuple],
         prompt_builder,
-        max_chunks_per_period: int = 30,  # Reduced from 50 to 30 to prevent timeouts
+        max_chunks_per_period: int = 100,  # Increased from 30 to 100 to ensure all chunks are processed (especially for firm queries)
         subject_terms: Optional[List[str]] = None,
         subject_phrases: Optional[List[str]] = None
     ) -> str:
