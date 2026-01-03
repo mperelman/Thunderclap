@@ -1843,17 +1843,63 @@
                 const maxPolls = 480; // 16 minutes max (480 * 2s = 960s) - exceeds server timeout of 7min to catch timeout errors
                 let pollCount = 0;
                 
-                // Function to calculate time estimate based on chunk count
+                // Function to calculate time estimate based on chunk count, batching, and async processing
                 function calculateTimeEstimate(chunkCount) {
                     if (!chunkCount) return null;
                     
-                    // Base time: 5-8 seconds for setup and retrieval
-                    // Per chunk: ~2-3 seconds for LLM processing (varies with chunk size)
-                    // More chunks = longer processing, but not strictly linear
-                    const baseTime = 8;
-                    const perChunkTime = chunkCount <= 20 ? 2.5 : (chunkCount <= 50 ? 2.0 : 1.8);
-                    const estimatedSeconds = Math.ceil(baseTime + (chunkCount * perChunkTime));
+                    // Constants from backend
+                    const BATCH_SIZE = 20; // chunks per batch
+                    const MAX_CONCURRENT = 10; // max concurrent batches
+                    const BATCH_DELAY = 0.5; // seconds between batches
+                    const KEY_ROTATION_DELAY = 4.0; // seconds per key rotation (15 RPM)
+                    const LLM_CALL_TIME = 8; // seconds per LLM API call (average)
+                    const SETUP_TIME = 5; // seconds for setup/retrieval
+                    const MERGE_TIME = 6; // seconds to merge batches
                     
+                    // Calculate batches
+                    const numBatches = Math.ceil(chunkCount / BATCH_SIZE);
+                    
+                    // Base time: setup and retrieval
+                    let estimatedSeconds = SETUP_TIME;
+                    
+                    if (numBatches === 1) {
+                        // Single batch: no batching overhead
+                        estimatedSeconds += LLM_CALL_TIME;
+                    } else {
+                        // Multiple batches: account for async processing
+                        // Batches run concurrently (up to MAX_CONCURRENT at a time)
+                        const concurrentRounds = Math.ceil(numBatches / MAX_CONCURRENT);
+                        
+                        // Time for concurrent rounds
+                        // Each round processes up to MAX_CONCURRENT batches in parallel
+                        // But we need to account for rate limiting between batches
+                        for (let round = 0; round < concurrentRounds; round++) {
+                            const batchesInRound = Math.min(MAX_CONCURRENT, numBatches - (round * MAX_CONCURRENT));
+                            
+                            // All batches in round run concurrently, but with delays
+                            // First batch: no delay, subsequent: BATCH_DELAY
+                            const roundTime = LLM_CALL_TIME + (batchesInRound - 1) * BATCH_DELAY;
+                            
+                            // Add key rotation delay if we have multiple keys (every 4 batches)
+                            const keyRotations = Math.floor(batchesInRound / 4);
+                            const keyRotationTime = keyRotations * KEY_ROTATION_DELAY;
+                            
+                            estimatedSeconds += roundTime + keyRotationTime;
+                            
+                            // Delay between rounds (if not last round)
+                            if (round < concurrentRounds - 1) {
+                                estimatedSeconds += KEY_ROTATION_DELAY; // Wait before next round
+                            }
+                        }
+                        
+                        // Add merge time if multiple batches
+                        estimatedSeconds += MERGE_TIME;
+                    }
+                    
+                    // Round up to nearest 5 seconds for safety margin
+                    estimatedSeconds = Math.ceil(estimatedSeconds / 5) * 5;
+                    
+                    // Format output
                     if (estimatedSeconds < 30) {
                         return `~${estimatedSeconds}s`;
                     } else if (estimatedSeconds < 60) {
@@ -1861,7 +1907,13 @@
                     } else {
                         const minutes = Math.floor(estimatedSeconds / 60);
                         const seconds = estimatedSeconds % 60;
-                        return seconds > 0 ? `~${minutes}m ${seconds}s` : `~${minutes}m`;
+                        if (seconds === 0) {
+                            return `~${minutes}m`;
+                        } else if (seconds < 30) {
+                            return `~${minutes}m`;
+                        } else {
+                            return `~${minutes + 1}m`;
+                        }
                     }
                 }
                 
