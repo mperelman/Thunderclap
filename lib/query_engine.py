@@ -2277,6 +2277,19 @@ STRICT RULES:
             filtered_chunks = list(chain.from_iterable(preview_periods.values()))
             if not filtered_chunks:
                 return "No relevant information found."
+            # CRITICAL: For large queries (>50 chunks), still use PeriodEngine even if single-era
+            # This ensures comprehensive coverage and proper prompt structure
+            if len(filtered_chunks) > 50:
+                print(f"  [AUTO] Single-era subject detected but {len(filtered_chunks)} chunks - using PeriodEngine for comprehensive coverage")
+                # Use PeriodEngine even for single-era to ensure comprehensive coverage
+                return processor.process_iterative(
+                    question=question,
+                    chunks=chunks,  # Use original chunks, not filtered
+                    prompt_builder=lambda q, c, ctx: self._build_prompt(q, c),
+                    max_chunks_per_period=999999,
+                    subject_terms=subject_terms,
+                    subject_phrases=subject_phrases
+                )
             print("  [AUTO] Single-era subject detected; skipping century splitting.")
             # If institutional acronym present, stratify evidence across decades
             acronym_terms = [tok for tok in (subject_phrases or []) if tok.isupper()]
