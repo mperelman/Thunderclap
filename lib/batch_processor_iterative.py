@@ -423,9 +423,13 @@ class IterativePeriodProcessor:
             batch_num = j // batch_size + 1
             
             # Create async task with rate limiting
+            # Each batch gets a different key via key manager rotation
             async def process_batch_with_limit(b=batch, bn=batch_num):
                 async with self.semaphore:
                     print(f"      [{bn}/{total_batches}] Processing {len(b)} chunks...")
+                    # Add small delay between batches to respect rate limits
+                    if bn > 1:
+                        await asyncio.sleep(0.5)  # 500ms delay between concurrent batches
                     result = await self.llm.generate_answer_async(question, b)
                     print(f"      [{bn}/{total_batches}] Done")
                     return result

@@ -94,13 +94,31 @@ class QueryEngine:
         # Load pre-built indices
         self._load_indices()
         
+        # Initialize API key manager for multi-key rotation
+        print("  Initializing API key manager...")
+        self.key_manager = None
+        try:
+            from lib.api_key_manager import APIKeyManager
+            self.key_manager = APIKeyManager()
+            print(f"  [OK] Key manager initialized with {len(self.key_manager.keys)} keys")
+        except Exception as e:
+            print(f"  [WARNING] Could not initialize key manager: {e}")
+            print("  [INFO] Falling back to single key mode")
+            self.key_manager = None
+        
         # Initialize advanced LLM (with fallback support)
         print("  Initializing LLM...")
         self.llm = None
         try:
-            # Use Gemini API key (priority: parameter > env var)
-            api_key = gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-            self.llm = LLMAnswerGenerator(api_key=api_key)
+            # Use key manager if available, otherwise single key
+            if self.key_manager:
+                self.llm = LLMAnswerGenerator(key_manager=self.key_manager)
+                print(f"  [OK] LLM initialized with key manager ({self.key_manager.get_available_count()} keys available)")
+            else:
+                # Fallback to single key mode
+                api_key = gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+                self.llm = LLMAnswerGenerator(api_key=api_key)
+                print(f"  [OK] LLM initialized with single key mode")
         except Exception as e:
             print(f"  [WARNING] LLM initialization failed: {e}")
         

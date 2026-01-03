@@ -10,14 +10,21 @@ import re
 class LLMAnswerGenerator:
     """Simplified LLM wrapper - just API calls, no prompt logic."""
     
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, key_manager=None):
         """
         Initialize LLM client.
         
         Args:
-            api_key: Gemini API key (or set GEMINI_API_KEY env var)
+            api_key: Gemini API key (or set GEMINI_API_KEY env var). If key_manager is provided, this is ignored.
+            key_manager: APIKeyManager instance for multi-key rotation. If None, uses single key.
         """
-        self.api_key = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+        self.key_manager = key_manager
+        if key_manager:
+            # Use key manager - get first key for initial client
+            self.api_key = key_manager.get_next_key(delay_seconds=0) or os.getenv('GEMINI_API_KEY')
+        else:
+            # Single key mode
+            self.api_key = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
         self.client = None
         
         # Try Gemini first
@@ -126,13 +133,20 @@ class LLMAnswerGenerator:
                 raise Exception(f"API call timed out after {elapsed:.1f}s (max {max_total_time}s). Quota may be exhausted.")
             
             try:
-                # Ensure API key is configured before each call
-                if not self.api_key:
-                    raise Exception("No API key available for API call")
+                # Get API key (from manager if available, otherwise use stored key)
+                if self.key_manager:
+                    current_key = self.key_manager.get_next_key(delay_seconds=4.0)  # 4s = 15 RPM
+                    if not current_key:
+                        raise Exception("All API keys exhausted or rate-limited")
+                    key_to_use = current_key.strip()
+                else:
+                    current_key = self.api_key
+                    if not current_key:
+                        raise Exception("No API key available for API call")
+                    key_to_use = current_key.strip()
                 
                 # Import and configure in one go to avoid state issues
                 import google.generativeai as genai
-                key_to_use = self.api_key.strip()
                 
                 # CRITICAL: Configure BEFORE importing anything else that might use genai
                 # This ensures the key is set in genai's internal state
@@ -155,6 +169,11 @@ class LLMAnswerGenerator:
                 
                 # Make the API call
                 response = self.client.generate_content(prompt)
+                
+                # Reset errors on success
+                if self.key_manager and current_key:
+                    self.key_manager.reset_key_errors(current_key)
+                
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
                 if response.candidates and len(response.candidates) > 0:
                     candidate = response.candidates[0]
@@ -200,6 +219,19 @@ class LLMAnswerGenerator:
                 print(f"  [ERROR] API call failed: {error_msg}")
                 
                 if self._is_rate_limit_error(e):
+                    # If using key manager, mark this key as having an error and try next key
+                    if self.key_manager and current_key:
+                        self.key_manager.mark_key_error(current_key)
+                        # Try to get next key immediately
+                        next_key = self.key_manager.get_next_key(delay_seconds=0)
+                        if next_key and next_key != current_key:
+                            print(f"  [KEY_ROTATE] Rotating to next key after error on {current_key[:20]}...")
+                            attempts += 1
+                            continue
+                        # If token quota error, mark as exhausted
+                        if self._is_token_quota_error(e):
+                            self.key_manager.mark_key_exhausted(current_key)
+                    
                     quota_error_count += 1
                     # Fail fast if we've hit quota errors too many times
                     if quota_error_count > max_quota_retries:
@@ -208,8 +240,13 @@ class LLMAnswerGenerator:
                             # Token quota (TPM) - need to wait longer, usually 1-2 minutes
                             print(f"  [DEBUG] Token quota error details: {error_msg}")
                             error_snippet = error_msg[:150] if len(error_msg) > 150 else error_msg
+                            available_keys = self.key_manager.get_available_count() if self.key_manager else 0
+                            if available_keys > 0:
+                                raise Exception(f"Token quota exceeded on current key. {available_keys} keys still available. Retrying with different key...")
                             raise Exception(f"Token quota exceeded (250,000 tokens/minute limit). Your query uses too many tokens. Please wait 1-2 minutes and try again, or simplify your question.\n\nAPI Error: {error_snippet}")
                         elif self._is_actual_quota_exhaustion(e):
+                            if self.key_manager and current_key:
+                                self.key_manager.mark_key_exhausted(current_key)
                             raise Exception(f"API daily quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
                         else:
                             # This is likely a temporary rate limit (RPM), not quota exhaustion
@@ -300,23 +337,35 @@ class LLMAnswerGenerator:
         quota_error_count = 0  # Track consecutive quota errors
         max_quota_retries = 5  # Retry rate limit errors up to 5 times (was 3)
         
+        current_key = None  # Initialize for error handling
         while attempts < max_attempts:
             # Check total timeout
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > max_total_time:
                 raise Exception(f"Async API call timed out after {elapsed:.1f}s (max {max_total_time}s). Quota may be exhausted.")
             try:
-                # Ensure API key is configured before each async call
-                if not self.api_key:
+                # Get API key (from manager if available, otherwise use stored key)
+                if self.key_manager:
+                    current_key = self.key_manager.get_next_key(delay_seconds=4.0)  # 4s = 15 RPM
+                    if not current_key:
+                        raise Exception("All API keys exhausted or rate-limited")
+                else:
+                    current_key = self.api_key
+                
+                if not current_key:
                     raise Exception("No API key available for API call")
                 
                 import google.generativeai as genai
                 # CRITICAL: Always reconfigure before each async call
                 # Use get_llm_client which has model fallback built in
                 from lib.llm_config import get_llm_client
-                self.client = get_llm_client(api_key=self.api_key.strip())
+                self.client = get_llm_client(api_key=current_key.strip())
                 
                 response = await self.client.generate_content_async(prompt)
+                
+                # Reset errors on success
+                if self.key_manager:
+                    self.key_manager.reset_key_errors(current_key)
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
                 if response.candidates and len(response.candidates) > 0:
                     candidate = response.candidates[0]
@@ -362,6 +411,19 @@ class LLMAnswerGenerator:
                 print(f"  [ERROR] Async API call failed: {error_msg}")
                 
                 if self._is_rate_limit_error(e):
+                    # If using key manager, mark this key as having an error and try next key
+                    if self.key_manager and current_key:
+                        self.key_manager.mark_key_error(current_key)
+                        # Try to get next key immediately
+                        next_key = self.key_manager.get_next_key(delay_seconds=0)
+                        if next_key and next_key != current_key:
+                            print(f"  [KEY_ROTATE] Rotating to next key after error on {current_key[:20]}...")
+                            attempts += 1
+                            continue
+                        # If token quota error, mark as exhausted
+                        if self._is_token_quota_error(e):
+                            self.key_manager.mark_key_exhausted(current_key)
+                    
                     quota_error_count += 1
                     # Fail fast if we've hit quota errors too many times
                     if quota_error_count > max_quota_retries:
@@ -370,8 +432,13 @@ class LLMAnswerGenerator:
                             # Token quota (TPM) - need to wait longer, usually 1-2 minutes
                             print(f"  [DEBUG] Async token quota error details: {error_msg}")
                             error_snippet = error_msg[:150] if len(error_msg) > 150 else error_msg
+                            available_keys = self.key_manager.get_available_count() if self.key_manager else 0
+                            if available_keys > 0:
+                                raise Exception(f"Token quota exceeded on current key. {available_keys} keys still available. Retrying with different key...")
                             raise Exception(f"Token quota exceeded (250,000 tokens/minute limit). Your query uses too many tokens. Please wait 1-2 minutes and try again, or simplify your question.\n\nAPI Error: {error_snippet}")
                         elif self._is_actual_quota_exhaustion(e):
+                            if self.key_manager and current_key:
+                                self.key_manager.mark_key_exhausted(current_key)
                             raise Exception(f"API daily quota exhausted after {quota_error_count} failures. Please try again later or check your API quota limits.")
                         else:
                             # This is likely a temporary rate limit (RPM), not quota exhaustion
