@@ -1281,6 +1281,7 @@ class QueryEngine:
             # Lower threshold from 100 to 50 chunks to trigger batching sooner
             # CRITICAL: Route to batching engines EARLIER to prevent timeouts
             # Lower threshold from 100 to 50 chunks to trigger batching sooner
+            print(f"  [ROUTING] Checking routing: chunks={len(chunks)}, is_event={is_event}, is_ideology={is_ideology}, is_firm_query={is_firm_query}")
             if len(chunks) > 50:
                 if is_event:
                     # Event query: Route to EventEngine
@@ -1370,7 +1371,7 @@ class QueryEngine:
                     # Note: original_chunks should be defined above
                     print(f"  [AUTO] High-volume topic query detected ({len(chunks)} chunks)")
                     print(f"  [AUTO] Routing to PeriodEngine...")
-                    print(f"  [DEBUG] use_async={self.use_async}, chunks={len(chunks)}, original_chunks={len(original_chunks) if 'original_chunks' in locals() else 'N/A'}")
+                    print(f"  [DEBUG] use_async={self.use_async}, chunks={len(chunks)}, original_chunks={len(original_chunks) if 'original_chunks' in locals() else 'N/A'}, is_firm_query={is_firm_query}")
                     try:
                         ans = PeriodEngine(self).generate(
                             question,
