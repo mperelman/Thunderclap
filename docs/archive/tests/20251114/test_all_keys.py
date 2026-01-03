@@ -13,7 +13,7 @@ keys = [
     ("Key #8 (fresh)", "AIzaSyBwFhYh5ri6tBvFPtpuFgV1SzyEbObt1lo"),
     ("Key #9 (replaced)", "AIzaSyAYF4mxq6tnL_eYWU0JVHVUOEXTVCfo1vU"),
     ("Key #10 (diff proj)", "AIzaSyC2Rwp54ZJFVK173fMV2G6agGIjqjG0-aA"),
-    ("Key #11 (diff acct)", "REVOKED_KEY_REMOVED"),
+    ("Key #11 (diff acct)", "REVOKED_KEY_REMOVED"),  # REMOVED: Exposed key revoked
 ]
 
 print("="*70)

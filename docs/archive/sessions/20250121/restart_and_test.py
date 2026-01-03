@@ -37,7 +37,7 @@ for root, dirs, files in os.walk('.'):
 print("Starting server...")
 # Start server in background
 env = os.environ.copy()
-env['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'
+env['GEMINI_API_KEY'] = 'YOUR_API_KEY_HERE'  # REMOVED: Exposed key revoked
 server_process = subprocess.Popen(
     [sys.executable, "server.py"],
     env=env,

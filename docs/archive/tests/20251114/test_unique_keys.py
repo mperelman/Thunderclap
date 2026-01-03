@@ -14,7 +14,7 @@ print("Testing 4 UNIQUE keys...\n")
 for name, key_prefix in unique_keys:
     # Get full key
     if key_prefix == "AIzaSyCGPsVN5zK8nWGR...":
-        full_key = "REVOKED_KEY_REMOVED"
+        full_key = "REVOKED_KEY_REMOVED"  # REMOVED: Exposed key revoked
     elif key_prefix == "AIzaSyBaj9wvbB3n6Zjv...":
         full_key = "AIzaSyBaj9wvbB3n6ZjvI89fFACl4SQgUfTaC4s"
     elif key_prefix == "AIzaSyAXr9YBivlfndzZ...":

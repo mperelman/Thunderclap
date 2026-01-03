@@ -9,7 +9,7 @@ keys = [
     ("Key #8", "AIzaSyBwFhYh5ri6tBvFPtpuFgV1SzyEbObt1lo"),
     ("Key #9", "AIzaSyAYF4mxq6tnL_eYWU0JVHVUOEXTVCfo1vU"),
     ("Key #10", "AIzaSyC2Rwp54ZJFVK173fMV2G6agGIjqjG0-aA"),
-    ("Key #11", "REVOKED_KEY_REMOVED"),
+    ("Key #11", "REVOKED_KEY_REMOVED"),  # REMOVED: Exposed key revoked
 ]
 
 print("Testing if quota reset...\n")
