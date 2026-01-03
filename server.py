@@ -79,17 +79,27 @@ for compressed_path in compressed_paths:
 
 # Check if ChromaDB collection exists, rebuild if missing
 from lib.config import VECTORDB_DIR, COLLECTION_NAME
+chromadb_exists_on_startup = False
 try:
     import chromadb
-    chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+    chroma_client_startup = chromadb.PersistentClient(path=VECTORDB_DIR)
     try:
-        collection = chroma_client.get_collection(name=COLLECTION_NAME)
+        collection = chroma_client_startup.get_collection(name=COLLECTION_NAME)
+        chromadb_exists_on_startup = True
         print(f"[STARTUP] ✅ ChromaDB collection exists ({collection.count():,} chunks)")
     except Exception:
+        chromadb_exists_on_startup = False
         print(f"[STARTUP] ⚠️ ChromaDB collection '{COLLECTION_NAME}' not found")
         print(f"[STARTUP] Will rebuild ChromaDB in background (this may take a few minutes)...")
         # Will be handled by background_rebuild below
+    finally:
+        # CRITICAL: Delete the client to close any open file handles
+        # This prevents "readonly database" errors during rebuild
+        del chroma_client_startup
+        import gc
+        gc.collect()  # Force garbage collection to close file handles
 except Exception as e:
+    chromadb_exists_on_startup = False
     print(f"[STARTUP] ⚠️ Could not check ChromaDB: {e}")
 
 # Auto-rebuild index if source documents changed (in background to avoid blocking startup)

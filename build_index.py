@@ -224,22 +224,43 @@ def build_complete_index():
     if os.path.exists(vectordb_path):
         print(f"  [INFO] Removing existing vectordb directory to avoid settings conflict...")
         import shutil
+        import gc
         try:
-            # Close any existing ChromaDB connections first
-            # ChromaDB might have open file handles
+            # Force garbage collection to close any open ChromaDB file handles
+            # This is critical - SQLite files can be locked by open connections
+            gc.collect()
             import time
-            time.sleep(1)  # Brief pause to let any open handles close
+            time.sleep(2)  # Wait for file handles to close
             
+            # Try to remove SQLite file first (it might be locked)
+            sqlite_file = os.path.join(vectordb_path, 'chroma.sqlite3')
+            if os.path.exists(sqlite_file):
+                try:
+                    os.remove(sqlite_file)
+                    print(f"  [INFO] Removed SQLite database file")
+                    time.sleep(1)  # Brief pause after removing SQLite file
+                except Exception as e:
+                    print(f"  [WARN] Could not remove SQLite file (may be locked): {e}")
+                    # Continue anyway - might still be able to remove directory
+            
+            # Now remove the entire directory
             shutil.rmtree(vectordb_path)
             print(f"  [OK] Removed existing vectordb directory")
+            
+            # Wait before recreating
+            time.sleep(1)
+            
             # Recreate directory with explicit permissions
             os.makedirs(vectordb_path, mode=0o755, exist_ok=True)
+            print(f"  [OK] Recreated vectordb directory")
         except Exception as e:
             print(f"  [WARN] Could not remove vectordb directory: {e}")
+            print(f"  [INFO] This may cause 'different settings' error - will try to continue")
             # Try to continue anyway - might work if directory is empty
     else:
         # Create directory if it doesn't exist
         os.makedirs(vectordb_path, mode=0o755, exist_ok=True)
+        print(f"  [OK] Created vectordb directory")
     
     # Use same settings as QueryEngine (no explicit settings = defaults)
     # This avoids "different settings" error when ChromaDB was initialized elsewhere
