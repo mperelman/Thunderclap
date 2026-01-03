@@ -301,6 +301,17 @@ class QueryEngine:
         import time
         from lib.config import QUERY_TIMEOUT_SECONDS
         query_start = time.time()
+        
+        # Store diagnostic info for this query
+        self.query_diagnostics = {
+            "firm_phrases_found": [],
+            "initial_chunk_count": 0,
+            "after_associations": 0,
+            "after_filtering": 0,
+            "final_chunk_count": 0,
+            "query_path": "unknown"
+        }
+        
         # CRITICAL: Always get fresh collection reference to avoid ChromaDB stale UUID caching
         try:
             print(f"  [QUERY_START] Processing: '{question[:60]}...'")
@@ -473,7 +484,9 @@ class QueryEngine:
                         print(f"  [SKIP] Skipping firm name detection for identity term: '{potential_firm}'")
                         break
                     firm_name_phrases.append(potential_firm)
-                    print(f"  [FIRM_NAME] Found indexed firm name: '{potential_firm}' ({len(self.term_to_chunks[potential_firm])} chunks)")
+                    chunk_count = len(self.term_to_chunks[potential_firm])
+                    print(f"  [FIRM_NAME] Found indexed firm name: '{potential_firm}' ({chunk_count} chunks)")
+                    self.query_diagnostics["firm_phrases_found"].append(f"{potential_firm} ({chunk_count} chunks)")
                     break
                 
                 # Try canonicalized version (removes possessives but preserves case)
@@ -610,7 +623,11 @@ class QueryEngine:
                 # Get chunks for phrase, including entity associations
                 phrase_chunk_ids.update(get_chunks_with_associations(phrase))
             chunk_ids = phrase_chunk_ids
-            print(f"  [PHRASE] Using {len(chunk_ids)} chunks from firm name phrases (with associations)")
+            initial_count = len(chunk_ids)
+            print(f"  [PHRASE] Using {initial_count} chunks from firm name phrases (with associations)")
+            self.query_diagnostics["initial_chunk_count"] = initial_count
+            self.query_diagnostics["query_path"] = "firm_phrase"
+            self.query_diagnostics["after_associations"] = initial_count
             
             # AUGMENT: Also search for significant words from multi-word firm names
             # This catches chunks that only mention part of the firm name (e.g., "Lyonnais" when querying "Crédit Lyonnais")

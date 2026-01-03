@@ -235,9 +235,17 @@ async def process_query_job(job_id: str, question: str, max_length: int):
             JOB_STORE[job_id]["elapsed"] = elapsed
             return
         
-        # Store chunk count for time estimation (if available)
+        # Store chunk count and diagnostics for time estimation (if available)
         if qe and hasattr(qe, 'last_chunk_count'):
             JOB_STORE[job_id]["chunk_count"] = qe.last_chunk_count
+        if qe and hasattr(qe, 'query_diagnostics'):
+            JOB_STORE[job_id]["diagnostics"] = qe.query_diagnostics
+            # Also add trace events for key diagnostic info
+            try:
+                from server import trace_event
+                trace_event(job_id, "chunk_retrieval", **qe.query_diagnostics)
+            except:
+                pass
         
         if len(answer) > max_length:
             answer = answer[:max_length] + "\n\n[Truncated]"
