@@ -63,6 +63,18 @@ class LLMAnswerGenerator:
             "too many requests" in msg
         )
     
+    def _is_key_expired_error(self, exc: Exception) -> bool:
+        """Check if exception is an expired or invalid API key error."""
+        msg = str(exc).lower()
+        return (
+            "api key expired" in msg or
+            "api key invalid" in msg or
+            "api_key_invalid" in msg or
+            ("api key" in msg and ("expired" in msg or "invalid" in msg)) or
+            ("key" in msg and "expired" in msg) or
+            ("key" in msg and "invalid" in msg and "api" in msg)
+        )
+    
     def _is_token_quota_error(self, exc: Exception) -> bool:
         """Check if this is a token quota error (TPM - tokens per minute), not request quota."""
         msg = str(exc).lower()
@@ -409,6 +421,30 @@ class LLMAnswerGenerator:
                 last_err = e
                 error_msg = str(e)
                 print(f"  [ERROR] Async API call failed: {error_msg}")
+                
+                # Check for expired/invalid key first - mark as exhausted immediately
+                if self._is_key_expired_error(e):
+                    if self.key_manager and current_key:
+                        print(f"  [KEY_EXPIRED] Marking {current_key[:20]}...} as exhausted (expired/invalid)")
+                        self.key_manager.mark_key_exhausted(current_key)
+                        # Try to get next key immediately
+                        next_key = self.key_manager.get_next_key(delay_seconds=0)
+                        if next_key and next_key != current_key:
+                            print(f"  [KEY_ROTATE] Rotating to next key: {next_key[:20]}...")
+                            attempts += 1
+                            continue
+                        else:
+                            available = self.key_manager.get_available_count()
+                            if available == 0:
+                                raise Exception(f"All API keys are expired or invalid. Please add new keys.")
+                            else:
+                                # Wait a bit and try again with next key
+                                await asyncio.sleep(1)
+                                attempts += 1
+                                continue
+                    else:
+                        # Single key mode - can't rotate
+                        raise Exception(f"API key expired or invalid. Please update your API key.\n\nError: {error_msg[:200]}")
                 
                 if self._is_rate_limit_error(e):
                     # If using key manager, mark this key as having an error and try next key
