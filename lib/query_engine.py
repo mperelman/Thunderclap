@@ -943,7 +943,14 @@ class QueryEngine:
             
             # Filter out chunks where topic appears only in comma-separated lists (passing mentions)
             # This naturally reduces chunk counts without hardcoded limits
-            chunks = self._filter_comma_mentions(chunks, question) or chunks
+            # SKIP comma filtering for firm name queries - even list mentions can be important
+            is_firm_query = any(
+                'bank' in question.lower() or 
+                'nb' in question.lower() or
+                any(word in question.lower() for word in ['firm', 'company', 'corporation', 'crédit', 'credit'])
+            )
+            if not is_firm_query:
+                chunks = self._filter_comma_mentions(chunks, question) or chunks
             
             # Try to use preprocessed deduplicated file if available
             chunks = self._try_use_preprocessed_file(chunks, question) or chunks
