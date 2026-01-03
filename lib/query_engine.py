@@ -555,8 +555,20 @@ class QueryEngine:
                         "title_case_in_index": potential_firm_title in self.term_to_chunks,
                         "preserved_case": potential_firm_preserved,
                         "preserved_case_in_index": potential_firm_preserved in self.term_to_chunks,
-                        "case_insensitive_matches": []
+                        "case_insensitive_matches": [],
+                        "index_sample": []  # Sample of terms in index that contain relevant words
                     }
+                    # Add sample of terms that might be relevant
+                    words = potential_firm.lower().split()
+                    sample_count = 0
+                    for term in self.term_to_chunks.keys():
+                        term_lower = term.lower()
+                        if any(word in term_lower for word in words if len(word) >= 4) and sample_count < 5:
+                            debug_info["index_sample"].append({
+                                "term": term,
+                                "chunk_count": len(self.term_to_chunks[term])
+                            })
+                            sample_count += 1
                     # Also check if any case-insensitive variant exists
                     # Use Unicode normalization to handle different é representations
                     import unicodedata
