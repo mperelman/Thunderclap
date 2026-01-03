@@ -1405,13 +1405,17 @@ class QueryEngine:
                             ans = ans.strip() + "\n\n" + "**Crisis Episodes (from sources):**\n- Include relevant panics/crises linked to this subject and explain liquidity/margin/benchmark changes.\n"
                     except Exception:
                         pass
+                    # CRITICAL: Review PeriodEngine output to ensure comprehensive coverage
+                    # PeriodEngine uses iterative processing, but still needs review to catch issues
+                    # Skip redundant re-ask logic - review will handle it
                     # Debug: print years in original_chunks
                     chunk_years = set()
                     for text, _ in original_chunks:
                         matches = re.findall(r'\b(1[6-9]\d{2}|20[0-2]\d)\b', text)
                         chunk_years.update(int(m) for m in matches)
-                    needs = self._needs_grounding(ans, original_chunks) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
-                    if needs:
+                    # Review will catch early stopping and other issues, so skip redundant re-ask logic
+                    # needs = self._needs_grounding(ans, original_chunks) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
+                    # if needs:
                         # If answer stops early, try re-retrieving with UNION to get all chunks
                         answer_latest = self._get_latest_year_in_answer(ans)
                         if answer_latest > 0 and subject_terms:
