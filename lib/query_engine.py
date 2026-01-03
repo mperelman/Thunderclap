@@ -1051,6 +1051,10 @@ class QueryEngine:
                     print(f"  [DEDUP] Large firm query ({len(original_chunks)} chunks) - using chunk-level deduplication only (preserving all content)")
                     chunks = self._deduplicate_exact_chunks_only(chunks)
                     print(f"  [DEDUP] After exact-chunk dedup: {len(chunks)} chunks")
+                    # CRITICAL: For large firm queries, still need to route to PeriodEngine to avoid timeout
+                    # Chunk-level dedup preserves content but doesn't reduce count much, so we need batched processing
+                    if len(chunks) > 80:
+                        print(f"  [ROUTING] Large firm query ({len(chunks)} chunks) - will route to PeriodEngine for batched processing")
                 else:
                     chunks = self._deduplicate_and_combine_chunks(chunks)
                     print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
