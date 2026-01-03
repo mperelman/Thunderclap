@@ -57,18 +57,43 @@ print(f"API Key loaded: {gemini_key[:20]}... (length: {len(gemini_key)})")
 
 print("Initializing Thunderclap AI...")
 
-# Auto-rebuild index if source documents changed
-try:
-    from scripts.auto_rebuild_on_startup import check_and_rebuild
-    print("\n[STARTUP] Checking if index needs rebuild...")
-    rebuild_success = check_and_rebuild()
-    if rebuild_success:
-        print("[STARTUP] Index check complete\n")
-    else:
-        print("[STARTUP] WARNING: Index rebuild failed, but continuing with existing index\n")
-except Exception as e:
-    print(f"[STARTUP] WARNING: Could not check/rebuild index: {e}")
-    print("[STARTUP] Continuing with existing index (if available)\n")
+# Auto-rebuild index if source documents changed (in background to avoid blocking startup)
+# This is more efficient than on-demand because:
+# 1. Quick file mtime check (~milliseconds) vs full rebuild (minutes)
+# 2. Server starts immediately, rebuild happens in background
+# 3. If rebuild needed, it happens once at startup, not on first query
+import threading
+rebuild_in_progress = False
+
+def background_rebuild():
+    """Run rebuild check in background thread (non-blocking)."""
+    global rebuild_in_progress
+    try:
+        from scripts.auto_rebuild_on_startup import needs_rebuild, rebuild_index
+        
+        print("\n[STARTUP] Checking if index needs rebuild...")
+        if needs_rebuild():
+            rebuild_in_progress = True
+            print("[STARTUP] Starting background rebuild (server accepting requests)...")
+            success = rebuild_index()
+            rebuild_in_progress = False
+            if success:
+                print("[STARTUP] ✅ Background rebuild completed successfully!")
+            else:
+                print("[STARTUP] ⚠️ Background rebuild failed, using existing index")
+        else:
+            print("[STARTUP] ✅ No rebuild needed - using existing index")
+    except Exception as e:
+        rebuild_in_progress = False
+        print(f"[STARTUP] ⚠️ Could not check/rebuild index: {e}")
+        print("[STARTUP] Continuing with existing index (if available)")
+
+# Start rebuild check in background (non-blocking)
+rebuild_thread = threading.Thread(target=background_rebuild, daemon=True)
+rebuild_thread.start()
+
+print("Server ready! (QueryEngine created per-request)")
+print("Note: Index rebuild running in background if needed\n")
 
 print("Server ready! (QueryEngine created per-request)\n")
 
