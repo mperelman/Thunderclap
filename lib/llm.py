@@ -474,6 +474,7 @@ class LLMAnswerGenerator:
                 print(f"  [ERROR] Async API call failed: {error_msg}")
                 
                 # Check for expired/invalid key first - mark as exhausted immediately
+                # Check for expired/invalid keys
                 if self._is_key_expired_error(e):
                     if self.key_manager and current_key:
                         print(f"  [KEY_EXPIRED] Marking {current_key[:20]}... as exhausted (expired/invalid)")
@@ -496,6 +497,30 @@ class LLMAnswerGenerator:
                     else:
                         # Single key mode - can't rotate
                         raise Exception(f"API key expired or invalid. Please update your API key.\n\nError: {error_msg[:200]}")
+                
+                # Check for leaked keys (same handling as expired)
+                if self._is_key_leaked_error(e):
+                    if self.key_manager and current_key:
+                        print(f"  [KEY_LEAKED] Marking {current_key[:20]}... as exhausted (reported as leaked)")
+                        self.key_manager.mark_key_exhausted(current_key)
+                        # Try to get next key immediately
+                        next_key = self.key_manager.get_next_key(delay_seconds=0)
+                        if next_key and next_key != current_key:
+                            print(f"  [KEY_ROTATE] Rotating to next key: {next_key[:20]}...")
+                            attempts += 1
+                            continue
+                        else:
+                            available = self.key_manager.get_available_count()
+                            if available == 0:
+                                raise Exception(f"All API keys are leaked or invalid. Please add new keys to Railway environment variables (GEMINI_API_KEY, GEMINI_API_KEY_1, etc.).")
+                            else:
+                                # Wait a bit and try again with next key
+                                await asyncio.sleep(1)
+                                attempts += 1
+                                continue
+                    else:
+                        # Single key mode - can't rotate
+                        raise Exception(f"API key was reported as leaked. Please update your API key in Railway environment variables.\n\nError: {error_msg[:200]}")
                 
                 if self._is_rate_limit_error(e):
                     # If using key manager, mark this key as having an error and try next key
