@@ -254,11 +254,38 @@ def build_complete_index():
         pass
     
     print(f"  [INFO] Creating new collection '{COLLECTION_NAME}'...")
-    collection = client.create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"}
-    )
-    print(f"  [OK] Collection created")
+    try:
+        collection = client.create_collection(
+            name=COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine"}
+        )
+        print(f"  [OK] Collection created")
+        
+        # Fix permissions on SQLite database file (if it exists)
+        # ChromaDB creates chroma.sqlite3 in the vectordb directory
+        sqlite_file = os.path.join(vectordb_path, 'chroma.sqlite3')
+        if os.path.exists(sqlite_file):
+            try:
+                import stat
+                os.chmod(sqlite_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP)
+                print(f"  [OK] Fixed permissions on SQLite database")
+            except Exception as e:
+                print(f"  [WARN] Could not fix SQLite permissions: {e}")
+    except Exception as e:
+        error_msg = str(e)
+        if 'readonly' in error_msg.lower() or '1032' in error_msg:
+            print(f"  [ERROR] Readonly database error - checking volume permissions...")
+            # Check if we can write to the directory
+            test_file = os.path.join(vectordb_path, 'test_write.tmp')
+            try:
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                print(f"  [INFO] Directory is writable, but SQLite file creation failed")
+                print(f"  [INFO] This may be a Railway volume permission issue")
+            except Exception as perm_e:
+                print(f"  [ERROR] Cannot write to directory: {perm_e}")
+        raise
     
     # Add in batches
     batch_size = 100
