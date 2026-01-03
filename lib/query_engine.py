@@ -516,11 +516,25 @@ class QueryEngine:
         # Prioritize firm name/location phrases if found
         chunk_ids = set()
         # Build term_sets for later use (needed for augmentation logic)
+        # Helper function to get chunks for a term, including entity associations
+        def get_chunks_with_associations(term):
+            """Get chunks for a term, including associated terms."""
+            chunks = set()
+            if term in self.term_to_chunks:
+                chunks.update(self.term_to_chunks[term])
+            # Expand using entity associations
+            if self.entity_associations and term in self.entity_associations:
+                for associated_term in self.entity_associations[term]:
+                    if associated_term in self.term_to_chunks:
+                        chunks.update(self.term_to_chunks[associated_term])
+                        print(f"  [EXPAND] Expanded '{term}' to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
+            return chunks
+        
         # Always assign term_sets unconditionally first to avoid scoping issues
         term_sets = []
         if intersect_terms:
-            term_sets = [set(self.term_to_chunks[k]) for k in intersect_terms]
-            print(f"  [DEBUG] term_sets created: {[len(s) for s in term_sets]} chunks per term")
+            term_sets = [get_chunks_with_associations(k) for k in intersect_terms]
+            print(f"  [DEBUG] term_sets created: {[len(s) for s in term_sets]} chunks per term (with associations)")
         
         # CRITICAL: If we found a firm phrase match, use that phrase as primary, but ALSO augment with chunks containing all key terms
         # This catches chunks that mention the firm in full form (e.g., "First National Bank of Boston") even if not indexed as exact phrase
