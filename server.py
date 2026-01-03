@@ -468,16 +468,23 @@ async def upload_index(file: UploadFile = File(...)):
     # Ensure data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
     
-    # Validate filename
-    if file.filename != "indices.json":
+    # Validate filename (accept both .json and .json.gz)
+    if file.filename not in ["indices.json", "indices.json.gz"]:
         raise HTTPException(
             status_code=400, 
-            detail=f"Expected filename 'indices.json', got '{file.filename}'"
+            detail=f"Expected filename 'indices.json' or 'indices.json.gz', got '{file.filename}'"
         )
     
     # Read and validate JSON
     try:
         content = await file.read()
+        
+        # Check if file is gzip-compressed (magic bytes: 1f 8b)
+        import gzip
+        if len(content) >= 2 and content[0] == 0x1f and content[1] == 0x8b:
+            # Decompress gzip
+            content = gzip.decompress(content)
+        
         data = json.loads(content)
         
         # Basic validation - check for required keys
