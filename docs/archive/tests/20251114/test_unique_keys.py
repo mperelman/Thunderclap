@@ -3,24 +3,28 @@ import google.generativeai as genai
 
 # Only UNIQUE keys from .env
 unique_keys = [
-    ("Key A", "AIzaSyCGPsVN5zK8nWGR..."), # Appears 4x in .env
+    ("Key A", "REVOKED_KEY_REMOVED"),  # REMOVED: Exposed key revoked
     ("Key B", "AIzaSyBaj9wvbB3n6Zjv..."),
     ("Key C", "AIzaSyAXr9YBivlfndzZ..."),
     ("Key D", "AIzaSyD-xExhXC66P-eU..."),
+    ("Key E (new)", "AIzaSyBCFDWaXScB3Da9JzkWQKr7YdzvdPyYhfg"),  # New key created after revoking Key A
 ]
 
 print("Testing 4 UNIQUE keys...\n")
 
 for name, key_prefix in unique_keys:
     # Get full key
-    if key_prefix == "AIzaSyCGPsVN5zK8nWGR...":
-        full_key = "REVOKED_KEY_REMOVED"  # REMOVED: Exposed key revoked
+    if key_prefix == "REVOKED_KEY_REMOVED":
+        full_key = "REVOKED_KEY_REMOVED"  # Skip revoked key
+        continue
     elif key_prefix == "AIzaSyBaj9wvbB3n6Zjv...":
         full_key = "AIzaSyBaj9wvbB3n6ZjvI89fFACl4SQgUfTaC4s"
     elif key_prefix == "AIzaSyAXr9YBivlfndzZ...":
         full_key = "AIzaSyAXr9YBivlfndzZ4azcm7g3yfgan4Xl_ls"
     elif key_prefix == "AIzaSyD-xExhXC66P-eU...":
         full_key = "AIzaSyD-xExhXC66P-eUuYzx5wwXifBvCwZYGMw"
+    elif key_prefix == "AIzaSyBCFDWaXScB3Da9JzkWQKr7YdzvdPyYhfg":
+        full_key = "AIzaSyBCFDWaXScB3Da9JzkWQKr7YdzvdPyYhfg"  # New key
     
     print(f"Testing {name}: {key_prefix}")
     
