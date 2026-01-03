@@ -71,35 +71,62 @@ class APIKeyManager:
             print(f"  [{i+1}] {key_status.name}: {key_status.key[:20]}...")
     
     def _load_keys_from_test_file(self):
-        """Load keys from test_all_keys.py file."""
+        """Load keys from centralized api_keys.py file."""
         try:
-            import json
-            # Try to load from a config file first
-            config_file = "data/api_keys.json"
-            if os.path.exists(config_file):
-                with open(config_file, 'r') as f:
-                    data = json.load(f)
-                    keys = data.get('keys', [])
-                    for i, key in enumerate(keys):
-                        if key and key != "REVOKED_KEY_REMOVED" and key.startswith("AIza"):
-                            self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
+            # PRIMARY: Load from centralized lib/api_keys.py
+            try:
+                from lib.api_keys import get_api_keys
+                keys = get_api_keys()
+                for i, key in enumerate(keys):
+                    if key and key != "REVOKED_KEY_REMOVED" and key.startswith("AIza"):
+                        self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
+                if self.keys:
+                    print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from lib/api_keys.py")
                     return
+            except ImportError:
+                print(f"[KEY_MANAGER] Warning: Could not import lib.api_keys")
+            except Exception as e:
+                print(f"[KEY_MANAGER] Warning: Error loading from lib/api_keys.py: {e}")
             
-            # Fallback: try to parse from test file
-            test_file = "docs/archive/tests/20251114/test_all_keys.py"
-            if os.path.exists(test_file):
-                with open(test_file, 'r') as f:
-                    content = f.read()
-                    import re
-                    # Extract keys from the keys list
-                    pattern = r'"AIza[^"]+"'
-                    matches = re.findall(pattern, content)
-                    for i, match in enumerate(matches):
-                        key = match.strip('"')
-                        if key != "REVOKED_KEY_REMOVED":
-                            self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
+            # FALLBACK 1: Try JSON config file
+            try:
+                import json
+                config_file = "data/api_keys.json"
+                if os.path.exists(config_file):
+                    with open(config_file, 'r') as f:
+                        data = json.load(f)
+                        keys = data.get('keys', [])
+                        for i, key in enumerate(keys):
+                            if key and key != "REVOKED_KEY_REMOVED" and key.startswith("AIza"):
+                                self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
+                        if self.keys:
+                            print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from data/api_keys.json")
+                            return
+            except Exception as e:
+                print(f"[KEY_MANAGER] Warning: Could not load from JSON: {e}")
+            
+            # FALLBACK 2: Try parsing test file (legacy support)
+            try:
+                test_file = "docs/archive/tests/20251114/test_all_keys.py"
+                if os.path.exists(test_file):
+                    with open(test_file, 'r') as f:
+                        content = f.read()
+                        import re
+                        # Extract keys from the keys list
+                        pattern = r'"AIza[^"]+"'
+                        matches = re.findall(pattern, content)
+                        for i, match in enumerate(matches):
+                            key = match.strip('"')
+                            if key != "REVOKED_KEY_REMOVED":
+                                self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
+                        if self.keys:
+                            print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from test file (legacy)")
+                            return
+            except Exception as e:
+                print(f"[KEY_MANAGER] Warning: Could not load from test file: {e}")
+                
         except Exception as e:
-            print(f"[KEY_MANAGER] Warning: Could not load keys from test file: {e}")
+            print(f"[KEY_MANAGER] Warning: Could not load keys: {e}")
     
     def get_next_key(self, delay_seconds: float = 4.0) -> Optional[str]:
         """
