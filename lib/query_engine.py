@@ -503,30 +503,47 @@ class QueryEngine:
                 # Try title case (for queries like "credit lyonnais" -> "Credit Lyonnais")
                 # CRITICAL: Also try with preserved capitalization for "Crédit" -> "Crédit" (not "Credit")
                 potential_firm_title = potential_firm.title()
-                # Also try preserving the original capitalization of the first word (for "Crédit Lyonnais")
+                # Also try capitalizing first letter while preserving accents (for "crédit lyonnais" -> "Crédit Lyonnais")
                 if len(potential_firm.split()) >= 2:
-                    first_word = potential_firm.split()[0]
-                    rest_words = ' '.join(potential_firm.split()[1:]).title()
-                    potential_firm_preserved = f"{first_word} {rest_words}"
+                    words = potential_firm.split()
+                    # Capitalize first letter of first word (preserving accents)
+                    first_word_cap = words[0][0].upper() + words[0][1:] if words[0] else words[0]
+                    rest_words = ' '.join(words[1:]).title()
+                    potential_firm_preserved = f"{first_word_cap} {rest_words}"
                 else:
                     potential_firm_preserved = potential_firm_title
                 
-                # Try title case first
+                # Try title case first (this should work for "crédit lyonnais" -> "Crédit Lyonnais")
                 if potential_firm_title != potential_firm and potential_firm_title in self.term_to_chunks:
                     if potential_firm_title.lower() in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term (title case): '{potential_firm_title}'")
                         break
                     firm_name_phrases.append(potential_firm_title)
-                    print(f"  [FIRM_NAME] Found indexed firm name (title case): '{potential_firm_title}' ({len(self.term_to_chunks[potential_firm_title])} chunks)")
+                    chunk_count = len(self.term_to_chunks[potential_firm_title])
+                    print(f"  [FIRM_NAME] Found indexed firm name (title case): '{potential_firm_title}' ({chunk_count} chunks)")
+                    self.query_diagnostics["firm_phrases_found"].append(f"{potential_firm_title} ({chunk_count} chunks)")
                     break
-                # Try preserved capitalization (for "Crédit Lyonnais")
+                # Try preserved capitalization (for "Crédit Lyonnais" - capitalizes first letter while preserving accent)
                 elif potential_firm_preserved != potential_firm and potential_firm_preserved in self.term_to_chunks:
                     if potential_firm_preserved.lower() in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term (preserved case): '{potential_firm_preserved}'")
                         break
                     firm_name_phrases.append(potential_firm_preserved)
-                    print(f"  [FIRM_NAME] Found indexed firm name (preserved case): '{potential_firm_preserved}' ({len(self.term_to_chunks[potential_firm_preserved])} chunks)")
+                    chunk_count = len(self.term_to_chunks[potential_firm_preserved])
+                    print(f"  [FIRM_NAME] Found indexed firm name (preserved case): '{potential_firm_preserved}' ({chunk_count} chunks)")
+                    self.query_diagnostics["firm_phrases_found"].append(f"{potential_firm_preserved} ({chunk_count} chunks)")
                     break
+                # DEBUG: Log what we tried if no match found
+                else:
+                    print(f"  [DEBUG] Firm name detection tried for '{potential_firm}':")
+                    print(f"    - Original: '{potential_firm}' in index? {potential_firm in self.term_to_chunks}")
+                    print(f"    - Title case: '{potential_firm_title}' in index? {potential_firm_title in self.term_to_chunks}")
+                    print(f"    - Preserved: '{potential_firm_preserved}' in index? {potential_firm_preserved in self.term_to_chunks}")
+                    # Also check if any case-insensitive variant exists
+                    for term in self.term_to_chunks.keys():
+                        if term.lower() == potential_firm.lower():
+                            print(f"    - Found case-insensitive match: '{term}' ({len(self.term_to_chunks[term])} chunks)")
+                            break
                 # CRITICAL: If query has "National Bank" but index has "NB", try the NB variant
                 # This allows "First National Bank of Boston" queries to match "first nb of boston" entries
                 # But ONLY if the query explicitly mentions "National Bank" - no automatic expansion
@@ -721,6 +738,9 @@ class QueryEngine:
                 if term_sets:
                     # Single meaningful term: use its set only (no union with generic terms)
                     chunk_ids = term_sets[0]
+                    self.query_diagnostics["query_path"] = "single_term"
+                    self.query_diagnostics["initial_chunk_count"] = len(chunk_ids)
+                    print(f"  [SINGLE_TERM] Using single term set: {len(chunk_ids)} chunks")
                 else:
                     # No meaningful terms found; fallback to union of whatever tokens mapped
                     for keyword in keywords:
