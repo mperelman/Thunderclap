@@ -980,6 +980,16 @@ def build_merge_prompt(question: str, narratives: list) -> str:
 SECTIONS TO MERGE:
 {sections_text}
 
+**CRITICAL - ABSOLUTE PROHIBITION (TOP PRIORITY):**
+- NEVER write "provided information", "the provided information", "documents", "the documents", "documents do not", "documents mention", "documents detail", "No [X] are explicitly mentioned in relation to [Y] in the provided information", "The documents do not detail", or ANY phrase referencing source material
+- NEVER say what information is NOT present - if information isn't in the narratives, simply don't mention it
+- Write as a historian directly narrating history - never reference how you know something
+- BAD: "No panics or crises are explicitly mentioned in relation to Crédit Lyonnais in the provided information"
+- BAD: "The documents do not detail specific impacts"
+- BAD: "No information is available about X"
+- GOOD: Simply don't mention panics/crises if they're not in the narratives - write about what IS present
+- GOOD: Write directly about the subject's activities - never mention absence of information
+
 YOUR TASK: Create ONE complete narrative (not separate sections). Deduplicate information, organize chronologically by time period, and maintain analytical framework THROUGHOUT.
 
 {CRITICAL_RELEVANCE_AND_ACCURACY}
