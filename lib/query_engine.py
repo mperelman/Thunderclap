@@ -1225,8 +1225,8 @@ class QueryEngine:
                                 
                                 # Also try primary term only (e.g., just "Rothschild" to get all Rothschild chunks)
                                 primary_term = subject_terms[0] if subject_terms else None
-                                if primary_term and primary_term in self.term_to_chunks:
-                                    primary_chunk_ids = set(self.term_to_chunks[primary_term])
+                                if primary_term:
+                                    primary_chunk_ids = get_chunks_with_associations(primary_term)
                                     if len(primary_chunk_ids) > len(union_chunk_ids):
                                         print(f"  [RE-RETRIEVE] Primary term '{primary_term}' has {len(primary_chunk_ids)} chunks - using those")
                                         union_chunk_ids = primary_chunk_ids
