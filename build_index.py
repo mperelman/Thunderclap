@@ -206,12 +206,24 @@ def build_complete_index():
     print("Step 5: Building vector database...")
     vectordb_path = os.path.join(DATA_DIR, 'vectordb')
     
+    # CRITICAL: Delete entire vectordb directory to avoid "different settings" error
+    # This happens when ChromaDB was initialized elsewhere (e.g., by QueryEngine during startup)
+    if os.path.exists(vectordb_path):
+        print(f"  [INFO] Removing existing vectordb directory to avoid settings conflict...")
+        import shutil
+        try:
+            shutil.rmtree(vectordb_path)
+            print(f"  [OK] Removed existing vectordb directory")
+        except Exception as e:
+            print(f"  [WARN] Could not remove vectordb directory: {e}")
+            # Try to continue anyway - might work if directory is empty
+    
     client = chromadb.PersistentClient(
         path=vectordb_path,
         settings=Settings(anonymized_telemetry=False)
     )
     
-    # Delete existing collection
+    # Delete existing collection (if it somehow still exists)
     try:
         client.delete_collection(COLLECTION_NAME)
     except:
