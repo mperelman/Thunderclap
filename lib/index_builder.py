@@ -1005,16 +1005,7 @@ def build_indices(chunks, chunk_ids):
         # Pattern 1: Standard firm names in <italic> tags
         # CRITICAL: Only index multi-word italicized terms or non-generic single words
         # Generic words like "Bank", "Trust", "Co" should NOT be indexed standalone
-        GENERIC_FIRM_WORDS = {
-            'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
-            'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
-            'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
-            'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
-            'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
-            'national', 'international', 'federal', 'state', 'central', 'commercial',
-            'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
-            'exchange', 'credit', 'finance', 'capital', 'securities', 'assets'
-        }
+        # (GENERIC_FIRM_WORDS is defined at the top of the function)
         
         for match in firm_pattern.finditer(chunk):
             firm = match.group(1).strip()
