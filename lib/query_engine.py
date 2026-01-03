@@ -756,14 +756,15 @@ class QueryEngine:
         
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
-        # CRITICAL: Apply early hard limit on chunk IDs to prevent token quota errors
+        # CRITICAL: Apply early hard limit on chunk IDs to prevent token quota errors AND timeouts
         # This limits chunks BEFORE fetching them, saving memory and processing time
         # Use a conservative limit based on token estimates (rough: ~400 words/chunk * 1.3 tokens/word = ~520 tokens/chunk)
-        # With 40% of 250k tokens/minute = 100k tokens, minus overhead = ~95k tokens for chunks
-        # 95k / 520 = ~180 chunks max, but be more conservative: 150 chunks
-        MAX_CHUNKS_BEFORE_FETCH = 150
+        # With 35% of 250k tokens/minute = 87.5k tokens, minus overhead = ~82k tokens for chunks
+        # 82k / 520 = ~157 chunks max, but be more conservative: 100 chunks to prevent timeouts
+        # Reduced from 150 to 100 to prevent 410s timeouts
+        MAX_CHUNKS_BEFORE_FETCH = 100
         if len(chunk_ids_list) > MAX_CHUNKS_BEFORE_FETCH:
-            print(f"  [EARLY_LIMIT] Limiting chunk IDs from {len(chunk_ids_list)} to {MAX_CHUNKS_BEFORE_FETCH} before fetching (prevents token quota errors)")
+            print(f"  [EARLY_LIMIT] Limiting chunk IDs from {len(chunk_ids_list)} to {MAX_CHUNKS_BEFORE_FETCH} before fetching (prevents token quota errors and timeouts)")
             chunk_ids_list = chunk_ids_list[:MAX_CHUNKS_BEFORE_FETCH]
         
         # Augment with endnotes if results are sparse (< 10 chunks)
@@ -906,17 +907,19 @@ class QueryEngine:
             estimated_tokens_pre = self._estimate_tokens_for_chunks(chunks)
             prompt_overhead = 5000
             response_estimate = 15000
-            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.40) - prompt_overhead - response_estimate
-            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.40) - prompt_overhead - response_estimate
+            # Use 35% limit (matching post-dedup limit) to prevent timeouts
+            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.35) - prompt_overhead - response_estimate
+            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
             effective_limit_pre = min(available_for_chunks, minute_budget)
             
             # If chunks are way over limit, limit BEFORE deduplication to save time
-            if estimated_tokens_pre > effective_limit_pre * 1.5:  # 50% over limit
+            # Use 35% limit (matching post-dedup limit) to prevent timeouts
+            if estimated_tokens_pre > effective_limit_pre * 1.3:  # 30% over limit (more aggressive)
                 tokens_per_chunk = estimated_tokens_pre / len(chunks) if chunks else 0
-                max_chunks_pre = int(effective_limit_pre * 1.2 / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)  # Allow 20% buffer for dedup reduction
+                max_chunks_pre = int(effective_limit_pre * 1.1 / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)  # Allow 10% buffer for dedup reduction
                 max_chunks_pre = max(1, max_chunks_pre)
                 if len(chunks) > max_chunks_pre:
-                    print(f"  [PRE_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks_pre} BEFORE deduplication (saves processing time)")
+                    print(f"  [PRE_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks_pre} BEFORE deduplication (saves processing time, prevents timeouts)")
                     chunks = chunks[:max_chunks_pre]
             
             # Deduplicate and merge overlapping chunks before sending to LLM (if no preprocessed file)
@@ -925,18 +928,20 @@ class QueryEngine:
                 print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
             
             # CRITICAL: Limit chunks based on token estimates AFTER deduplication
-            # This prevents token quota exceeded errors
-            # Use very conservative limits (40% instead of 50%) to account for:
+            # This prevents token quota exceeded errors AND timeouts
+            # Use very conservative limits (35% instead of 40%) to account for:
             # - Token estimation inaccuracy (can be off by 40-50%)
             # - Prompt overhead (question + instructions)
             # - Response tokens (can be large for long answers)
             # - Rate limiting window (quota is per minute, not per request)
             # - Multiple retries/re-asks that use the same chunks
+            # - Batching overhead (PeriodEngine processing time)
+            # Reduced from 40% to 35% to prevent 410s timeouts
             estimated_tokens = self._estimate_tokens_for_chunks(chunks)
             prompt_overhead = 5000  # Question + instructions + formatting
             response_estimate = 15000  # Estimated response tokens (increased for long answers)
-            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.40) - prompt_overhead - response_estimate
-            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.40) - prompt_overhead - response_estimate
+            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.35) - prompt_overhead - response_estimate
+            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
             effective_limit = min(available_for_chunks, minute_budget)
             
             if estimated_tokens > effective_limit:
