@@ -596,6 +596,23 @@ class QueryEngine:
                     # Add all lyonnais terms to debug info
                     if all_lyonnais_terms:
                         debug_info["all_lyonnais_terms"] = all_lyonnais_terms
+                    
+                    # Check if term is in filtered_terms.json but not in index (indicates outdated index)
+                    import os
+                    filtered_file = os.path.join('data', 'filtered_terms.json')
+                    if not os.path.exists(filtered_file):
+                        filtered_file = os.path.join('lib', 'filtered_terms.json')
+                    if os.path.exists(filtered_file):
+                        try:
+                            with open(filtered_file, 'r', encoding='utf-8') as f:
+                                filtered_terms_list = json.load(f)
+                            if potential_firm in filtered_terms_list:
+                                debug_info["in_filtered_terms_json"] = True
+                                debug_info["index_outdated_warning"] = "Term is in filtered_terms.json but not in term_to_chunks - Railway index may need rebuild"
+                            else:
+                                debug_info["in_filtered_terms_json"] = False
+                        except Exception as e:
+                            debug_info["filtered_terms_check_error"] = str(e)
                     # Also check if any case-insensitive variant exists
                     # Use Unicode normalization to handle different é representations
                     import unicodedata
