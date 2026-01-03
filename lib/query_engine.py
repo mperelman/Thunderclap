@@ -1004,11 +1004,20 @@ class QueryEngine:
                 chunks = self._filter_comma_mentions(chunks, question) or chunks
             
             # Try to use preprocessed deduplicated file if available
-            # BUT: Skip for firm queries - preprocessed files are too restrictive and lose context
-            # Firm queries need all chunks to get comprehensive coverage across time periods
-            if not is_firm_query:
-                chunks = self._try_use_preprocessed_file(chunks, question) or chunks
-            else:
+            # BUT: Skip if it would be too restrictive (lose too many chunks)
+            # This prevents replacing many chunks with just 1-2 cached chunks
+            original_chunk_count = len(chunks)
+            if not is_firm_query and original_chunk_count > 0:
+                cached_chunks = self._try_use_preprocessed_file(chunks, question)
+                if cached_chunks:
+                    # Only use cache if it doesn't lose too much context
+                    # If original has many chunks (>50) but cache creates few (<5), skip cache
+                    if original_chunk_count > 50 and len(cached_chunks) < 5:
+                        print(f"  [SKIP_CACHE] Cache too restrictive: {original_chunk_count} chunks -> {len(cached_chunks)} chunks (skipping)")
+                    else:
+                        chunks = cached_chunks
+                        print(f"  [CACHE] Using cached chunks: {original_chunk_count} -> {len(chunks)} chunks")
+            elif is_firm_query:
                 print(f"  [SKIP_CACHE] Skipping preprocessed file for firm query (need all {len(chunks)} chunks)")
             
             # CRITICAL: Limit chunks based on token estimates BEFORE deduplication
