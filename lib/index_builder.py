@@ -475,15 +475,31 @@ def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=
     
     print(f"  Total terms to filter: {len(terms)}")
     
-    # Test LLM initialization
+    # Test LLM initialization with key manager for multi-key rotation
+    key_manager = None
+    use_key_manager = False
     try:
-        test_llm = LLMAnswerGenerator()
+        from .api_key_manager import APIKeyManager
+        key_manager = APIKeyManager()  # Auto-loads from env vars
+        test_llm = LLMAnswerGenerator(key_manager=key_manager)
         if not test_llm.client:
             print("  [WARN] LLM initialization failed, skipping LLM filtering")
             return term_counts, term_to_chunks
+        # Use key manager for all LLM calls
+        use_key_manager = True
+        print(f"  [INFO] Using key manager with {len(key_manager.keys)} keys for rotation")
     except Exception as e:
-        print(f"  [WARN] LLM initialization failed: {e}, skipping LLM filtering")
-        return term_counts, term_to_chunks
+        print(f"  [WARN] Key manager initialization failed: {e}, trying single key mode...")
+        # If key manager failed, try single key mode
+        try:
+            test_llm = LLMAnswerGenerator()
+            if not test_llm.client:
+                print("  [WARN] LLM initialization failed, skipping LLM filtering")
+                return term_counts, term_to_chunks
+            use_key_manager = False
+        except Exception as e2:
+            print(f"  [WARN] LLM initialization failed: {e2}, skipping LLM filtering")
+            return term_counts, term_to_chunks
     
     # OPTIMIZATION: Pre-filter using hardcoded lists BEFORE sending to LLM
     # This reduces API calls significantly
