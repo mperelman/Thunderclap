@@ -163,6 +163,8 @@ def background_rebuild():
     except Exception as e:
         rebuild_in_progress = False
         print(f"[STARTUP] ⚠️ Could not check/rebuild index: {e}")
+        import traceback
+        traceback.print_exc()
         print("[STARTUP] Continuing with existing index (if available)")
 
 # Start rebuild check in background (non-blocking)
