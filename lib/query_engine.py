@@ -900,12 +900,31 @@ class QueryEngine:
             # Try to use preprocessed deduplicated file if available
             chunks = self._try_use_preprocessed_file(chunks, question) or chunks
             
+            # CRITICAL: Limit chunks based on token estimates BEFORE deduplication
+            # This reduces the amount of work deduplication needs to do
+            # Estimate tokens first to see if we need to limit
+            estimated_tokens_pre = self._estimate_tokens_for_chunks(chunks)
+            prompt_overhead = 5000
+            response_estimate = 15000
+            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.40) - prompt_overhead - response_estimate
+            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.40) - prompt_overhead - response_estimate
+            effective_limit_pre = min(available_for_chunks, minute_budget)
+            
+            # If chunks are way over limit, limit BEFORE deduplication to save time
+            if estimated_tokens_pre > effective_limit_pre * 1.5:  # 50% over limit
+                tokens_per_chunk = estimated_tokens_pre / len(chunks) if chunks else 0
+                max_chunks_pre = int(effective_limit_pre * 1.2 / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)  # Allow 20% buffer for dedup reduction
+                max_chunks_pre = max(1, max_chunks_pre)
+                if len(chunks) > max_chunks_pre:
+                    print(f"  [PRE_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks_pre} BEFORE deduplication (saves processing time)")
+                    chunks = chunks[:max_chunks_pre]
+            
             # Deduplicate and merge overlapping chunks before sending to LLM (if no preprocessed file)
             if chunks == original_chunks:  # No preprocessed file was used
                 chunks = self._deduplicate_and_combine_chunks(chunks)
                 print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
             
-            # CRITICAL: Limit chunks based on token estimates BEFORE sending to LLM
+            # CRITICAL: Limit chunks based on token estimates AFTER deduplication
             # This prevents token quota exceeded errors
             # Use very conservative limits (40% instead of 50%) to account for:
             # - Token estimation inaccuracy (can be off by 40-50%)
@@ -1108,7 +1127,9 @@ class QueryEngine:
                     pass
                 return answer
 
-            if len(chunks) > 100:
+            # CRITICAL: Route to batching engines EARLIER to prevent timeouts
+            # Lower threshold from 100 to 50 chunks to trigger batching sooner
+            if len(chunks) > 50:
                 if is_event:
                     # Event query: Route to EventEngine
                     print(f"  [AUTO] Event query detected ({len(chunks)} chunks)")
