@@ -1223,7 +1223,6 @@ def build_indices(chunks, chunk_ids):
                         if word1 in term2_lower:
                             # Check proximity: are they within 50 words of each other?
                             # Find positions of both terms in the chunk
-                            import re
                             word1_pattern = re.compile(rf'\b{re.escape(word1)}\b', re.IGNORECASE)
                             term2_pattern = re.compile(rf'\b{re.escape(term2)}\b', re.IGNORECASE)
                             
@@ -1262,7 +1261,7 @@ def build_indices(chunks, chunk_ids):
             entity_cooccurrence[phrase][word] = entity_cooccurrence[phrase].get(word, 0) + count
             proximity_count += 1
     
-    print(f"  [OK] Created {proximity_count} word-phrase proximity associations (≥2 co-occurrences)")
+    print(f"  [OK] Created {proximity_count} word-phrase proximity associations (>=2 co-occurrences)")
     
     # Filter by frequency (must happen before firm associations to get filtered terms)
     term_counts_filtered = {
