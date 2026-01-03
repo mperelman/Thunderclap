@@ -716,6 +716,9 @@ class QueryEngine:
                 intersection = set.intersection(*term_sets) if term_sets else set()
                 if intersection:
                     chunk_ids = intersection
+                    self.query_diagnostics["query_path"] = "intersection"
+                    self.query_diagnostics["initial_chunk_count"] = len(chunk_ids)
+                    print(f"  [INTERSECTION] Using intersection of {len(term_sets)} term sets: {len(chunk_ids)} chunks")
                 else:
                     # Fallback to union if intersection is empty
                     # BUT: For firm name queries, don't use union - it would match wrong firms
