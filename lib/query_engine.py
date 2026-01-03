@@ -100,7 +100,11 @@ class QueryEngine:
         try:
             from lib.api_key_manager import APIKeyManager
             self.key_manager = APIKeyManager()
-            print(f"  [OK] Key manager initialized with {len(self.key_manager.keys)} keys")
+            key_count = len(self.key_manager.keys)
+            available_count = self.key_manager.get_available_count()
+            print(f"  [OK] Key manager initialized with {key_count} keys ({available_count} available)")
+            if key_count == 1:
+                print(f"  [WARNING] Only 1 API key found. Add more keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.) for automatic rotation.")
         except Exception as e:
             print(f"  [WARNING] Could not initialize key manager: {e}")
             print("  [INFO] Falling back to single key mode")

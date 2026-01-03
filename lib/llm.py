@@ -260,7 +260,22 @@ class LLMAnswerGenerator:
                             exhausted = total - available
                             print(f"  [KEY_STATUS] {exhausted}/{total} keys exhausted, {available} available")
                             if available == 0:
-                                raise Exception(f"All {total} API keys are expired or invalid. Please add new keys to Railway environment variables (GEMINI_API_KEY, GEMINI_API_KEY_1, etc.).")
+                                # Check if we only had one key
+                                if total == 1:
+                                    raise Exception(
+                                        f"API key expired or invalid. Only 1 key was found in Railway environment variables.\n\n"
+                                        f"Please add multiple keys to Railway:\n"
+                                        f"1. GEMINI_API_KEY = (new key)\n"
+                                        f"2. GEMINI_API_KEY_1 = (new key)\n"
+                                        f"3. GEMINI_API_KEY_2 = (new key)\n"
+                                        f"4. GEMINI_API_KEY_3 = (new key)\n"
+                                        f"5. GEMINI_API_KEY_4 = (new key)\n"
+                                        f"6. GEMINI_API_KEY_5 = (new key)\n\n"
+                                        f"This allows automatic rotation if one key fails.\n\n"
+                                        f"Error: {error_msg[:200]}"
+                                    )
+                                else:
+                                    raise Exception(f"All {total} API keys are expired or invalid. Please add new keys to Railway environment variables (GEMINI_API_KEY, GEMINI_API_KEY_1, etc.).")
                             else:
                                 # Keys exist but might be rate-limited, wait and retry
                                 print(f"  [KEY_RETRY] Waiting 2s and retrying with available keys...")
@@ -269,7 +284,18 @@ class LLMAnswerGenerator:
                                 continue
                     else:
                         # Single key mode - can't rotate
-                        raise Exception(f"API key expired or invalid. Please update your API key in Railway environment variables.\n\nError: {error_msg[:200]}")
+                        raise Exception(
+                            f"API key expired or invalid. Only 1 key was found in Railway environment variables.\n\n"
+                            f"Please add multiple keys to Railway for automatic rotation:\n"
+                            f"1. GEMINI_API_KEY = (new key)\n"
+                            f"2. GEMINI_API_KEY_1 = (new key)\n"
+                            f"3. GEMINI_API_KEY_2 = (new key)\n"
+                            f"4. GEMINI_API_KEY_3 = (new key)\n"
+                            f"5. GEMINI_API_KEY_4 = (new key)\n"
+                            f"6. GEMINI_API_KEY_5 = (new key)\n\n"
+                            f"This allows automatic rotation if one key fails.\n\n"
+                            f"Error: {error_msg[:200]}"
+                        )
                 
                 if self._is_rate_limit_error(e):
                     # If using key manager, mark this key as having an error and try next key
