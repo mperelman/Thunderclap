@@ -58,6 +58,25 @@ print(f"API Key loaded: {gemini_key[:20]}... (length: {len(gemini_key)})")
 
 print("Initializing Thunderclap AI...")
 
+# Decompress index if compressed version exists (in scripts/ or data/)
+from lib.config import INDICES_FILE
+compressed_paths = [
+    os.path.join('scripts', 'indices.json.gz'),  # From git
+    INDICES_FILE + '.gz'  # Direct upload
+]
+for compressed_path in compressed_paths:
+    if os.path.exists(compressed_path) and not os.path.exists(INDICES_FILE):
+        print(f"[STARTUP] Found compressed index at {compressed_path} - decompressing...")
+        try:
+            import gzip
+            with gzip.open(compressed_path, 'rb') as f_in:
+                with open(INDICES_FILE, 'wb') as f_out:
+                    f_out.write(f_in.read())
+            print(f"[STARTUP] ✅ Decompressed index ({os.path.getsize(INDICES_FILE) / 1024 / 1024:.2f} MB)")
+            break
+        except Exception as e:
+            print(f"[STARTUP] ⚠️ Failed to decompress index: {e}")
+
 # Auto-rebuild index if source documents changed (in background to avoid blocking startup)
 # Only rebuilds when source documents actually change, not on every startup
 # This is efficient because:
