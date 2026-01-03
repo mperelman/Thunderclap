@@ -1373,6 +1373,18 @@ class QueryEngine:
                     print(f"  [AUTO] High-volume topic query detected ({len(chunks)} chunks)")
                     print(f"  [AUTO] Routing to PeriodEngine...")
                     print(f"  [DEBUG] use_async={self.use_async}, chunks={len(chunks)}, original_chunks={len(original_chunks) if 'original_chunks' in locals() else 'N/A'}, is_firm_query={is_firm_query}")
+                    # Trace routing decision
+                    try:
+                        from server import trace_event
+                        import uuid
+                        trace_event(str(uuid.uuid4()), "routing_decision", 
+                                  path="period_engine", 
+                                  chunk_count=len(chunks), 
+                                  original_count=len(original_chunks) if 'original_chunks' in locals() else 0,
+                                  use_async=self.use_async,
+                                  is_firm_query=is_firm_query)
+                    except:
+                        pass  # Trace optional
                     try:
                         ans = PeriodEngine(self).generate(
                             question,
