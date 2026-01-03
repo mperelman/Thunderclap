@@ -76,7 +76,15 @@ def get_llm_client(api_key=None):
         print(f"  [DEBUG] Could not list models: {list_error}, trying common names...")
     
     # Fallback: Try common model names if listing failed
-    model_names = ['gemini-pro', 'gemini-1.5-pro', 'gemini-1.5-flash']
+    # Try both with and without "models/" prefix
+    model_names = [
+        'gemini-1.5-flash',  # Try flash first (faster, cheaper)
+        'models/gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'models/gemini-1.5-pro',
+        'gemini-pro',
+        'models/gemini-pro',
+    ]
     last_error = None
     for model_name in model_names:
         try:
