@@ -15,6 +15,11 @@ keys = [
     ("Key #10 (diff proj)", "AIzaSyC2Rwp54ZJFVK173fMV2G6agGIjqjG0-aA"),
     ("Key #11 (diff acct)", "REVOKED_KEY_REMOVED"),  # REMOVED: Exposed key revoked
     ("Key #12 (new)", "AIzaSyBCFDWaXScB3Da9JzkWQKr7YdzvdPyYhfg"),  # New key created after revoking Key #11
+    ("Key #13", "AIzaSyCnqzks44i0YRoKTNISuzKFsWO7TeK4nO8"),  # New key (replaced exposed key)
+    ("Key #14", "AIzaSyCdiaYw8WDVMHJzyVcwE0MKv7XwN7n3-HY"),  # New key (replaced exposed key)
+    ("Key #15", "AIzaSyB6dV7ltiedJ7m37Dt61I4rQNavz5-RoXo"),  # New key (replaced exposed key)
+    ("Key #16", "AIzaSyBiTjP0b0m7Dc26VnLsnXbjtpkNxWCewlo"),  # New key (replaced exposed key)
+    ("Key #17", "AIzaSyBWBg-vd6SkWCeLz386d8R7oUaHrkEesQg"),  # New key (replaced exposed key)
 ]
 
 print("="*70)

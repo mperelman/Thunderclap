@@ -167,7 +167,7 @@ The interface has built-in examples:
 ```bash
 # Run START_SERVER.bat again
 # OR manually:
-$env:GEMINI_API_KEY='REVOKED_KEY_REMOVED'
+$env:GEMINI_API_KEY='REVOKED_KEY_REMOVED'  # REMOVED: Exposed key revoked
 python temp/working_api.py
 ```
 

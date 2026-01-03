@@ -82,7 +82,7 @@
 ```bash
 # Double-click START_SERVER.bat
 # OR run manually:
-# $env:GEMINI_API_KEY='REVOKED_KEY_REMOVED'
+# $env:GEMINI_API_KEY='REVOKED_KEY_REMOVED'  # REMOVED: Exposed key revoked
 # python temp/working_api.py
 ```
 

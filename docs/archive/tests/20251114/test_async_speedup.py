@@ -8,7 +8,7 @@ import time
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'
+os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'  # REMOVED: Exposed key revoked
 
 from query import ask
 

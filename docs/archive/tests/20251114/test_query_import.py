@@ -1,7 +1,7 @@
 """Test if query.ask works"""
 import os
 
-os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'
+os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'  # REMOVED: Exposed key revoked
 
 try:
     from query import ask

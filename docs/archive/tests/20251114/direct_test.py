@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.query_engine import QueryEngine
 
 # Set API key
-os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'
+os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'  # REMOVED: Exposed key revoked
 
 print("Creating QueryEngine with use_async=False...")
 qe = QueryEngine(gemini_api_key=os.environ['GEMINI_API_KEY'], use_async=False)

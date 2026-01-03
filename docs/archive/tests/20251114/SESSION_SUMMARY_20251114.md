@@ -34,7 +34,7 @@
 - Fixed `lib/llm.py` compatibility (added `generate_answer` method)
 - Fixed `lib/prompts.py` (added `build_prompt` wrapper)
 - Verified all core imports work
-- Tested with new API key (REVOKED_KEY_REMOVED)
+- Tested with new API key (REVOKED_KEY_REMOVED)  # REMOVED: Exposed key revoked
 
 ## Queries Tested
 - "bulli" → Not found (only "bullion" exists - 14 chunks about silver/gold trade)

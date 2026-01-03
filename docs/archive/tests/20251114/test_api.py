@@ -6,7 +6,7 @@ import subprocess
 import requests
 
 # Set API key
-os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'
+os.environ['GEMINI_API_KEY'] = 'REVOKED_KEY_REMOVED'  # REMOVED: Exposed key revoked
 
 print("🚀 Starting secure API server...")
 print("=" * 60)
