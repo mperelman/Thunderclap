@@ -1378,7 +1378,10 @@ class QueryEngine:
                             subject_phrases=subject_phrases
                         )
                     except Exception as _e:
-                        print("  [WARN] PeriodEngine failed; falling back to legacy iterative generator")
+                        print(f"  [WARN] PeriodEngine failed: {_e}")
+                        import traceback
+                        traceback.print_exc()
+                        print("  [WARN] Falling back to legacy iterative generator")
                         ans = self._generate_iterative_narrative(question, chunks, subject_terms, subject_phrases)
                     # Check for empty answer (can happen if LLM hits token limit)
                     if not ans or not ans.strip():
@@ -1516,8 +1519,11 @@ class QueryEngine:
                         subject_terms=subject_terms,
                         subject_phrases=subject_phrases
                     )
-                except Exception:
-                    print("  [WARN] PeriodEngine failed; falling back to single-call generator")
+                except Exception as e:
+                    print(f"  [WARN] PeriodEngine failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    print("  [WARN] Falling back to single-call generator")
                     ans = self._call_llm_with_rate_limit(question, chunks)
                 try:
                     if self._chunks_have_crisis(chunks) and not self._has_crises(ans):
