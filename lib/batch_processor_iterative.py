@@ -488,8 +488,8 @@ CRITICAL REQUIREMENTS:
 1. STRUCTURE - THEMATIC SECTIONS with multiple focused paragraphs:
    - Use section headings: "**Theme Name:**" (e.g., "**Caste System Under British Rule:**")
    - Each section = 2-4 SHORT paragraphs on ONE coherent theme
-   - Don't randomly jump themes - finish one before moving to next
-   - Example: "**Colonial Era:**" → 3 paragraphs about EIC, Brahmins, Dalits (all related)
+   - Do not randomly jump themes - finish one before moving to next
+   - Example: "**Colonial Era:**" -> 3 paragraphs about EIC, Brahmins, Dalits (all related)
 
 2. COMPARATIVE ANALYSIS - Draw comparisons across groups when relevant:
    - PARALLEL PATTERNS: Multiple groups with same dynamics (endogamy, exclusion, networks)
@@ -509,7 +509,7 @@ CRITICAL REQUIREMENTS:
    - LEGAL EXCLUSION: How did laws limit opportunities and push into specific roles?
    - KINSHIP NETWORKS: How did endogamous marriage create trust/capital networks?
    - EXPULSIONS/CONVERSIONS: What drove migrations and identity changes?
-   - Apply this lens to EVERY period - don't just list events
+   - Apply this lens to EVERY period - do not just list events
 
 4. BUILD NARRATIVE ARC:
    - Show patterns developing ACROSS periods (not isolated snapshots)
@@ -521,17 +521,17 @@ CRITICAL REQUIREMENTS:
    - Use time period headings: "**Medieval Period:**", "**16th-17th Centuries:**"
    - Within each period: Group by geography/theme
    - Example paragraph flow:
-     ¶1: "In the Islamic world, Jews served as Court Bankers because..."
-     ¶2: "The Abbasids appointed Aaron Amram, who..."
-     ¶3: "In Christian Europe, different dynamics emerged..."
-     ¶4: "Anschel Oppenheim financed Habsburg Austria because..."
+     P1: "In the Islamic world, Jews served as Court Bankers because..."
+     P2: "The Abbasids appointed Aaron Amram, who..."
+     P3: "In Christian Europe, different dynamics emerged..."
+     P4: "Anschel Oppenheim financed Habsburg Austria because..."
 
 5. BALANCED COVERAGE (MANDATORY):
    - Each period gets roughly equal space (2-4 paragraphs)
    - If one period has 10 facts and another has 2, COMPRESS the heavy one
-   - Don't let data-heavy periods dominate
+   - Do not let data-heavy periods dominate
    - YOU MUST INCLUDE ALL PERIODS - do not skip any period listed above
-   - Move forward chronologically: earliest period → next period → ... → latest period
+   - Move forward chronologically: earliest period -> next period -> ... -> latest period
    - If you mention a later period, you cannot then jump back to an earlier period
 
 6. COMPARATIVE ANALYSIS - Compare groups when docs discuss them together:
@@ -545,8 +545,8 @@ CRITICAL REQUIREMENTS:
    - Brahmin (priestly caste, highest in Hindu hierarchy, scholarly pursuits)
    - Kohanim (Jewish priestly caste, descended from Aaron)
    - Court Jew (banker serving European monarchs, often vulnerable to political shifts)
-   - Parsee (Zoroastrians fled Persia to India in 7th century)
-   - Old Believers (Russian Orthodox sect, split after 17th century reforms)
+    - Parsee (Zoroastrians fled Persia to India in seventh century)
+    - Old Believers (Russian Orthodox sect, split after seventeenth century reforms)
    - Always explain hierarchy and social status when relevant
 
 8. PARAGRAPH LENGTH (HARD LIMIT - COUNT EVERY SENTENCE):
@@ -566,7 +566,7 @@ CRITICAL REQUIREMENTS:
 9. WRITING STYLE:
    - BERNANKE: Analytical rigor, causal analysis (explain WHY)
    - MAYA ANGELOU: Humanizing details (fled with movable assets, widow operated from home)
-   - NO LIST-LIKE WRITING: Don't just say "X did Y in 1492, Z did W in 1493..."
+   - NO LIST-LIKE WRITING: Do not just say "X did Y in 1492, Z did W in 1493..."
    - BUILD PARAGRAPHS around themes, not individual facts
 
 10. THUNDERCLAP MECHANICS:
@@ -578,18 +578,18 @@ CRITICAL REQUIREMENTS:
 11. END WITH RELATED QUESTIONS (CRITICAL FILTER):
    - Provide 3-5 questions ONLY about topics with SUBSTANTIAL material across the period narratives
    - For EACH question, verify: "Could I write 3+ paragraphs from what the documents ACTUALLY said?"
-   - If NO → DELETE that question
+   - If NO -> DELETE that question
    
    DO NOT SUGGEST:
-   ✗ Sociological questions (identity impact, barriers) UNLESS documents explicitly analyzed those dynamics
-   ✗ Entities only mentioned 1-3 times (passing mentions ≠ sufficient material)
-   ✗ "How did X impact/affect Y?" when documents only state X happened (NO causal analysis without evidence)
-   ✗ "Legacy" or "influence" questions when documents don't discuss legacy/influence
-   ✗ "Why" questions when documents only describe "what" happened
+   - Sociological questions (identity impact, barriers) UNLESS documents explicitly analyzed those dynamics
+   - Entities only mentioned 1-3 times (passing mentions, not sufficient material)
+   - "How did X impact/affect Y?" when documents only state X happened (NO causal analysis without evidence)
+   - "Legacy" or "influence" questions when documents do not discuss legacy/influence
+   - "Why" questions when documents only describe "what" happened
    
    CRITICAL CHECK for EACH question:
-   - Did the narrative I just wrote discuss the answer? If NO → DELETE
-   - Does narrative mention topic in only 1-2 sentences? If YES → DELETE
+   - Did the narrative I just wrote discuss the answer? If NO -> DELETE
+   - Does narrative mention topic in only 1-2 sentences? If YES -> DELETE
    
    ONLY SUGGEST:
    ✓ Entities discussed across multiple periods with substantive detail (5+ mentions)
