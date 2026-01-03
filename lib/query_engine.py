@@ -1094,7 +1094,8 @@ class QueryEngine:
 
             # All queries now use standard routing (no special-casing)
             # Identity queries are filtered for banking/finance relevance above
-            # Then routed based on chunk count: ≤20 fast, 21-30 single, 31-100 PeriodEngine, 100+ batching
+            # Then routed based on chunk count: ≤20 fast, 21-30 single, 31-50 PeriodEngine, 50+ batching
+            # CRITICAL: Lowered threshold from 100 to 50 to trigger batching earlier and prevent timeouts
             
             # Special-case: If SEC is explicitly present, send ALL chunks in a single call (no batching)
             if any(tok == "SEC" for tok in acronyms):
@@ -1127,6 +1128,8 @@ class QueryEngine:
                     pass
                 return answer
 
+            # CRITICAL: Route to batching engines EARLIER to prevent timeouts
+            # Lower threshold from 100 to 50 chunks to trigger batching sooner
             # CRITICAL: Route to batching engines EARLIER to prevent timeouts
             # Lower threshold from 100 to 50 chunks to trigger batching sooner
             if len(chunks) > 50:
@@ -1289,7 +1292,7 @@ class QueryEngine:
                     ans = self._review_and_fix_answer(ans, original_chunks, question)
                     return ans
             elif len(chunks) > 30:
-                # Medium-volume: Standard batching
+                # Medium-volume: Standard batching (PeriodEngine handles 31-50 chunks)
                 print(f"  [INFO] Processing {len(chunks)} chunks (routing to PeriodEngine)...")
                 try:
                     ans = PeriodEngine(self).generate(
