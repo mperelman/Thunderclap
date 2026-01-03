@@ -122,13 +122,16 @@ async def health():
     return {"status": "ok"}
 
 async def process_query_job(job_id: str, question: str, max_length: int):
-    """Background task to process query."""
+    """Background task to process query with timeout protection."""
     import sys
+    import asyncio
+    from lib.config import QUERY_TIMEOUT_SECONDS
+    
     JOB_STORE[job_id]["status"] = "processing"
     JOB_STORE[job_id]["start_time"] = time.time()
     
     try:
-        print(f"[JOB {job_id}] Starting query processing...")
+        print(f"[JOB {job_id}] Starting query processing (timeout: {QUERY_TIMEOUT_SECONDS}s)...")
         sys.stdout.flush()
         
         # Reload .env file to pick up API key changes
@@ -151,8 +154,28 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         # The configure() call in llm.py will set it fresh for each request
         
         from lib.query_engine import QueryEngine
-        qe = QueryEngine(gemini_api_key=current_key, use_async=False)
-        answer = qe.query(question, use_llm=True)
+        
+        # Wrap query in timeout to prevent runaway queries
+        def run_query():
+            qe = QueryEngine(gemini_api_key=current_key, use_async=False)
+            return qe.query(question, use_llm=True)
+        
+        # Run query in executor with timeout
+        loop = asyncio.get_event_loop()
+        try:
+            answer = await asyncio.wait_for(
+                loop.run_in_executor(None, run_query),
+                timeout=QUERY_TIMEOUT_SECONDS - 10  # Leave 10s buffer for cleanup
+            )
+        except asyncio.TimeoutError:
+            elapsed = time.time() - JOB_STORE[job_id]["start_time"]
+            error_msg = f"Query timed out after {elapsed:.1f}s (limit: {QUERY_TIMEOUT_SECONDS}s). Query was too complex or retrieved too many chunks. Please simplify your question or break it into smaller parts."
+            print(f"[JOB {job_id}] {error_msg}")
+            sys.stdout.flush()
+            JOB_STORE[job_id]["status"] = "error"
+            JOB_STORE[job_id]["error"] = error_msg
+            JOB_STORE[job_id]["elapsed"] = elapsed
+            return
         
         # Store chunk count for time estimation (if available)
         if hasattr(qe, 'last_chunk_count'):

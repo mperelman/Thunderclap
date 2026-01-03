@@ -1840,7 +1840,7 @@
                 
                 // Poll for completion every 2 seconds
                 const pollInterval = 2000; // 2 seconds
-                const maxPolls = 210; // 7 minutes max (210 * 2s = 420s)
+                const maxPolls = 480; // 16 minutes max (480 * 2s = 960s) - exceeds server timeout of 7min to catch timeout errors
                 let pollCount = 0;
                 
                 // Function to calculate time estimate based on chunk count
