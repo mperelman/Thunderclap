@@ -205,19 +205,19 @@ def build_complete_index():
     print("Step 5: Building vector database...")
     vectordb_path = os.path.join(DATA_DIR, 'vectordb')
     
-    # Check write permissions
-    print(f"  [INFO] Checking write permissions for {vectordb_path}...")
+    # Check write permissions first
+    print(f"  [INFO] Checking write permissions for {DATA_DIR}...")
     try:
-        os.makedirs(vectordb_path, exist_ok=True)
-        test_file = os.path.join(vectordb_path, '.write_test')
+        os.makedirs(DATA_DIR, exist_ok=True)
+        test_file = os.path.join(DATA_DIR, '.write_test')
         with open(test_file, 'w') as f:
             f.write('test')
         os.remove(test_file)
-        print(f"  [OK] Write permissions confirmed")
+        print(f"  [OK] Write permissions confirmed for {DATA_DIR}")
     except Exception as e:
-        print(f"  [ERROR] Cannot write to {vectordb_path}: {e}")
+        print(f"  [ERROR] Cannot write to {DATA_DIR}: {e}")
         print(f"  [ERROR] Volume may be read-only or permissions issue")
-        raise Exception(f"Cannot write to vectordb directory: {e}")
+        raise Exception(f"Cannot write to data directory: {e}")
     
     # CRITICAL: Delete entire vectordb directory to avoid "different settings" error
     # This happens when ChromaDB was initialized elsewhere (e.g., by QueryEngine during startup)
@@ -225,13 +225,21 @@ def build_complete_index():
         print(f"  [INFO] Removing existing vectordb directory to avoid settings conflict...")
         import shutil
         try:
+            # Close any existing ChromaDB connections first
+            # ChromaDB might have open file handles
+            import time
+            time.sleep(1)  # Brief pause to let any open handles close
+            
             shutil.rmtree(vectordb_path)
             print(f"  [OK] Removed existing vectordb directory")
-            # Recreate directory
-            os.makedirs(vectordb_path, exist_ok=True)
+            # Recreate directory with explicit permissions
+            os.makedirs(vectordb_path, mode=0o755, exist_ok=True)
         except Exception as e:
             print(f"  [WARN] Could not remove vectordb directory: {e}")
             # Try to continue anyway - might work if directory is empty
+    else:
+        # Create directory if it doesn't exist
+        os.makedirs(vectordb_path, mode=0o755, exist_ok=True)
     
     # Use same settings as QueryEngine (no explicit settings = defaults)
     # This avoids "different settings" error when ChromaDB was initialized elsewhere
