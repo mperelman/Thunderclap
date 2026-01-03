@@ -67,7 +67,12 @@ def needs_rebuild():
     # Check if any source documents changed
     last_mtimes = last_build.get('source_doc_mtimes', {})
     
-    # Check for new or modified files
+    # Quick check: if file count changed, definitely need rebuild
+    if len(current_mtimes) != len(last_mtimes):
+        print(f"  [REBUILD] Source document count changed ({len(current_mtimes)} vs {len(last_mtimes)})")
+        return True
+    
+    # Check for new or modified files (only check mtimes if counts match)
     for filename, mtime in current_mtimes.items():
         if filename not in last_mtimes:
             print(f"  [REBUILD] New source document: {filename}")
