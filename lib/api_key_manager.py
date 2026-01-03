@@ -141,6 +141,7 @@ class APIKeyManager:
         
         Args:
             delay_seconds: Minimum delay between requests for the same key (default 4s = 15 RPM)
+                          Set to 0 to skip rate limiting (useful when rotating from expired keys)
         
         Returns:
             API key string, or None if all keys exhausted
@@ -148,13 +149,19 @@ class APIKeyManager:
         with self.lock:
             # Find next available key
             attempts = 0
+            start_index = self.current_index  # Track where we started to detect full cycle
+            
             while attempts < len(self.keys):
                 key_status = self.keys[self.current_index]
                 
-                # Check if key is exhausted
+                # Check if key is exhausted - skip it
                 if key_status.exhausted:
+                    print(f"  [KEY_SKIP] Skipping exhausted key: {key_status.name}")
                     self.current_index = (self.current_index + 1) % len(self.keys)
                     attempts += 1
+                    # If we've cycled through all keys, break
+                    if self.current_index == start_index:
+                        break
                     continue
                 
                 # Check rate limit: need at least delay_seconds since last use
@@ -180,15 +187,19 @@ class APIKeyManager:
                 # Key is available - use it
                 key_status.last_used = now
                 key_status.request_count += 1
-                key_status.request_times.append(now)
+                if delay_seconds > 0:  # Only track request times if rate limiting is enabled
+                    key_status.request_times.append(now)
                 
                 # Move to next key for round-robin
                 next_index = (self.current_index + 1) % len(self.keys)
                 self.current_index = next_index
                 
+                print(f"  [KEY_SELECTED] Using {key_status.name}: {key_status.key[:20]}...")
                 return key_status.key
             
             # All keys exhausted or rate-limited
+            available = self.get_available_count()
+            print(f"  [KEY_NONE] No available keys ({available}/{len(self.keys)} available)")
             return None
     
     def mark_key_exhausted(self, key: str):
