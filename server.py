@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict
@@ -20,6 +20,7 @@ from collections import defaultdict, deque
 import time
 import uuid
 import json
+import shutil
 
 # Import query engine
 from lib.query_engine import QueryEngine
@@ -455,6 +456,64 @@ def get_indexed_terms():
     except Exception as e:
         print(f"[ERROR] Failed to load indexed terms: {e}")
         return {"terms": []}
+
+@app.post("/admin/upload-index")
+async def upload_index(file: UploadFile = File(...)):
+    """
+    Upload a new indices.json file to replace the existing one.
+    This endpoint allows updating the index without redeploying.
+    """
+    from lib.config import INDICES_FILE, DATA_DIR
+    
+    # Ensure data directory exists
+    os.makedirs(DATA_DIR, exist_ok=True)
+    
+    # Validate filename
+    if file.filename != "indices.json":
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Expected filename 'indices.json', got '{file.filename}'"
+        )
+    
+    # Read and validate JSON
+    try:
+        content = await file.read()
+        data = json.loads(content)
+        
+        # Basic validation - check for required keys
+        if not isinstance(data, dict):
+            raise ValueError("Root must be a dictionary")
+        if 'term_to_chunks' not in data:
+            raise ValueError("Missing 'term_to_chunks' key")
+        if 'entity_associations' not in data:
+            raise ValueError("Missing 'entity_associations' key")
+        
+        # Write to temporary file first, then rename (atomic operation)
+        temp_path = INDICES_FILE + ".tmp"
+        with open(temp_path, 'wb') as f:
+            f.write(content)
+        
+        # Atomic rename
+        if os.path.exists(INDICES_FILE):
+            os.replace(temp_path, INDICES_FILE)
+        else:
+            os.rename(temp_path, INDICES_FILE)
+        
+        term_count = len(data.get('term_to_chunks', {}))
+        print(f"[UPLOAD] Successfully uploaded indices.json with {term_count} terms")
+        
+        return {
+            "status": "success",
+            "message": f"Index uploaded successfully with {term_count} terms",
+            "term_count": term_count
+        }
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(e)}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid index format: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
