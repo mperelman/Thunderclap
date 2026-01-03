@@ -1413,41 +1413,8 @@ class QueryEngine:
                     for text, _ in original_chunks:
                         matches = re.findall(r'\b(1[6-9]\d{2}|20[0-2]\d)\b', text)
                         chunk_years.update(int(m) for m in matches)
-                    # Review will catch early stopping and other issues, so skip redundant re-ask logic
-                    # needs = self._needs_grounding(ans, original_chunks) or self._answer_stops_early(ans, original_chunks) or self._paragraphs_exceed_limit(ans)
-                    # if needs:
-                        # If answer stops early, try re-retrieving with UNION to get all chunks
-                        answer_latest = self._get_latest_year_in_answer(ans)
-                        if answer_latest > 0 and subject_terms:
-                            print(f"  [RE-RETRIEVE] Answer stops at {answer_latest} - re-retrieving with UNION of subject terms")
-                            # Re-retrieve using UNION instead of intersection
-                            # Use entity associations to expand each subject term
-                            union_chunk_ids = set()
-                            for term in subject_terms:
-                                union_chunk_ids.update(get_chunks_with_associations(term))
-                            
-                            # Also try primary term only (e.g., just "Rothschild" to get all Rothschild chunks)
-                            primary_term = subject_terms[0] if subject_terms else None
-                            if primary_term and primary_term in self.term_to_chunks:
-                                primary_chunk_ids = set(self.term_to_chunks[primary_term])
-                                if len(primary_chunk_ids) > len(union_chunk_ids):
-                                    print(f"  [RE-RETRIEVE] Primary term '{primary_term}' has {len(primary_chunk_ids)} chunks - using those")
-                                    union_chunk_ids = primary_chunk_ids
-                            
-                            if union_chunk_ids and len(union_chunk_ids) > len(original_chunks):
-                                union_data = self.collection.get(ids=list(union_chunk_ids))
-                                union_chunks = [
-                                    (text, meta)
-                                    for text, meta in zip(union_data['documents'], union_data['metadatas'])
-                                ]
-                                print(f"  [RE-RETRIEVE] Retrieved {len(union_chunks)} chunks via UNION (vs {len(original_chunks)} via intersection)")
-                                # Use union chunks for re-ask
-                                ans = self._call_llm_with_rate_limit(question, union_chunks)
-                            else:
-                                ans = self._call_llm_with_rate_limit(question, original_chunks)
-                        else:
-                            print(f"  [RE-ASK] Detected early stopping or quality issues; re-asking with all {len(original_chunks)} chunks (span: {min(chunk_years) if chunk_years else 'N/A'}-{max(chunk_years) if chunk_years else 'N/A'})")
-                            ans = self._call_llm_with_rate_limit(question, original_chunks)
+                    # CRITICAL: Review will catch early stopping and other issues, so skip redundant re-ask logic
+                    # The review process is more comprehensive and will handle all quality checks
                     # Review and fix answer against criteria
                     # Use same review logic as other paths
                     if len(original_chunks) > 100:
