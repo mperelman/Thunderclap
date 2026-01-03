@@ -205,6 +205,20 @@ def build_complete_index():
     print("Step 5: Building vector database...")
     vectordb_path = os.path.join(DATA_DIR, 'vectordb')
     
+    # Check write permissions
+    print(f"  [INFO] Checking write permissions for {vectordb_path}...")
+    try:
+        os.makedirs(vectordb_path, exist_ok=True)
+        test_file = os.path.join(vectordb_path, '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        print(f"  [OK] Write permissions confirmed")
+    except Exception as e:
+        print(f"  [ERROR] Cannot write to {vectordb_path}: {e}")
+        print(f"  [ERROR] Volume may be read-only or permissions issue")
+        raise Exception(f"Cannot write to vectordb directory: {e}")
+    
     # CRITICAL: Delete entire vectordb directory to avoid "different settings" error
     # This happens when ChromaDB was initialized elsewhere (e.g., by QueryEngine during startup)
     if os.path.exists(vectordb_path):
@@ -213,24 +227,30 @@ def build_complete_index():
         try:
             shutil.rmtree(vectordb_path)
             print(f"  [OK] Removed existing vectordb directory")
+            # Recreate directory
+            os.makedirs(vectordb_path, exist_ok=True)
         except Exception as e:
             print(f"  [WARN] Could not remove vectordb directory: {e}")
             # Try to continue anyway - might work if directory is empty
     
     # Use same settings as QueryEngine (no explicit settings = defaults)
     # This avoids "different settings" error when ChromaDB was initialized elsewhere
+    print(f"  [INFO] Creating ChromaDB client...")
     client = chromadb.PersistentClient(path=vectordb_path)
     
     # Delete existing collection (if it somehow still exists)
     try:
         client.delete_collection(COLLECTION_NAME)
+        print(f"  [INFO] Deleted existing collection")
     except:
         pass
     
+    print(f"  [INFO] Creating new collection '{COLLECTION_NAME}'...")
     collection = client.create_collection(
         name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"}
     )
+    print(f"  [OK] Collection created")
     
     # Add in batches
     batch_size = 100
