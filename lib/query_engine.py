@@ -847,7 +847,15 @@ class QueryEngine:
         # With 35% of 250k tokens/minute = 87.5k tokens, minus overhead = ~82k tokens for chunks
         # 82k / 520 = ~157 chunks max, but be more conservative: 100 chunks to prevent timeouts
         # Reduced from 150 to 100 to prevent 410s timeouts
+        # BUT: For firm queries, allow more chunks (they're usually well-focused)
         MAX_CHUNKS_BEFORE_FETCH = 100
+        # Check if this is a firm query (has firm phrases or bank-related terms)
+        # Use question_lower from earlier in the function (line 441)
+        is_firm_query_early = bool(all_firm_phrases) or any(word in question_lower for word in ['bank', 'nb', 'firm', 'company', 'crédit', 'credit'])
+        if is_firm_query_early:
+            MAX_CHUNKS_BEFORE_FETCH = 150  # Allow more chunks for firm queries
+            print(f"  [FIRM_QUERY] Detected firm query - allowing up to {MAX_CHUNKS_BEFORE_FETCH} chunks (found {len(chunk_ids_list)} chunks)")
+        
         if len(chunk_ids_list) > MAX_CHUNKS_BEFORE_FETCH:
             print(f"  [EARLY_LIMIT] Limiting chunk IDs from {len(chunk_ids_list)} to {MAX_CHUNKS_BEFORE_FETCH} before fetching (prevents token quota errors and timeouts)")
             chunk_ids_list = chunk_ids_list[:MAX_CHUNKS_BEFORE_FETCH]
