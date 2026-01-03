@@ -121,19 +121,29 @@ def background_rebuild():
             chromadb_exists = False
         
         # Quick check: if index doesn't exist, we need to build
-        from lib.config import INDICES_FILE
+        from lib.config import INDICES_FILE, VECTORDB_DIR
         if not os.path.exists(INDICES_FILE) or not chromadb_exists:
             if not os.path.exists(INDICES_FILE):
                 print("\n[STARTUP] No index found - starting background rebuild...")
             else:
-                print("\n[STARTUP] ChromaDB collection missing - starting background rebuild...")
+                print(f"\n[STARTUP] ChromaDB collection missing - starting background rebuild...")
+                print(f"[STARTUP] VECTORDB_DIR: {VECTORDB_DIR}")
+                print(f"[STARTUP] VECTORDB_DIR exists: {os.path.exists(VECTORDB_DIR)}")
             rebuild_in_progress = True
+            print(f"[STARTUP] Rebuild started at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             success = rebuild_index()
             rebuild_in_progress = False
             if success:
-                print("[STARTUP] ✅ Background rebuild completed successfully!")
+                print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
+                # Verify ChromaDB was created
+                try:
+                    chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+                    collection = chroma_client.get_collection(name=COLLECTION_NAME)
+                    print(f"[STARTUP] ✅ Verified: ChromaDB collection exists with {collection.count()} chunks")
+                except Exception as e:
+                    print(f"[STARTUP] ⚠️ WARNING: Rebuild reported success but ChromaDB still missing: {e}")
             else:
-                print("[STARTUP] ⚠️ Background rebuild failed")
+                print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             return
         
         # Index exists - check if source documents changed
