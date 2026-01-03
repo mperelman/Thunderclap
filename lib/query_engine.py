@@ -235,9 +235,25 @@ class QueryEngine:
         term_lower = term.lower()
         # Canonicalize term to match TERM_GROUPS merges (e.g., "blacks" -> "black")
         canonical = canonicalize_term(term_lower)
-        # Try canonical form first (TERM_GROUPS merged variants point to same chunks)
-        # Fallback to original if canonical doesn't exist (for terms not in TERM_GROUPS)
-        lookup_term = canonical if canonical in self.term_to_chunks else term_lower
+        canonical_original = canonicalize_term(term)  # Preserve original case
+        
+        # Try multiple lookup strategies (index preserves capitalization)
+        # 1. Original term (preserves case: "Crédit Lyonnais")
+        # 2. Canonicalized original (removes possessives but preserves case)
+        # 3. Lowercase canonical (for case-insensitive lookups)
+        # 4. Lowercase original (fallback)
+        lookup_terms = []
+        if term in self.term_to_chunks:
+            lookup_terms.append(term)
+        if canonical_original != term and canonical_original in self.term_to_chunks:
+            lookup_terms.append(canonical_original)
+        if canonical != term_lower and canonical in self.term_to_chunks:
+            lookup_terms.append(canonical)
+        if term_lower not in lookup_terms and term_lower in self.term_to_chunks:
+            lookup_terms.append(term_lower)
+        
+        # Use first found lookup term, or fallback to canonical/lowercase
+        lookup_term = lookup_terms[0] if lookup_terms else (canonical if canonical in self.term_to_chunks else term_lower)
         
         # Collect chunk IDs from the main term
         all_chunk_ids = set()
@@ -247,8 +263,9 @@ class QueryEngine:
         # Expand search using entity associations
         # Check if this term has associated terms (e.g., "Lyonnais" -> "Crédit Lyonnais")
         if self.entity_associations:
-            # Check both original and canonical forms
-            for check_term in [term_lower, lookup_term, canonical]:
+            # Check original term, canonicalized original, lowercase canonical, and lowercase original
+            check_terms = [term, canonical_original, term_lower, canonical, lookup_term]
+            for check_term in check_terms:
                 if check_term and check_term in self.entity_associations:
                     associated_terms = self.entity_associations[check_term]
                     # Add chunks from associated terms
@@ -448,15 +465,36 @@ class QueryEngine:
                     print(f"  [SKIP] Skipping firm name detection for identity term: '{potential_firm}'")
                     break  # Don't treat identity terms as firm names
                 
-                # Try matching as firm name (canonicalized)
+                # Try matching as firm name (try original case first, then canonicalized)
+                # Index preserves capitalization, so try original first
+                if potential_firm in self.term_to_chunks:
+                    # Double-check: if original is an identity term, skip
+                    if potential_firm_lower in identity_terms_set:
+                        print(f"  [SKIP] Skipping firm name detection for identity term: '{potential_firm}'")
+                        break
+                    firm_name_phrases.append(potential_firm)
+                    print(f"  [FIRM_NAME] Found indexed firm name: '{potential_firm}' ({len(self.term_to_chunks[potential_firm])} chunks)")
+                    break
+                
+                # Try canonicalized version (removes possessives but preserves case)
                 firm_clean = canonicalize_term(potential_firm)
-                if firm_clean and firm_clean in self.term_to_chunks:
+                if firm_clean and firm_clean != potential_firm and firm_clean in self.term_to_chunks:
                     # Double-check: if canonicalized version is an identity term, skip
                     if firm_clean.lower() in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term (canonicalized): '{firm_clean}'")
                         break
                     firm_name_phrases.append(firm_clean)
-                    print(f"  [FIRM_NAME] Found indexed firm name: '{firm_clean}' ({len(self.term_to_chunks[firm_clean])} chunks)")
+                    print(f"  [FIRM_NAME] Found indexed firm name (canonicalized): '{firm_clean}' ({len(self.term_to_chunks[firm_clean])} chunks)")
+                    break
+                
+                # Try title case (for queries like "credit lyonnais" -> "Credit Lyonnais")
+                potential_firm_title = potential_firm.title()
+                if potential_firm_title != potential_firm and potential_firm_title in self.term_to_chunks:
+                    if potential_firm_title.lower() in identity_terms_set:
+                        print(f"  [SKIP] Skipping firm name detection for identity term (title case): '{potential_firm_title}'")
+                        break
+                    firm_name_phrases.append(potential_firm_title)
+                    print(f"  [FIRM_NAME] Found indexed firm name (title case): '{potential_firm_title}' ({len(self.term_to_chunks[potential_firm_title])} chunks)")
                     break
                 # CRITICAL: If query has "National Bank" but index has "NB", try the NB variant
                 # This allows "First National Bank of Boston" queries to match "first nb of boston" entries
