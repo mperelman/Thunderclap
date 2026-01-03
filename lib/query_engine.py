@@ -309,7 +309,8 @@ class QueryEngine:
             "after_associations": 0,
             "after_filtering": 0,
             "final_chunk_count": 0,
-            "query_path": "unknown"
+            "query_path": "unknown",
+            "firm_detection_debug": []  # Store debug info about firm phrase detection attempts
         }
         
         # CRITICAL: Always get fresh collection reference to avoid ChromaDB stale UUID caching
@@ -535,15 +536,31 @@ class QueryEngine:
                     break
                 # DEBUG: Log what we tried if no match found
                 else:
-                    print(f"  [DEBUG] Firm name detection tried for '{potential_firm}':")
-                    print(f"    - Original: '{potential_firm}' in index? {potential_firm in self.term_to_chunks}")
-                    print(f"    - Title case: '{potential_firm_title}' in index? {potential_firm_title in self.term_to_chunks}")
-                    print(f"    - Preserved: '{potential_firm_preserved}' in index? {potential_firm_preserved in self.term_to_chunks}")
+                    debug_info = {
+                        "potential_firm": potential_firm,
+                        "original_in_index": potential_firm in self.term_to_chunks,
+                        "title_case": potential_firm_title,
+                        "title_case_in_index": potential_firm_title in self.term_to_chunks,
+                        "preserved_case": potential_firm_preserved,
+                        "preserved_case_in_index": potential_firm_preserved in self.term_to_chunks,
+                        "case_insensitive_matches": []
+                    }
                     # Also check if any case-insensitive variant exists
                     for term in self.term_to_chunks.keys():
                         if term.lower() == potential_firm.lower():
-                            print(f"    - Found case-insensitive match: '{term}' ({len(self.term_to_chunks[term])} chunks)")
+                            debug_info["case_insensitive_matches"].append({
+                                "term": term,
+                                "chunk_count": len(self.term_to_chunks[term])
+                            })
                             break
+                    self.query_diagnostics["firm_detection_debug"].append(debug_info)
+                    print(f"  [DEBUG] Firm name detection tried for '{potential_firm}':")
+                    print(f"    - Original: '{potential_firm}' in index? {debug_info['original_in_index']}")
+                    print(f"    - Title case: '{potential_firm_title}' in index? {debug_info['title_case_in_index']}")
+                    print(f"    - Preserved: '{potential_firm_preserved}' in index? {debug_info['preserved_case_in_index']}")
+                    if debug_info["case_insensitive_matches"]:
+                        match = debug_info["case_insensitive_matches"][0]
+                        print(f"    - Found case-insensitive match: '{match['term']}' ({match['chunk_count']} chunks)")
                 # CRITICAL: If query has "National Bank" but index has "NB", try the NB variant
                 # This allows "First National Bank of Boston" queries to match "first nb of boston" entries
                 # But ONLY if the query explicitly mentions "National Bank" - no automatic expansion
