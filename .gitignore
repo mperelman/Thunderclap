@@ -46,6 +46,7 @@ desktop.ini
 .env
 *.key
 api_keys.txt
+lib/api_keys.py  # Centralized keys file (use template instead)
 
 # Large model files
 *.pkl
