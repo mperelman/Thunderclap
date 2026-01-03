@@ -96,6 +96,12 @@ def rebuild_index():
     print("AUTO-REBUILDING INDEX")
     print("="*80 + "\n")
     
+    # Skip LLM filtering during rebuilds to avoid quota issues
+    # It's only needed for "View Sample Terms" feature, not for queries
+    import os
+    original_skip = os.getenv('SKIP_LLM_FILTERING')
+    os.environ['SKIP_LLM_FILTERING'] = 'true'
+    
     try:
         from build_index import build_complete_index
         build_complete_index()
@@ -104,11 +110,21 @@ def rebuild_index():
         save_build_info(get_source_doc_mtimes())
         
         print("\n[SUCCESS] Index rebuilt successfully!")
+        # Restore original env var
+        if original_skip is None:
+            os.environ.pop('SKIP_LLM_FILTERING', None)
+        else:
+            os.environ['SKIP_LLM_FILTERING'] = original_skip
         return True
     except Exception as e:
         print(f"\n[ERROR] Failed to rebuild index: {e}")
         import traceback
         traceback.print_exc()
+        # Restore original env var even on error
+        if original_skip is None:
+            os.environ.pop('SKIP_LLM_FILTERING', None)
+        else:
+            os.environ['SKIP_LLM_FILTERING'] = original_skip
         return False
 
 def check_and_rebuild():

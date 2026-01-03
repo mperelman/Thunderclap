@@ -561,9 +561,12 @@ def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=
         if i > 0:
             time.sleep(4)  # 4 seconds = 15 requests/minute (optimized)
         
-        # Create a FRESH LLM client for each batch
+        # Create a FRESH LLM client for each batch (with key manager if available)
         try:
-            llm = LLMAnswerGenerator()
+            if use_key_manager:
+                llm = LLMAnswerGenerator(key_manager=key_manager)
+            else:
+                llm = LLMAnswerGenerator()
             
             # OPTIMIZED: Shorter, more focused prompt
             # OPTIMIZED: Limit to 400 terms per batch to avoid token limits
@@ -1315,13 +1318,23 @@ def build_indices(chunks, chunk_ids):
     term_to_chunks_filtered = {t: ids for t, ids in term_to_chunks.items() if t in term_counts_filtered and not should_exclude_term(t)}
     
     # Second pass: LLM-based filtering (removes generic terms that hardcoded list missed)
-    print("\n" + "="*80)
-    print("FILTERING TERMS WITH LLM (removing generic/common terms)")
-    print("="*80)
-    term_counts_filtered, term_to_chunks_filtered = filter_terms_with_llm(
-        term_counts_filtered, term_to_chunks_filtered, all_acronyms
-    )
-    print("="*80 + "\n")
+    # OPTIONAL: Skip during rebuilds to avoid quota issues (only needed for "View Sample Terms" feature)
+    skip_llm_filtering = os.getenv('SKIP_LLM_FILTERING', '').lower() in ('true', '1', 'yes')
+    if skip_llm_filtering:
+        print("\n" + "="*80)
+        print("SKIPPING LLM FILTERING (SKIP_LLM_FILTERING env var set)")
+        print("="*80)
+        print("  [INFO] LLM filtering is optional - only used for 'View Sample Terms' feature")
+        print("  [INFO] Queries work fine without it (uses full index)")
+        print("="*80 + "\n")
+    else:
+        print("\n" + "="*80)
+        print("FILTERING TERMS WITH LLM (removing generic/common terms)")
+        print("="*80)
+        term_counts_filtered, term_to_chunks_filtered = filter_terms_with_llm(
+            term_counts_filtered, term_to_chunks_filtered, all_acronyms
+        )
+        print("="*80 + "\n")
     
     # Apply term grouping - merge related terms
     # CRITICAL: Collect chunks from ALL variants (both filtered and unfiltered) to create union
