@@ -72,6 +72,7 @@ class APIKeyManager:
         
         # Only use file-based loading if NO environment variables found (local dev only)
         if not self.keys:
+            self._load_keys_from_test_file()
         
         if not self.keys:
             raise ValueError("No valid API keys found. Set GEMINI_API_KEY or provide keys list.")
