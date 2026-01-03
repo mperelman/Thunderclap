@@ -223,6 +223,7 @@ class QueryEngine:
     def search_term(self, term: str, max_results: int = DEFAULT_TOP_K) -> List[Dict]:
         """
         Search for a specific term in the documents.
+        Expands search using entity associations (e.g., "Lyonnais" -> "Crédit Lyonnais").
         
         Args:
             term: Search term (case-insensitive)
@@ -238,11 +239,29 @@ class QueryEngine:
         # Fallback to original if canonical doesn't exist (for terms not in TERM_GROUPS)
         lookup_term = canonical if canonical in self.term_to_chunks else term_lower
         
-        if lookup_term not in self.term_to_chunks:
+        # Collect chunk IDs from the main term
+        all_chunk_ids = set()
+        if lookup_term in self.term_to_chunks:
+            all_chunk_ids.update(self.term_to_chunks[lookup_term])
+        
+        # Expand search using entity associations
+        # Check if this term has associated terms (e.g., "Lyonnais" -> "Crédit Lyonnais")
+        if self.entity_associations:
+            # Check both original and canonical forms
+            for check_term in [term_lower, lookup_term, canonical]:
+                if check_term and check_term in self.entity_associations:
+                    associated_terms = self.entity_associations[check_term]
+                    # Add chunks from associated terms
+                    for associated_term in associated_terms:
+                        if associated_term in self.term_to_chunks:
+                            all_chunk_ids.update(self.term_to_chunks[associated_term])
+                            print(f"  [SEARCH_EXPAND] Expanded '{term}' to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
+        
+        if not all_chunk_ids:
             return []
         
-        # Deduplicate chunk IDs (some indices may have duplicates)
-        chunk_ids = list(set(self.term_to_chunks[lookup_term]))[:max_results]
+        # Deduplicate chunk IDs and limit results
+        chunk_ids = list(all_chunk_ids)[:max_results]
         data = self.collection.get(ids=chunk_ids)
         
         results = []
