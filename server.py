@@ -471,6 +471,7 @@ def get_rebuild_status():
     return status
 
 @app.post("/debug/trigger-rebuild")
+@app.get("/debug/trigger-rebuild")  # Also allow GET for easier access
 def trigger_rebuild():
     """Manually trigger a rebuild of ChromaDB."""
     global rebuild_in_progress
