@@ -77,6 +77,21 @@ for compressed_path in compressed_paths:
         except Exception as e:
             print(f"[STARTUP] ⚠️ Failed to decompress index: {e}")
 
+# Check if ChromaDB collection exists, rebuild if missing
+from lib.config import VECTORDB_DIR, COLLECTION_NAME
+try:
+    import chromadb
+    chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+    try:
+        collection = chroma_client.get_collection(name=COLLECTION_NAME)
+        print(f"[STARTUP] ✅ ChromaDB collection exists ({collection.count():,} chunks)")
+    except Exception:
+        print(f"[STARTUP] ⚠️ ChromaDB collection '{COLLECTION_NAME}' not found")
+        print(f"[STARTUP] Will rebuild ChromaDB in background (this may take a few minutes)...")
+        # Will be handled by background_rebuild below
+except Exception as e:
+    print(f"[STARTUP] ⚠️ Could not check ChromaDB: {e}")
+
 # Auto-rebuild index if source documents changed (in background to avoid blocking startup)
 # Only rebuilds when source documents actually change, not on every startup
 # This is efficient because:
@@ -92,10 +107,26 @@ def background_rebuild():
     try:
         from scripts.auto_rebuild_on_startup import needs_rebuild, rebuild_index
         
+        # Check if ChromaDB collection is missing (even if index JSON exists)
+        from lib.config import VECTORDB_DIR, COLLECTION_NAME
+        try:
+            import chromadb
+            chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+            try:
+                chroma_client.get_collection(name=COLLECTION_NAME)
+                chromadb_exists = True
+            except Exception:
+                chromadb_exists = False
+        except Exception:
+            chromadb_exists = False
+        
         # Quick check: if index doesn't exist, we need to build
         from lib.config import INDICES_FILE
-        if not os.path.exists(INDICES_FILE):
-            print("\n[STARTUP] No index found - starting background rebuild...")
+        if not os.path.exists(INDICES_FILE) or not chromadb_exists:
+            if not os.path.exists(INDICES_FILE):
+                print("\n[STARTUP] No index found - starting background rebuild...")
+            else:
+                print("\n[STARTUP] ChromaDB collection missing - starting background rebuild...")
             rebuild_in_progress = True
             success = rebuild_index()
             rebuild_in_progress = False
