@@ -3428,6 +3428,9 @@ Answer:"""
         # Expose last chunk count for server/frontend status
         try:
             self.last_chunk_count = chunk_count
+            if hasattr(self, 'query_diagnostics'):
+                self.query_diagnostics["final_chunk_count"] = chunk_count
+                self.query_diagnostics["after_filtering"] = chunk_count
         except Exception:
             # Don't let diagnostic attributes break the query
             pass
