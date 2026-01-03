@@ -158,15 +158,16 @@ class IterativePeriodProcessor:
             estimated_tokens = int(batch_words * TOKENS_PER_WORD)
             
             # Rate limit based on both RPM (15/min) and TPM (250k/min)
-            # Conservative waits to avoid hitting token quota
+            # Reduced waits for sequential processing to avoid timeouts
+            # Sequential is slower, so we need shorter delays to stay under 420s timeout
             if i > 1:
                 import time
                 if estimated_tokens > 100000:  # >100K tokens
-                    wait_time = 20  # Wait longer for large requests to avoid TPM limit
+                    wait_time = 10  # Reduced from 20s to avoid timeout
                 elif estimated_tokens > 50000:  # >50K tokens
-                    wait_time = 15  # Wait longer for medium requests
+                    wait_time = 6   # Reduced from 15s to avoid timeout
                 else:
-                    wait_time = 8   # Wait longer for normal requests
+                    wait_time = 3   # Reduced from 8s to avoid timeout
                 
                 print(f"    [Rate limit] Waiting {wait_time} seconds (~{int(estimated_tokens):,} tokens)...")
                 time.sleep(wait_time)
@@ -186,8 +187,8 @@ class IterativePeriodProcessor:
         
         # Wait before final API call (shorter since this is just combining text)
         import time
-        # Reduced wait: 8s → 4s for combine (combining is smaller operation)
-        wait_time = 4
+        # Minimal wait for combine to avoid timeout (combining is smaller operation)
+        wait_time = 2  # Reduced from 4s to avoid timeout
         print(f"  [Rate limit] Waiting {wait_time} seconds before combining...")
         sys.stdout.flush()
         time.sleep(wait_time)
