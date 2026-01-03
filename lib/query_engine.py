@@ -542,9 +542,10 @@ class QueryEngine:
             # Use phrase chunks as primary source
             phrase_chunk_ids = set()
             for phrase in all_firm_phrases:
-                phrase_chunk_ids.update(self.term_to_chunks[phrase])
+                # Get chunks for phrase, including entity associations
+                phrase_chunk_ids.update(get_chunks_with_associations(phrase))
             chunk_ids = phrase_chunk_ids
-            print(f"  [PHRASE] Using {len(chunk_ids)} chunks from firm name phrases")
+            print(f"  [PHRASE] Using {len(chunk_ids)} chunks from firm name phrases (with associations)")
             
             # AUGMENT: Also search for significant words from multi-word firm names
             # This catches chunks that only mention part of the firm name (e.g., "Lyonnais" when querying "Crédit Lyonnais")
