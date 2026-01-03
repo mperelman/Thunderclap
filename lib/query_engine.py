@@ -1453,8 +1453,11 @@ class QueryEngine:
                         subject_terms=subject_terms,
                         subject_phrases=subject_phrases
                     )
-                except Exception:
-                    print("  [WARN] PeriodEngine failed; falling back to legacy batched generator")
+                except Exception as e:
+                    print(f"  [WARN] PeriodEngine failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    print("  [WARN] Falling back to legacy batched generator")
                     ans = self._generate_batched_narrative(question, chunks)
                 try:
                     if self._chunks_have_crisis(chunks) and not self._has_crises(ans):
