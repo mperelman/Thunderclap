@@ -218,10 +218,9 @@ def build_complete_index():
             print(f"  [WARN] Could not remove vectordb directory: {e}")
             # Try to continue anyway - might work if directory is empty
     
-    client = chromadb.PersistentClient(
-        path=vectordb_path,
-        settings=Settings(anonymized_telemetry=False)
-    )
+    # Use same settings as QueryEngine (no explicit settings = defaults)
+    # This avoids "different settings" error when ChromaDB was initialized elsewhere
+    client = chromadb.PersistentClient(path=vectordb_path)
     
     # Delete existing collection (if it somehow still exists)
     try:
