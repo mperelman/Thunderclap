@@ -488,13 +488,31 @@ class QueryEngine:
                     break
                 
                 # Try title case (for queries like "credit lyonnais" -> "Credit Lyonnais")
+                # CRITICAL: Also try with preserved capitalization for "Crédit" -> "Crédit" (not "Credit")
                 potential_firm_title = potential_firm.title()
+                # Also try preserving the original capitalization of the first word (for "Crédit Lyonnais")
+                if len(potential_firm.split()) >= 2:
+                    first_word = potential_firm.split()[0]
+                    rest_words = ' '.join(potential_firm.split()[1:]).title()
+                    potential_firm_preserved = f"{first_word} {rest_words}"
+                else:
+                    potential_firm_preserved = potential_firm_title
+                
+                # Try title case first
                 if potential_firm_title != potential_firm and potential_firm_title in self.term_to_chunks:
                     if potential_firm_title.lower() in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term (title case): '{potential_firm_title}'")
                         break
                     firm_name_phrases.append(potential_firm_title)
                     print(f"  [FIRM_NAME] Found indexed firm name (title case): '{potential_firm_title}' ({len(self.term_to_chunks[potential_firm_title])} chunks)")
+                    break
+                # Try preserved capitalization (for "Crédit Lyonnais")
+                elif potential_firm_preserved != potential_firm and potential_firm_preserved in self.term_to_chunks:
+                    if potential_firm_preserved.lower() in identity_terms_set:
+                        print(f"  [SKIP] Skipping firm name detection for identity term (preserved case): '{potential_firm_preserved}'")
+                        break
+                    firm_name_phrases.append(potential_firm_preserved)
+                    print(f"  [FIRM_NAME] Found indexed firm name (preserved case): '{potential_firm_preserved}' ({len(self.term_to_chunks[potential_firm_preserved])} chunks)")
                     break
                 # CRITICAL: If query has "National Bank" but index has "NB", try the NB variant
                 # This allows "First National Bank of Boston" queries to match "first nb of boston" entries
