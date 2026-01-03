@@ -15,15 +15,17 @@ The `GEMINI_API_KEY` environment variable is **not set** or **set incorrectly** 
 
 ### Step 1: Get Your API Key
 
-You have 6 Gemini API keys stored in `.env`:
-1. `AIzaSyBlqE1F2G_L5l2Lg81gyt0UWcME_K3inFo`
-2. `AIzaSyBaj9wvbB3n6ZjvI89fFACl4SQgUfTaC4s`
-3. `AIzaSyAXr9YBivlfndzZ4azcm7g3yfgan4Xl_ls`
-4. `AIzaSyBPeY_SCL9EdpmnDbmeYSI7r5wJ-JaT6Fc`
-5. `AIzaSyD-xExhXC66P-eUuYzx5wwXifBvCwZYGMw`
-6. `AIzaSyBcl-noOJDWb3tTXSQYibMsH6kOf9uQn0o`
+**IMPORTANT:** Do NOT use keys from this documentation file - they may be exposed.
 
-**Use key #1** (or any that hasn't been leaked): `AIzaSyBlqE1F2G_L5l2Lg81gyt0UWcME_K3inFo`
+**Get your API key from:**
+- Your Google Cloud Console: https://makersuite.google.com/app/apikey
+- Your secure `.env` file (local only, never committed to git)
+- Railway environment variables (already set)
+
+**Never use keys from:**
+- Documentation files (they may be exposed in git history)
+- Test files
+- Any file committed to git
 
 ### Step 2: Set in Railway
 
@@ -33,7 +35,7 @@ You have 6 Gemini API keys stored in `.env`:
 4. Click **+ New Variable**
 5. Set:
    - **Name**: `GEMINI_API_KEY`
-   - **Value**: `AIzaSyBlqE1F2G_L5l2Lg81gyt0UWcME_K3inFo`
+   - **Value**: `YOUR_API_KEY_HERE` (get from Google Cloud Console or your secure .env file)
    - **DO NOT** add quotes around the value
    - **DO NOT** add spaces
 6. Click **Add**

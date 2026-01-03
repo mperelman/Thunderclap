@@ -31,15 +31,17 @@ The `GEMINI_API_KEY` environment variable on Railway is using a leaked/invalid k
 
 ## Your Available API Keys
 
-According to your memory, you have 6 API keys:
-1. `AIzaSyBlqE1F2G_L5l2Lg81gyt0UWcME_K3inFo`
-2. `AIzaSyBaj9wvbB3n6ZjvI89fFACl4SQgUfTaC4s`
-3. `AIzaSyAXr9YBivlfndzZ4azcm7g3yfgan4Xl_ls`
-4. `AIzaSyBPeY_SCL9EdpmnDbmeYSI7r5wJ-JaT6Fc`
-5. `AIzaSyD-xExhXC66P-eUuYzx5wwXifBvCwZYGMw`
-6. `AIzaSyBcl-noOJDWb3tTXSQYibMsH6kOf9uQn0o`
+**IMPORTANT:** Do NOT use keys from documentation files - they may be exposed in git history.
 
-**Use one that hasn't been leaked** (probably keys 2-6 if key 1 was leaked).
+**Get your API key from:**
+- Your Google Cloud Console: https://makersuite.google.com/app/apikey
+- Your secure `.env` file (local only, never committed to git)
+- Railway environment variables (already set)
+
+**Never use keys from:**
+- Documentation files (they may be exposed in git history)
+- Test files
+- Any file committed to git
 
 ## After Fixing
 

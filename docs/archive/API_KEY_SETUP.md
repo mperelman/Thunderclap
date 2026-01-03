@@ -34,7 +34,8 @@ Edit the `.env` file and add:
 
 ```env
 # Gemini API Key (primary - for narrative generation)
-GEMINI_API_KEY=AIzaSyBlqE1F2G_L5l2Lg81gyt0UWcME_K3inFo
+# Get your key from: https://makersuite.google.com/app/apikey
+GEMINI_API_KEY=YOUR_API_KEY_HERE
 
 # OpenAI API Key (fallback - optional)
 # OPENAI_API_KEY=your_openai_api_key_here

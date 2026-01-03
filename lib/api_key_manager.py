@@ -57,18 +57,21 @@ class APIKeyManager:
         else:
             self._load_keys_from_test_file()
         
+        # CRITICAL: Prioritize environment variables (Railway/production)
+        # This is the ONLY secure source - never load from files in production
+        # Try GEMINI_API_KEY first, then try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+        env_key = os.getenv('GEMINI_API_KEY')
+        if env_key and env_key.startswith("AIza"):
+            self.keys.append(KeyStatus(key=env_key, name="Env Key"))
+        
+        # Try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+        for i in range(1, 21):  # Check up to 20 numbered keys
+            numbered_key = os.getenv(f'GEMINI_API_KEY_{i}')
+            if numbered_key and numbered_key.startswith("AIza"):
+                self.keys.append(KeyStatus(key=numbered_key, name=f"Env Key #{i}"))
+        
+        # Only use file-based loading if NO environment variables found (local dev only)
         if not self.keys:
-            # Fallback to environment variables (for Railway/production)
-            # Try GEMINI_API_KEY first, then try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
-            env_key = os.getenv('GEMINI_API_KEY')
-            if env_key and env_key.startswith("AIza"):
-                self.keys.append(KeyStatus(key=env_key, name="Env Key"))
-            
-            # Try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
-            for i in range(1, 20):  # Check up to 20 numbered keys
-                numbered_key = os.getenv(f'GEMINI_API_KEY_{i}')
-                if numbered_key and numbered_key.startswith("AIza"):
-                    self.keys.append(KeyStatus(key=numbered_key, name=f"Env Key #{i}"))
         
         if not self.keys:
             raise ValueError("No valid API keys found. Set GEMINI_API_KEY or provide keys list.")
@@ -78,24 +81,30 @@ class APIKeyManager:
             print(f"  [{i+1}] {key_status.name}: {key_status.key[:20]}...")
     
     def _load_keys_from_test_file(self):
-        """Load keys from centralized api_keys.py file."""
+        """
+        Load keys from files (LOCAL DEV ONLY - files should NOT contain real keys).
+        SECURITY: This is only for local development. In production (Railway),
+        keys should come from environment variables only.
+        """
         try:
-            # PRIMARY: Load from centralized lib/api_keys.py
+            # PRIMARY: Load from centralized lib/api_keys.py (if it exists locally)
+            # NOTE: This file is gitignored and should NOT be committed
             try:
                 from lib.api_keys import get_api_keys
                 keys = get_api_keys()
                 for i, key in enumerate(keys):
                     if key and key != "REVOKED_KEY_REMOVED" and key.startswith("AIza"):
-                        self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
+                        self.keys.append(KeyStatus(key=key, name=f"Local Key #{i+1}"))
                 if self.keys:
-                    print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from lib/api_keys.py")
+                    print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from lib/api_keys.py (LOCAL DEV ONLY)")
                     return
             except ImportError:
-                print(f"[KEY_MANAGER] Warning: Could not import lib.api_keys")
+                # File doesn't exist or can't import - that's fine, use env vars
+                pass
             except Exception as e:
                 print(f"[KEY_MANAGER] Warning: Error loading from lib/api_keys.py: {e}")
             
-            # FALLBACK 1: Try JSON config file
+            # FALLBACK 1: Try JSON config file (local dev only)
             try:
                 import json
                 config_file = "data/api_keys.json"
@@ -105,35 +114,15 @@ class APIKeyManager:
                         keys = data.get('keys', [])
                         for i, key in enumerate(keys):
                             if key and key != "REVOKED_KEY_REMOVED" and key.startswith("AIza"):
-                                self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
+                                self.keys.append(KeyStatus(key=key, name=f"Local Key #{i+1}"))
                         if self.keys:
-                            print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from data/api_keys.json")
+                            print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from data/api_keys.json (LOCAL DEV ONLY)")
                             return
             except Exception as e:
-                print(f"[KEY_MANAGER] Warning: Could not load from JSON: {e}")
-            
-            # FALLBACK 2: Try parsing test file (legacy support)
-            try:
-                test_file = "docs/archive/tests/20251114/test_all_keys.py"
-                if os.path.exists(test_file):
-                    with open(test_file, 'r') as f:
-                        content = f.read()
-                        import re
-                        # Extract keys from the keys list
-                        pattern = r'"AIza[^"]+"'
-                        matches = re.findall(pattern, content)
-                        for i, match in enumerate(matches):
-                            key = match.strip('"')
-                            if key != "REVOKED_KEY_REMOVED":
-                                self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
-                        if self.keys:
-                            print(f"[KEY_MANAGER] Loaded {len(self.keys)} keys from test file (legacy)")
-                            return
-            except Exception as e:
-                print(f"[KEY_MANAGER] Warning: Could not load from test file: {e}")
+                pass  # File doesn't exist - that's fine
                 
         except Exception as e:
-            print(f"[KEY_MANAGER] Warning: Could not load keys: {e}")
+            print(f"[KEY_MANAGER] Warning: Could not load keys from files: {e}")
     
     def get_next_key(self, delay_seconds: float = 4.0) -> Optional[str]:
         """

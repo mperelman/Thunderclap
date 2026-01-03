@@ -3,10 +3,12 @@ import google.generativeai as genai
 
 # All keys provided by user
 keys = [
-    ("Key #1", "AIzaSyBlqE1F2G_L5l2Lg81gyt0UWcME_K3inFo"),
-    ("Key #2", "AIzaSyBaj9wvbB3n6ZjvI89fFACl4SQgUfTaC4s"),
-    ("Key #3", "AIzaSyAXr9YBivlfndzZ4azcm7g3yfgan4Xl_ls"),
-    ("Key #4", "AIzaSyBPeY_SCL9EdpmnDbmeYSI7r5wJ-JaT6Fc"),
+    # SECURITY: Keys removed - use environment variables only
+    # Never commit real API keys to git
+    ("Key #1", "REVOKED_KEY_REMOVED"),
+    ("Key #2", "REVOKED_KEY_REMOVED"),
+    ("Key #3", "REVOKED_KEY_REMOVED"),
+    ("Key #4", "REVOKED_KEY_REMOVED"),
     ("Key #5", "AIzaSyD-xExhXC66P-eUuYzx5wwXifBvCwZYGMw"),
     ("Key #6", "AIzaSyBcl-noOJDWb3tTXSQYibMsH6kOf9uQn0o"),
     ("Key #7 (new)", "AIzaSyArWNIqSYcmh_KvWLxlxew2TZxj4lASfo4"),
