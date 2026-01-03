@@ -348,8 +348,9 @@ class LLMAnswerGenerator:
         estimated_tokens = sum(len(chunk[0].split()) for chunk in chunks) * TOKENS_PER_WORD
         prompt_overhead = 5000
         response_estimate = 15000
-        available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.40) - prompt_overhead - response_estimate
-        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.40) - prompt_overhead - response_estimate
+        # Use 35% limit (matching query_engine limits) to prevent timeouts
+        available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.35) - prompt_overhead - response_estimate
+        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
         effective_limit = min(available_for_chunks, minute_budget)
         
         if estimated_tokens > effective_limit:

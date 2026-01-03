@@ -952,7 +952,7 @@ class QueryEngine:
                 
                 if len(chunks) > max_chunks:
                     print(f"  [TOKEN_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks} to stay under token limit (~{estimated_tokens:,} > {effective_limit:,} tokens)")
-                    print(f"  [TOKEN_LIMIT] Using 40% of limits with overhead: {available_for_chunks:,} tokens available for chunks")
+                    print(f"  [TOKEN_LIMIT] Using 35% of limits with overhead: {available_for_chunks:,} tokens available for chunks")
                     # Prioritize: keep first chunks (they're usually most relevant)
                     chunks = chunks[:max_chunks]
                     estimated_tokens = self._estimate_tokens_for_chunks(chunks)
@@ -3160,15 +3160,17 @@ Answer:"""
         
         # FAST FAIL: If this query would obviously exceed our safe token limits,
         # abort BEFORE calling the LLM so the user doesn't wait 300s for a failure.
-        # Use very conservative limits (40% instead of 50%) to account for:
+        # Use very conservative limits (35% instead of 40%) to account for:
         # - Prompt overhead (question + instructions)
         # - Response tokens
         # - Token estimation inaccuracy (can be off by 40-50%)
         # - Rate limiting window (quota is per minute, not per request)
+        # - Batching overhead (PeriodEngine processing time)
+        # Reduced from 40% to 35% to prevent 410s timeouts
         prompt_overhead = 5000
         response_estimate = 15000  # Increased to match actual limiting
-        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.40) - prompt_overhead - response_estimate
-        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.40) - prompt_overhead - response_estimate
+        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.35) - prompt_overhead - response_estimate
+        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
         effective_limit = min(hard_input_limit, minute_budget)
         if estimated_input_tokens > effective_limit:
             print(
