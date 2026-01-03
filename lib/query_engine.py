@@ -2520,6 +2520,18 @@ DOCUMENT CHUNKS:
 
 CRITICAL FRAMEWORK - Create THEMATIC narrative with CULTURAL ANALYSIS:
 
+CRITICAL - NEVER MENTION SOURCES:
+   - NEVER say "provided information", "the provided documents", "as depicted in these documents", "the documents indicate", "historical documents", "historical records", "historical evidence", "records show", "the information provided", "according to the chunks", or any reference to sources
+   - Write as if you are stating facts directly, not citing sources
+   - BAD: "The provided information does not detail..." → GOOD: State what IS known, omit what isn't
+   - BAD: "The provided information indicates..." → GOOD: Just state the fact directly
+
+CRITICAL - NO PLATITUDES:
+   - NO phrases like: "reflecting the broader patterns", "underscore its role", "testament to", "journey", "transformative era", "strategically positioned", "dynamic nature", "significant role", "important part", "played a key role"
+   - NO vague generalizations: "represented a significant institution", "reflected broader patterns", "underscored its role"
+   - INSTEAD: State specific facts, events, dates, relationships, numbers
+   - Every sentence must contain concrete information (who, what, when, where, how)
+
 1. STRUCTURE - THEMATIC SECTIONS with multiple focused paragraphs:
    - Use section headings: "**Theme Name:**"
    - Each section = 2-4 paragraphs on ONE theme
@@ -2534,7 +2546,7 @@ CRITICAL FRAMEWORK - Create THEMATIC narrative with CULTURAL ANALYSIS:
    - When first mentioning an acronym or institution, expand it once in-line with role (e.g., "*Vneshtorg* (Soviet Bank for Foreign Trade, EXIM role)").
    - When first mentioning a person, add a 1-clause apposition with role and why relevant to the SUBJECT (e.g., "Viktor Gerashchenko, Vneshtorg deputy who managed foreign credits").
    - NO name-dropping. If you cannot state relevance in one clause, omit the name.
-   - DO NOT use an acronym (e.g., BSU) unless you can define it from the provided chunks in-line. If definition is not present in the chunks, avoid using the acronym.
+   - DO NOT use an acronym (e.g., BSU) unless you can define it from the chunks in-line. If definition is not present in the chunks, avoid using the acronym.
    - For every non-subject entity mentioned, explicitly state its relationship to the SUBJECT in the same sentence.
 
 3. COMPARATIVE ANALYSIS - Draw comparisons across groups when relevant:
