@@ -714,6 +714,9 @@ class QueryEngine:
                         # Non-firm queries: use union fallback
                         for s in term_sets:
                             chunk_ids.update(s)
+                        self.query_diagnostics["query_path"] = "union"
+                        self.query_diagnostics["initial_chunk_count"] = len(chunk_ids)
+                        print(f"  [UNION] Using union of {len(term_sets)} term sets: {len(chunk_ids)} chunks")
             else:
                 if term_sets:
                     # Single meaningful term: use its set only (no union with generic terms)
