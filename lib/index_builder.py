@@ -1264,6 +1264,66 @@ def build_indices(chunks, chunk_ids):
             # Also store underscore version pointing to same chunks
             term_to_chunks_filtered[main_term_underscore] = merged_chunks_list.copy()
     
+    # 2. Firm name part associations (structural relationships)
+    # When we indexed firm names, we also indexed individual words from them
+    # Now create associations: "Lyonnais" <-> "Crédit Lyonnais", "Donaldson" <-> "Donaldson Lufkin Jenrette"
+    # NOTE: This must happen AFTER filtering and term grouping so we only associate filtered terms
+    print("  Building firm name part associations...")
+    firm_part_associations = {}
+    GENERIC_FIRM_WORDS = {
+        'bank', 'banks', 'trust', 'trusts', 'company', 'companies', 'co', 'corp', 'corporation',
+        'inc', 'incorporated', 'ltd', 'limited', 'group', 'holding', 'holdings',
+        'partners', 'partnership', 'associates', 'brothers', 'sons', 'son',
+        'york', 'london', 'paris', 'berlin', 'vienna', 'amsterdam', 'brussels', 'geneva',
+        'america', 'american', 'british', 'french', 'german', 'swiss', 'italian',
+        'national', 'international', 'federal', 'state', 'central', 'commercial',
+        'investment', 'merchant', 'private', 'public', 'royal', 'imperial',
+        'exchange', 'credit', 'finance', 'capital', 'securities', 'assets'
+    }
+    
+    for term in term_to_chunks_filtered.keys():
+        # Check if this term is a multi-word firm name
+        words = term.split()
+        if len(words) > 1 and term[0].isupper():  # Multi-word, starts with capital (likely firm name)
+            # For each word in the firm name, create bidirectional association
+            for word in words:
+                word_lower = word.lower()
+                # Skip generic words
+                if len(word) < 4:
+                    continue
+                if word_lower in GENERIC_FIRM_WORDS:
+                    continue
+                if word_lower in GENERIC_WORDS_TO_EXCLUDE:
+                    continue
+                
+                # Canonicalize the word to match how it was indexed
+                word_term = canonicalize_term(word)
+                if word_term and word_term != term and word_term in term_to_chunks_filtered:
+                    # Create bidirectional association
+                    if word_term not in firm_part_associations:
+                        firm_part_associations[word_term] = []
+                    if term not in firm_part_associations[word_term]:
+                        firm_part_associations[word_term].append(term)
+                    
+                    if term not in firm_part_associations:
+                        firm_part_associations[term] = []
+                    if word_term not in firm_part_associations[term]:
+                        firm_part_associations[term].append(word_term)
+    
+    # Merge firm part associations into entity_cooccurrence (with high weight)
+    # This ensures firm name parts are strongly associated with their full names
+    for part, firms in firm_part_associations.items():
+        if part not in entity_cooccurrence:
+            entity_cooccurrence[part] = {}
+        for firm in firms:
+            # Use high weight (100) to ensure firm name associations are prioritized
+            entity_cooccurrence[part][firm] = entity_cooccurrence[part].get(firm, 0) + 100
+            if firm not in entity_cooccurrence:
+                entity_cooccurrence[firm] = {}
+            entity_cooccurrence[firm][part] = entity_cooccurrence[firm].get(part, 0) + 100
+    
+    print(f"  [OK] Created {sum(len(firms) for firms in firm_part_associations.values())} firm name part associations")
+    
     # Top associations
     for entity, cooccur in entity_cooccurrence.items():
         if entity in term_counts_filtered:
