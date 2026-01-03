@@ -523,6 +523,9 @@ def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=
         file=sys.stdout  # Explicitly use stdout
     )
     
+    quota_errors_seen = 0
+    max_quota_errors = 2  # Skip LLM filtering after 2 quota errors
+    
     for i in range(0, len(pre_filtered_terms), batch_size):
         batch = pre_filtered_terms[i:i+batch_size]
         batch_num = i//batch_size + 1
@@ -538,6 +541,17 @@ def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=
         if not non_acronyms:
             progress_bar.set_postfix({
                 'status': f'{len(acronyms_in_batch)} acronyms auto-kept',
+                'total_kept': len(filtered_terms)
+            })
+            progress_bar.update(1)
+            continue
+        
+        # Skip LLM filtering if we've hit too many quota errors
+        if quota_errors_seen >= max_quota_errors:
+            # Keep all remaining terms (they'll be filtered by hardcoded lists)
+            filtered_terms.extend(non_acronyms)
+            progress_bar.set_postfix({
+                'status': 'Skipping (quota exceeded)',
                 'total_kept': len(filtered_terms)
             })
             progress_bar.update(1)
@@ -591,14 +605,24 @@ Output: JSON array only, no explanations."""
             is_quota_error = '429' in error_msg or 'quota' in error_msg.lower() or 'rate limit' in error_msg.lower()
             
             if is_quota_error:
-                # Quota exceeded - skip remaining batches gracefully
-                print(f"\n  [WARN] API quota exceeded. Skipping remaining {num_batches - batch_num} batches.")
-                print(f"  [INFO] Keeping {len(filtered_terms):,} terms filtered so far.")
-                print(f"  [INFO] {len(pre_filtered_terms) - len(filtered_terms):,} terms not filtered (will use hardcoded filters)")
-                # Add remaining terms that weren't filtered (they'll be filtered by hardcoded lists later)
-                remaining_terms = pre_filtered_terms[i:]
-                filtered_terms.extend([t for t in remaining_terms if t.isupper() and len(t) >= 3])  # Keep acronyms
-                break  # Stop processing, don't retry
+                quota_errors_seen += 1
+                if quota_errors_seen >= max_quota_errors:
+                    # Quota exceeded - skip remaining batches gracefully
+                    print(f"\n  [WARN] API quota exceeded ({quota_errors_seen} errors). Skipping remaining {num_batches - batch_num} batches.")
+                    print(f"  [INFO] Keeping {len(filtered_terms):,} terms filtered so far.")
+                    print(f"  [INFO] {len(pre_filtered_terms) - len(filtered_terms):,} terms not filtered (will use hardcoded filters)")
+                    # Add remaining terms that weren't filtered (they'll be filtered by hardcoded lists later)
+                    remaining_terms = pre_filtered_terms[i:]
+                    filtered_terms.extend([t for t in remaining_terms if t.isupper() and len(t) >= 3])  # Keep acronyms
+                    # Also keep all remaining non-acronyms (they'll be filtered by hardcoded lists)
+                    filtered_terms.extend([t for t in remaining_terms if not (t.isupper() and len(t) >= 3)])
+                    break  # Stop processing, don't retry
+                else:
+                    # First quota error - keep this batch and continue (might be temporary)
+                    print(f"  [WARN] Quota error ({quota_errors_seen}/{max_quota_errors}), keeping batch and continuing...")
+                    filtered_terms.extend(non_acronyms)
+                    progress_bar.update(1)
+                    continue
             else:
                 # Other error - keep this batch and continue
                 progress_bar.set_postfix({
