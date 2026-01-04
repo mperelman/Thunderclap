@@ -311,6 +311,16 @@ def build_complete_index():
         except Exception as e:
             print(f"  [WARN] Could not remove pre-existing SQLite file: {e}")
     
+    # Remove any WAL/SHM files that might be left over
+    for suffix in ['.sqlite3-wal', '.sqlite3-shm', '.sqlite3-journal']:
+        wal_file = sqlite_file + suffix
+        if os.path.exists(wal_file):
+            try:
+                os.remove(wal_file)
+                print(f"  [INFO] Removed {suffix} file")
+            except:
+                pass
+    
     # Ensure directory has world-writable permissions (777) to allow ChromaDB's Rust bindings
     # Railway volumes might have permission restrictions that require this
     try:
@@ -319,6 +329,13 @@ def build_complete_index():
         print(f"  [OK] Set directory permissions to 777 (world-writable)")
     except Exception as e:
         print(f"  [WARN] Could not set directory permissions: {e}")
+    
+    # CRITICAL: Set SQLite environment variables to force DELETE journal mode
+    # Railway volumes may not support WAL mode, which ChromaDB uses by default
+    # Setting these before ChromaDB initializes might help
+    import os
+    os.environ['SQLITE_DEFAULT_JOURNAL_MODE'] = 'DELETE'
+    print(f"  [INFO] Set SQLITE_DEFAULT_JOURNAL_MODE=DELETE environment variable")
     
     # Use same settings as QueryEngine (no explicit settings = defaults)
     # This avoids "different settings" error when ChromaDB was initialized elsewhere
@@ -346,11 +363,29 @@ def build_complete_index():
     
     print(f"  [INFO] Creating new collection '{COLLECTION_NAME}'...")
     try:
+        # CRITICAL: If SQLite file was created by ChromaDB, try to set journal mode immediately
+        # This must happen AFTER ChromaDB creates the file but BEFORE it tries to write
+        # We'll do this in a try-except since ChromaDB might create it during create_collection
+        sqlite_file = os.path.join(vectordb_path, 'chroma.sqlite3')
+        
         collection = client.create_collection(
             name=COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"}
         )
         print(f"  [OK] Collection created")
+        
+        # Immediately after collection creation, try to set SQLite journal mode to DELETE
+        # This might help if ChromaDB created the file with WAL mode
+        if os.path.exists(sqlite_file):
+            try:
+                import sqlite3
+                conn = sqlite3.connect(sqlite_file)
+                conn.execute("PRAGMA journal_mode=DELETE")
+                result = conn.execute("PRAGMA journal_mode").fetchone()
+                conn.close()
+                print(f"  [INFO] Set SQLite journal mode to DELETE (current: {result[0] if result else 'unknown'})")
+            except Exception as jm_e:
+                print(f"  [WARN] Could not set SQLite journal mode: {jm_e}")
         
         # Check files after collection creation
         print(f"  [INFO] Files in vectordb after collection creation:")
