@@ -434,6 +434,15 @@ def build_complete_index():
                 print(f"  [INFO] SQLite test passed, so this is ChromaDB-specific")
             except Exception as perm_e:
                 print(f"  [ERROR] Cannot write to directory: {perm_e}")
+            
+            # If on Railway, provide specific instructions
+            if is_railway:
+                print(f"\n  [SOLUTION] Railway volumes have known issues with ChromaDB's SQLite writes")
+                print(f"  [SOLUTION] You need to build the database locally and upload it:")
+                print(f"    1. Run 'python build_index.py' locally")
+                print(f"    2. Upload data/vectordb/ directory to Railway volume")
+                print(f"    3. Or use Railway CLI: railway run --service web sh -c 'mkdir -p /app/data/vectordb'")
+                print(f"    4. Then copy your local data/vectordb/* to /app/data/vectordb/")
         
         # List files to see what ChromaDB tried to create
         print(f"  [ERROR] Files in vectordb after failed collection creation:")
