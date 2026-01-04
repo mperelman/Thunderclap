@@ -297,26 +297,28 @@ def build_complete_index():
         print(f"  [ERROR] Railway volumes may have restrictions on SQLite journal/WAL files")
         raise Exception(f"Cannot write SQLite database files: {sqlite_e}")
     
-    # CRITICAL: Pre-create SQLite database file with correct permissions
-    # ChromaDB's Rust bindings may create the file differently than Python's sqlite3
-    # Pre-creating it ensures it has the right permissions
-    print(f"  [INFO] Pre-creating SQLite database file for ChromaDB...")
+    # CRITICAL: Ensure directory has correct permissions and is empty
+    # ChromaDB's Rust bindings need to create the SQLite file themselves
+    # Pre-creating it might cause issues if ChromaDB expects to create it fresh
+    print(f"  [INFO] Ensuring vectordb directory is ready for ChromaDB...")
     sqlite_file = os.path.join(vectordb_path, 'chroma.sqlite3')
+    
+    # Remove any pre-existing SQLite file - ChromaDB needs to create it
+    if os.path.exists(sqlite_file):
+        try:
+            os.remove(sqlite_file)
+            print(f"  [INFO] Removed pre-existing SQLite file (ChromaDB will create it)")
+        except Exception as e:
+            print(f"  [WARN] Could not remove pre-existing SQLite file: {e}")
+    
+    # Ensure directory has world-writable permissions (777) to allow ChromaDB's Rust bindings
+    # Railway volumes might have permission restrictions that require this
     try:
-        import sqlite3
         import stat
-        # Create SQLite database file with DELETE journal mode (more compatible)
-        conn = sqlite3.connect(sqlite_file)
-        conn.execute("PRAGMA journal_mode=DELETE")
-        conn.execute("CREATE TABLE IF NOT EXISTS _chroma_placeholder (id INTEGER PRIMARY KEY)")
-        conn.commit()
-        conn.close()
-        # Set explicit permissions
-        os.chmod(sqlite_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-        print(f"  [OK] Pre-created SQLite database file with correct permissions")
-    except Exception as precreate_e:
-        print(f"  [WARN] Could not pre-create SQLite file: {precreate_e}")
-        # Continue anyway - ChromaDB might create it differently
+        os.chmod(vectordb_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 777
+        print(f"  [OK] Set directory permissions to 777 (world-writable)")
+    except Exception as e:
+        print(f"  [WARN] Could not set directory permissions: {e}")
     
     # Use same settings as QueryEngine (no explicit settings = defaults)
     # This avoids "different settings" error when ChromaDB was initialized elsewhere
@@ -363,12 +365,13 @@ def build_complete_index():
             print(f"    [WARN] Could not list files: {list_e}")
         
         # Fix permissions on SQLite database file and any related files
+        # Set to world-writable (666) to ensure ChromaDB's Rust bindings can write
         if os.path.exists(sqlite_file):
             try:
                 import stat
-                # Set read/write permissions for owner and group
-                os.chmod(sqlite_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-                print(f"  [OK] Fixed permissions on SQLite database")
+                # Set to world-writable (666) - Railway volumes may need this
+                os.chmod(sqlite_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
+                print(f"  [OK] Fixed permissions on SQLite database (666)")
             except Exception as e:
                 print(f"  [WARN] Could not fix SQLite permissions: {e}")
         
@@ -377,8 +380,8 @@ def build_complete_index():
             wal_file = sqlite_file + suffix
             if os.path.exists(wal_file):
                 try:
-                    os.chmod(wal_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-                    print(f"  [OK] Fixed permissions on {suffix} file")
+                    os.chmod(wal_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
+                    print(f"  [OK] Fixed permissions on {suffix} file (666)")
                 except Exception as e:
                     print(f"  [WARN] Could not fix permissions on {suffix}: {e}")
     except Exception as e:
