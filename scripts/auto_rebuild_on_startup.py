@@ -113,10 +113,21 @@ def rebuild_index():
                 print(f"[INFO] Skipping rebuild - Railway volumes can't create ChromaDB")
                 print(f"[INFO] If you need to rebuild, build locally and upload to Railway volume")
                 return True  # Success - database exists
-            except:
-                pass  # Collection doesn't exist, continue with rebuild attempt
-        except:
-            pass  # Can't check, continue with rebuild attempt
+            except Exception as e:
+                # Collection doesn't exist - Railway can't create it, so skip rebuild
+                print(f"[WARN] ChromaDB collection doesn't exist on Railway")
+                print(f"[WARN] Railway volumes cannot create ChromaDB databases (SQLite write issue)")
+                print(f"[WARN] You must build the database locally and upload it to Railway")
+                print(f"[WARN] Steps:")
+                print(f"[WARN]   1. Run 'python build_index.py' locally")
+                print(f"[WARN]   2. Upload data/vectordb/ directory to Railway volume at /app/data/vectordb/")
+                print(f"[WARN]   3. Restart Railway service")
+                print(f"[WARN] Skipping rebuild to avoid error")
+                return False  # Return False so server knows database is missing
+        except Exception as e:
+            print(f"[WARN] Could not check ChromaDB: {e}")
+            print(f"[WARN] Assuming Railway - skipping rebuild")
+            return False
     
     # Skip LLM filtering during rebuilds to avoid quota issues
     # It's only needed for "View Sample Terms" feature, not for queries
