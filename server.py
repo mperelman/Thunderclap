@@ -133,27 +133,47 @@ def background_rebuild():
         # Quick check: if index doesn't exist, we need to build
         from lib.config import INDICES_FILE, VECTORDB_DIR
         if not os.path.exists(INDICES_FILE) or not chromadb_exists:
-            if not os.path.exists(INDICES_FILE):
+            # Check if we're on Railway - if so, can't rebuild ChromaDB
+            is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+            
+            if is_railway and not chromadb_exists:
+                print(f"\n[STARTUP] ⚠️ ChromaDB collection missing on Railway")
+                print(f"[STARTUP] ⚠️ Railway volumes cannot create ChromaDB databases (SQLite write limitation)")
+                print(f"[STARTUP] ⚠️ You must build the database locally and upload it:")
+                print(f"[STARTUP]    1. Run 'python build_index.py' locally")
+                print(f"[STARTUP]    2. Upload data/vectordb/ directory to Railway volume at /app/data/vectordb/")
+                print(f"[STARTUP]    3. Restart Railway service")
+                print(f"[STARTUP] ⚠️ Skipping rebuild to avoid error")
+                rebuild_in_progress = False
+            elif not os.path.exists(INDICES_FILE):
                 print("\n[STARTUP] No index found - starting background rebuild...")
+                rebuild_in_progress = True
+                print(f"[STARTUP] Rebuild started at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                success = rebuild_index()
+                rebuild_in_progress = False
+                if success:
+                    print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
+                else:
+                    print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
                 print(f"\n[STARTUP] ChromaDB collection missing - starting background rebuild...")
                 print(f"[STARTUP] VECTORDB_DIR: {VECTORDB_DIR}")
                 print(f"[STARTUP] VECTORDB_DIR exists: {os.path.exists(VECTORDB_DIR)}")
-            rebuild_in_progress = True
-            print(f"[STARTUP] Rebuild started at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-            success = rebuild_index()
-            rebuild_in_progress = False
-            if success:
-                print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
-                # Verify ChromaDB was created
-                try:
-                    chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
-                    collection = chroma_client.get_collection(name=COLLECTION_NAME)
-                    print(f"[STARTUP] ✅ Verified: ChromaDB collection exists with {collection.count()} chunks")
-                except Exception as e:
-                    print(f"[STARTUP] ⚠️ WARNING: Rebuild reported success but ChromaDB still missing: {e}")
-            else:
-                print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                rebuild_in_progress = True
+                print(f"[STARTUP] Rebuild started at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                success = rebuild_index()
+                rebuild_in_progress = False
+                if success:
+                    print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
+                    # Verify ChromaDB was created
+                    try:
+                        chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+                        collection = chroma_client.get_collection(name=COLLECTION_NAME)
+                        print(f"[STARTUP] ✅ Verified: ChromaDB collection exists with {collection.count()} chunks")
+                    except Exception as e:
+                        print(f"[STARTUP] ⚠️ WARNING: Rebuild reported success but ChromaDB still missing: {e}")
+                else:
+                    print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             return
         
         # Index exists - check if source documents changed
