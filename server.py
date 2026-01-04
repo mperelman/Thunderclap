@@ -319,7 +319,12 @@ async def process_query_job(job_id: str, question: str, max_length: int):
             if rebuild_in_progress:
                 raise RuntimeError("Database is being rebuilt. Please wait a few minutes and try again. Check Railway logs for progress.")
             else:
-                raise RuntimeError("Database not initialized. The rebuild should start automatically. Please wait a few minutes and try again, or check Railway logs.")
+                # Check if we're on Railway
+                is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+                if is_railway:
+                    raise RuntimeError("Database not initialized. Railway volumes cannot create ChromaDB databases. Please build the database locally (python build_index.py) and upload data/vectordb/ to Railway volume at /app/data/vectordb/, then restart the service.")
+                else:
+                    raise RuntimeError("Database not initialized. The rebuild should start automatically. Please wait a few minutes and try again, or check Railway logs.")
         
         from lib.query_engine import QueryEngine
         
