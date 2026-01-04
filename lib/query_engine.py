@@ -1222,8 +1222,8 @@ class QueryEngine:
                     if len(chunks) > 80:
                         print(f"  [ROUTING] Large firm query ({len(chunks)} chunks) - will route to PeriodEngine for batched processing")
                 else:
-                    chunks = self._deduplicate_and_combine_chunks(chunks)
-                    print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
+                chunks = self._deduplicate_and_combine_chunks(chunks)
+                print(f"  [DEDUP] Reduced {len(original_chunks)} chunks to {len(chunks)} after deduplication/merging")
             
             # CRITICAL: Limit chunks based on token estimates AFTER deduplication
             # This prevents token quota exceeded errors AND timeouts
@@ -1250,7 +1250,7 @@ class QueryEngine:
                 from lib.config import MIN_CHUNKS_FOR_LLM, MIN_CHUNKS_FOR_FIRM_QUERY
                 if is_firm_query:
                     min_chunks = MIN_CHUNKS_FOR_FIRM_QUERY
-                else:
+            else:
                     min_chunks = MIN_CHUNKS_FOR_LLM
                 max_chunks = max(min_chunks, max_chunks)  # At least minimum chunks
                 
@@ -2323,7 +2323,7 @@ ENTITY INTRODUCTIONS (MANDATORY):
                     else:
                         # Answer has no years but chunks do - likely missing information
                         print(f"  [MISSING_INFO] Answer has no years but chunks span {chunk_earliest}-{chunk_latest}")
-                        return True
+                return True
         except Exception:
             return True
         return False
