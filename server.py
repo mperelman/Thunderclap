@@ -630,6 +630,46 @@ def get_indexed_terms():
         print(f"[ERROR] Failed to load indexed terms: {e}")
         return {"terms": []}
 
+@app.post("/admin/upload-database")
+async def upload_database(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
+    """Upload ChromaDB database file (chroma.sqlite3) via HTTP."""
+    from lib.config import VECTORDB_DIR
+    
+    try:
+        # Read file content
+        content = await file.read()
+        
+        # Handle gzip compression if present
+        if content_encoding == "gzip":
+            import gzip
+            content = gzip.decompress(content)
+        elif len(content) >= 2 and content[0] == 0x1f and content[1] == 0x8b:
+            # Auto-detect gzip by magic bytes
+            import gzip
+            content = gzip.decompress(content)
+        
+        # Ensure vectordb directory exists
+        os.makedirs(VECTORDB_DIR, exist_ok=True)
+        
+        # Write database file
+        db_path = os.path.join(VECTORDB_DIR, "chroma.sqlite3")
+        with open(db_path, "wb") as f:
+            f.write(content)
+        
+        file_size_mb = len(content) / 1024 / 1024
+        
+        print(f"[UPLOAD] Successfully uploaded database ({file_size_mb:.2f} MB)")
+        
+        return {
+            "status": "success",
+            "message": f"Database uploaded successfully ({file_size_mb:.2f} MB)",
+            "path": db_path,
+            "size_bytes": len(content)
+        }
+    except Exception as e:
+        print(f"[UPLOAD ERROR] Database upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 @app.post("/admin/upload-index")
 async def upload_index(file: UploadFile = File(...)):
     """
