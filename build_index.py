@@ -262,6 +262,25 @@ def build_complete_index():
         os.makedirs(vectordb_path, mode=0o755, exist_ok=True)
         print(f"  [OK] Created vectordb directory")
     
+    # CRITICAL: Test SQLite write capability before ChromaDB tries to use it
+    # SQLite has specific requirements that regular file writes don't catch
+    print(f"  [INFO] Testing SQLite write capability...")
+    try:
+        import sqlite3
+        test_sqlite = os.path.join(vectordb_path, 'test_sqlite.db')
+        conn = sqlite3.connect(test_sqlite)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
+        cursor.execute("INSERT INTO test (id) VALUES (1)")
+        conn.commit()
+        conn.close()
+        os.remove(test_sqlite)
+        print(f"  [OK] SQLite write test passed")
+    except Exception as sqlite_e:
+        print(f"  [ERROR] SQLite write test failed: {sqlite_e}")
+        print(f"  [ERROR] This indicates a SQLite-specific permission issue")
+        raise Exception(f"Cannot write SQLite database files: {sqlite_e}")
+    
     # Use same settings as QueryEngine (no explicit settings = defaults)
     # This avoids "different settings" error when ChromaDB was initialized elsewhere
     print(f"  [INFO] Creating ChromaDB client...")
@@ -288,7 +307,8 @@ def build_complete_index():
         if os.path.exists(sqlite_file):
             try:
                 import stat
-                os.chmod(sqlite_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP)
+                # Set read/write permissions for owner and group
+                os.chmod(sqlite_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
                 print(f"  [OK] Fixed permissions on SQLite database")
             except Exception as e:
                 print(f"  [WARN] Could not fix SQLite permissions: {e}")
@@ -304,6 +324,7 @@ def build_complete_index():
                 os.remove(test_file)
                 print(f"  [INFO] Directory is writable, but SQLite file creation failed")
                 print(f"  [INFO] This may be a Railway volume permission issue")
+                print(f"  [INFO] SQLite requires write access to both the database file and journal files")
             except Exception as perm_e:
                 print(f"  [ERROR] Cannot write to directory: {perm_e}")
         raise
