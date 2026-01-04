@@ -96,9 +96,30 @@ def rebuild_index():
     print("AUTO-REBUILDING INDEX")
     print("="*80 + "\n")
     
+    # Check if we're on Railway and if ChromaDB already exists
+    # If so, skip rebuild (Railway volumes can't create ChromaDB, but can read existing ones)
+    import os
+    is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+    
+    if is_railway:
+        from lib.config import VECTORDB_DIR, COLLECTION_NAME
+        try:
+            import chromadb
+            chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
+            try:
+                collection = chroma_client.get_collection(name=COLLECTION_NAME)
+                count = collection.count()
+                print(f"[INFO] ChromaDB already exists on Railway ({count:,} chunks)")
+                print(f"[INFO] Skipping rebuild - Railway volumes can't create ChromaDB")
+                print(f"[INFO] If you need to rebuild, build locally and upload to Railway volume")
+                return True  # Success - database exists
+            except:
+                pass  # Collection doesn't exist, continue with rebuild attempt
+        except:
+            pass  # Can't check, continue with rebuild attempt
+    
     # Skip LLM filtering during rebuilds to avoid quota issues
     # It's only needed for "View Sample Terms" feature, not for queries
-    import os
     original_skip = os.getenv('SKIP_LLM_FILTERING')
     os.environ['SKIP_LLM_FILTERING'] = 'true'
     
