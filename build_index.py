@@ -333,7 +333,7 @@ def build_complete_index():
     # CRITICAL: Set SQLite environment variables to force DELETE journal mode
     # Railway volumes may not support WAL mode, which ChromaDB uses by default
     # Setting these before ChromaDB initializes might help
-    import os
+    # Note: os is already imported at the top of the file
     os.environ['SQLITE_DEFAULT_JOURNAL_MODE'] = 'DELETE'
     print(f"  [INFO] Set SQLITE_DEFAULT_JOURNAL_MODE=DELETE environment variable")
     
