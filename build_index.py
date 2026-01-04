@@ -267,8 +267,23 @@ def build_complete_index():
     print(f"  [INFO] Testing SQLite write capability...")
     try:
         import sqlite3
+        # Check SQLite version (ChromaDB requires 3.35.0+)
+        sqlite_version = sqlite3.sqlite_version
+        print(f"  [INFO] SQLite version: {sqlite_version}")
+        version_parts = [int(x) for x in sqlite_version.split('.')]
+        if version_parts[0] < 3 or (version_parts[0] == 3 and version_parts[1] < 35):
+            print(f"  [WARN] SQLite version may be too old (ChromaDB requires 3.35.0+)")
+        
         test_sqlite = os.path.join(vectordb_path, 'test_sqlite.db')
         conn = sqlite3.connect(test_sqlite)
+        # Try setting journal mode to DELETE (more compatible with some filesystems)
+        # WAL mode can cause issues with some volume mounts
+        try:
+            conn.execute("PRAGMA journal_mode=DELETE")
+            print(f"  [INFO] Set SQLite journal mode to DELETE")
+        except:
+            pass  # Some SQLite versions/configurations don't support this
+        
         cursor = conn.cursor()
         cursor.execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
         cursor.execute("INSERT INTO test (id) VALUES (1)")
@@ -279,6 +294,7 @@ def build_complete_index():
     except Exception as sqlite_e:
         print(f"  [ERROR] SQLite write test failed: {sqlite_e}")
         print(f"  [ERROR] This indicates a SQLite-specific permission issue")
+        print(f"  [ERROR] Railway volumes may have restrictions on SQLite journal/WAL files")
         raise Exception(f"Cannot write SQLite database files: {sqlite_e}")
     
     # Use same settings as QueryEngine (no explicit settings = defaults)
