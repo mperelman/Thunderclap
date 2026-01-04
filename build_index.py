@@ -297,6 +297,27 @@ def build_complete_index():
         print(f"  [ERROR] Railway volumes may have restrictions on SQLite journal/WAL files")
         raise Exception(f"Cannot write SQLite database files: {sqlite_e}")
     
+    # CRITICAL: Pre-create SQLite database file with correct permissions
+    # ChromaDB's Rust bindings may create the file differently than Python's sqlite3
+    # Pre-creating it ensures it has the right permissions
+    print(f"  [INFO] Pre-creating SQLite database file for ChromaDB...")
+    sqlite_file = os.path.join(vectordb_path, 'chroma.sqlite3')
+    try:
+        import sqlite3
+        import stat
+        # Create SQLite database file with DELETE journal mode (more compatible)
+        conn = sqlite3.connect(sqlite_file)
+        conn.execute("PRAGMA journal_mode=DELETE")
+        conn.execute("CREATE TABLE IF NOT EXISTS _chroma_placeholder (id INTEGER PRIMARY KEY)")
+        conn.commit()
+        conn.close()
+        # Set explicit permissions
+        os.chmod(sqlite_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
+        print(f"  [OK] Pre-created SQLite database file with correct permissions")
+    except Exception as precreate_e:
+        print(f"  [WARN] Could not pre-create SQLite file: {precreate_e}")
+        # Continue anyway - ChromaDB might create it differently
+    
     # Use same settings as QueryEngine (no explicit settings = defaults)
     # This avoids "different settings" error when ChromaDB was initialized elsewhere
     print(f"  [INFO] Creating ChromaDB client...")
@@ -309,6 +330,18 @@ def build_complete_index():
     except:
         pass
     
+    # Check what files ChromaDB creates before collection creation
+    print(f"  [INFO] Files in vectordb before collection creation:")
+    try:
+        for f in os.listdir(vectordb_path):
+            filepath = os.path.join(vectordb_path, f)
+            if os.path.isfile(filepath):
+                size = os.path.getsize(filepath)
+                perms = oct(os.stat(filepath).st_mode)[-3:]
+                print(f"    - {f} ({size} bytes, permissions: {perms})")
+    except Exception as list_e:
+        print(f"    [WARN] Could not list files: {list_e}")
+    
     print(f"  [INFO] Creating new collection '{COLLECTION_NAME}'...")
     try:
         collection = client.create_collection(
@@ -317,9 +350,19 @@ def build_complete_index():
         )
         print(f"  [OK] Collection created")
         
-        # Fix permissions on SQLite database file (if it exists)
-        # ChromaDB creates chroma.sqlite3 in the vectordb directory
-        sqlite_file = os.path.join(vectordb_path, 'chroma.sqlite3')
+        # Check files after collection creation
+        print(f"  [INFO] Files in vectordb after collection creation:")
+        try:
+            for f in os.listdir(vectordb_path):
+                filepath = os.path.join(vectordb_path, f)
+                if os.path.isfile(filepath):
+                    size = os.path.getsize(filepath)
+                    perms = oct(os.stat(filepath).st_mode)[-3:]
+                    print(f"    - {f} ({size} bytes, permissions: {perms})")
+        except Exception as list_e:
+            print(f"    [WARN] Could not list files: {list_e}")
+        
+        # Fix permissions on SQLite database file and any related files
         if os.path.exists(sqlite_file):
             try:
                 import stat
@@ -328,6 +371,16 @@ def build_complete_index():
                 print(f"  [OK] Fixed permissions on SQLite database")
             except Exception as e:
                 print(f"  [WARN] Could not fix SQLite permissions: {e}")
+        
+        # Also fix permissions on any WAL or journal files ChromaDB might create
+        for suffix in ['.sqlite3-wal', '.sqlite3-shm', '.sqlite3-journal']:
+            wal_file = sqlite_file + suffix
+            if os.path.exists(wal_file):
+                try:
+                    os.chmod(wal_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
+                    print(f"  [OK] Fixed permissions on {suffix} file")
+                except Exception as e:
+                    print(f"  [WARN] Could not fix permissions on {suffix}: {e}")
     except Exception as e:
         error_msg = str(e)
         if 'readonly' in error_msg.lower() or '1032' in error_msg:
@@ -338,11 +391,24 @@ def build_complete_index():
                 with open(test_file, 'w') as f:
                     f.write('test')
                 os.remove(test_file)
-                print(f"  [INFO] Directory is writable, but SQLite file creation failed")
-                print(f"  [INFO] This may be a Railway volume permission issue")
-                print(f"  [INFO] SQLite requires write access to both the database file and journal files")
+                print(f"  [INFO] Directory is writable, but ChromaDB SQLite creation failed")
+                print(f"  [INFO] This suggests ChromaDB's Rust bindings have different permission requirements")
+                print(f"  [INFO] SQLite test passed, so this is ChromaDB-specific")
             except Exception as perm_e:
                 print(f"  [ERROR] Cannot write to directory: {perm_e}")
+        
+        # List files to see what ChromaDB tried to create
+        print(f"  [ERROR] Files in vectordb after failed collection creation:")
+        try:
+            for f in os.listdir(vectordb_path):
+                filepath = os.path.join(vectordb_path, f)
+                if os.path.isfile(filepath):
+                    size = os.path.getsize(filepath)
+                    perms = oct(os.stat(filepath).st_mode)[-3:]
+                    print(f"    - {f} ({size} bytes, permissions: {perms})")
+        except Exception as list_e:
+            print(f"    [WARN] Could not list files: {list_e}")
+        
         raise
     
     # Add in batches
