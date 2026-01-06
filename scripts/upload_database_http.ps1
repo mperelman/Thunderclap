@@ -1,17 +1,17 @@
 # HTTP upload script for ChromaDB database
 # Much faster than SSH pipes!
 
+param(
+    [string]$ServiceUrl = "https://web-production-c4223.up.railway.app",
+    [string]$SourceFile = "data\vectordb\chroma.sqlite3"
+)
+
 # Change to script's parent directory (project root)
 $scriptDir = Split-Path $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path $scriptDir -Parent
 Set-Location $projectRoot
 Write-Host "Working directory: $projectRoot" -ForegroundColor Gray
 Write-Host ""
-
-param(
-    [string]$ServiceUrl = "https://web-production-c4223.up.railway.app",
-    [string]$SourceFile = "data\vectordb\chroma.sqlite3"
-)
 
 if (-not (Test-Path $SourceFile)) {
     Write-Host "ERROR: Source file not found: $SourceFile" -ForegroundColor Red
