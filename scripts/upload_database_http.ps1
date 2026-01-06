@@ -13,6 +13,8 @@ Set-Location $projectRoot
 Write-Host "Working directory: $projectRoot" -ForegroundColor Gray
 Write-Host ""
 
+# Resolve source file path relative to project root
+$SourceFile = Join-Path $projectRoot $SourceFile
 if (-not (Test-Path $SourceFile)) {
     Write-Host "ERROR: Source file not found: $SourceFile" -ForegroundColor Red
     exit 1
