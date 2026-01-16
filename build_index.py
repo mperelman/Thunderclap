@@ -25,6 +25,9 @@ def build_complete_index():
     print("BUILDING INDEX WITH ENDNOTES")
     print("="*80 + "\n")
     
+    # Environment detection (used for error guidance)
+    is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+    
     # Step 1: Load documents (with endnotes)
     print("Step 1: Loading documents...")
     documents = load_all_documents(use_cache=False)  # Force re-parse to get endnotes
@@ -225,11 +228,30 @@ def build_complete_index():
         print(f"  [INFO] Removing existing vectordb directory to avoid settings conflict...")
         import shutil
         import gc
+        import time
+        import stat
+        
+        def _on_rm_error(func, path, exc_info):
+            try:
+                os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
+                func(path)
+            except Exception:
+                pass
+        
+        def _rmtree_with_retries(path, retries=3, delay=2):
+            for attempt in range(1, retries + 1):
+                try:
+                    shutil.rmtree(path, onerror=_on_rm_error)
+                    return True
+                except Exception as e:
+                    print(f"  [WARN] Could not remove vectordb directory (attempt {attempt}/{retries}): {e}")
+                    time.sleep(delay)
+            return False
+        
         try:
             # Force garbage collection to close any open ChromaDB file handles
             # This is critical - SQLite files can be locked by open connections
             gc.collect()
-            import time
             time.sleep(2)  # Wait for file handles to close
             
             # Try to remove SQLite file first (it might be locked)
@@ -243,9 +265,18 @@ def build_complete_index():
                     print(f"  [WARN] Could not remove SQLite file (may be locked): {e}")
                     # Continue anyway - might still be able to remove directory
             
-            # Now remove the entire directory
-            shutil.rmtree(vectordb_path)
-            print(f"  [OK] Removed existing vectordb directory")
+            # Now remove the entire directory (retry on Windows file locks)
+            removed = _rmtree_with_retries(vectordb_path)
+            if removed:
+                print(f"  [OK] Removed existing vectordb directory")
+            else:
+                # Fall back to renaming if removal fails (e.g., OneDrive locks)
+                backup_path = f"{vectordb_path}_old_{int(time.time())}"
+                try:
+                    os.rename(vectordb_path, backup_path)
+                    print(f"  [WARN] Renamed locked vectordb to {backup_path}")
+                except Exception as e:
+                    print(f"  [WARN] Could not rename locked vectordb directory: {e}")
             
             # Wait before recreating
             time.sleep(1)
@@ -490,6 +521,14 @@ def build_complete_index():
     print(f"Chunks with endnotes: {len(endnote_data['chunk_to_endnotes']):,}")
     print(f"Terms indexed: {len(indices['term_to_chunks']):,}")
     print(f"Deduplicated term files: {files_created:,}")
+    # Record build info so server doesn't auto-rebuild on startup
+    try:
+        from scripts.auto_rebuild_on_startup import save_build_info, get_source_doc_mtimes
+        save_build_info(get_source_doc_mtimes())
+        print(f"[OK] Saved build info for auto-rebuild checks")
+    except Exception as e:
+        print(f"[WARN] Could not save build info: {e}")
+    
     print(f"\n[SUCCESS] Index built successfully!")
     print(f"Location: {DATA_DIR}")
 

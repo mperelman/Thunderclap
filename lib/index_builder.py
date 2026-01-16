@@ -480,7 +480,18 @@ def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=
     use_key_manager = False
     try:
         from .api_key_manager import APIKeyManager
-        key_manager = APIKeyManager()  # Auto-loads from env vars
+        local_keys = []
+        try:
+            from .api_keys import get_api_keys
+            local_keys = [k for k in get_api_keys() if k and k != "REVOKED_KEY_REMOVED" and k.startswith("AIza")]
+        except Exception:
+            local_keys = []
+        
+        # If local keys exist, prefer them and skip env keys to avoid expired env key noise
+        if local_keys:
+            key_manager = APIKeyManager(api_keys=local_keys, include_env_keys=False)
+        else:
+            key_manager = APIKeyManager()  # Auto-loads from env vars
         test_llm = LLMAnswerGenerator(key_manager=key_manager)
         if not test_llm.client:
             print("  [WARN] LLM initialization failed, skipping LLM filtering")
@@ -542,6 +553,24 @@ def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=
     quota_errors_seen = 0
     max_quota_errors = 2  # Skip LLM filtering after 2 quota errors
     
+    def _parse_terms_response(response_text: str) -> list:
+        cleaned = response_text.strip()
+        if '```json' in cleaned:
+            cleaned = cleaned.split('```json')[1].split('```')[0].strip()
+        elif '```' in cleaned:
+            cleaned = cleaned.split('```')[1].split('```')[0].strip()
+        
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            # Try to extract the first JSON array from the response
+            match = re.search(r'\[[\s\S]*\]', cleaned)
+            if match:
+                return json.loads(match.group(0))
+            raise
+    
+    max_terms_per_request = min(250, batch_size)
+    
     for i in range(0, len(pre_filtered_terms), batch_size):
         batch = pre_filtered_terms[i:i+batch_size]
         batch_num = i//batch_size + 1
@@ -585,10 +614,19 @@ def filter_terms_with_llm(term_counts, term_to_chunks, all_acronyms, batch_size=
                 llm = LLMAnswerGenerator()
             
             # OPTIMIZED: Shorter, more focused prompt
-            # OPTIMIZED: Limit to 400 terms per batch to avoid token limits
-            terms_to_send = non_acronyms[:400]
+            # Limit terms per request to avoid token limits
+            retry_sizes = [
+                min(max_terms_per_request, len(non_acronyms)),
+                min(max(100, max_terms_per_request // 2), len(non_acronyms)),
+                min(max(50, max_terms_per_request // 4), len(non_acronyms))
+            ]
+            kept_terms = None
             
-            prompt = f"""Filter terms for hyperlinking. Return JSON array of terms to KEEP.
+            for attempt_idx, attempt_size in enumerate(retry_sizes, start=1):
+                terms_to_send = non_acronyms[:attempt_size]
+                remaining_terms = non_acronyms[attempt_size:]
+                
+                prompt = f"""Filter terms for hyperlinking. Return JSON array of terms to KEEP.
 
 KEEP: Multi-word entities, rare surnames (Rothschild/Sassoon), identity terms (Jewish/Quaker), law codes (BA1933).
 EXCLUDE: Common first names, family words, generic titles, common places, function words.
@@ -596,16 +634,20 @@ EXCLUDE: Common first names, family words, generic titles, common places, functi
 Terms: {json.dumps(terms_to_send)}
 
 Output: JSON array only, no explanations."""
+                response_text = llm.call_api(prompt).strip()
+                
+                try:
+                    kept_terms = _parse_terms_response(response_text)
+                    # Keep any terms we didn't send to avoid dropping coverage
+                    if remaining_terms:
+                        kept_terms.extend(remaining_terms)
+                    break
+                except json.JSONDecodeError:
+                    if attempt_idx == len(retry_sizes):
+                        raise Exception("LLM response could not be parsed as JSON (token limit or truncation).")
+                    print(f"  [WARN] LLM response parse failed; retrying with smaller batch ({attempt_size} terms)...")
+                    continue
             
-            response_text = llm.call_api(prompt).strip()
-            
-            # Extract JSON from response
-            if '```json' in response_text:
-                response_text = response_text.split('```json')[1].split('```')[0].strip()
-            elif '```' in response_text:
-                response_text = response_text.split('```')[1].split('```')[0].strip()
-            
-            kept_terms = json.loads(response_text)
             filtered_terms.extend(kept_terms)
             
             # Update progress bar
@@ -780,38 +822,7 @@ def build_indices(chunks, chunk_ids):
                         name_changes[old_lower] = set()
                     name_changes[old_lower].add(new_lower)
         
-        # CRITICAL CHANGE: Only index IMPORTANT banking family surnames, not all surnames
-        # Focus on key banking families from cousinhoods, not every person mentioned
-        # Important banking family surnames (from cousinhoods and key banking history)
-        IMPORTANT_BANKING_SURNAMES = {
-            # Jewish banking families
-            'rothschild', 'warburg', 'kuhn', 'loeb', 'schiff', 'seligman', 'lazard', 'goldschmidt',
-            'mendes', 'sassoon', 'delbanco', 'oppenheim', 'wertheimer', 'goldman', 'sachs',
-            'lehman', 'katz', 'katzenellenbogen', 'cohen', 'kagan', 'abrabanel', 'seneor',
-            # Quaker banking families
-            'barclay', 'bevan', 'tritton', 'lloyd',
-            # Huguenot banking families
-            'hope', 'mallet', 'thellusson',
-            # Puritan/Boston Brahmin
-            'morgan', 'cabot', 'lowell', 'forbes', 'perkins', 'higginson',
-            # Knickerbocker (New York elite)
-            'rensselaer', 'schuyler', 'schaack', 'roosevelt', 'livingston',
-            # Protestant Cologne
-            'stein', 'schaaffhausen',
-            # Gentile British
-            'baring', 'grenfell',
-            # Armenian banking families
-            'balian', 'dadian', 'gulbenkian',
-            # Black banking families
-            'brimmer', 'lewis', 'raines', 'ferguson', 'jordan', 'ogunlesi', 'cole', 'johnson',
-            'parsons', 'wright', 'walker', 'perry', 'church', 'gaston', 'weston', 'turner',
-            'dibble', 'vaughan',
-            # Other important banking families
-            'chase', 'rockefeller', 'vanderbilt', 'harriman', 'hill', 'gould', 'frick',
-            'mellon', 'du pont', 'ford', 'astor', 'guggenheim'
-        }
-        
-        # Extract surnames from proper names, but ONLY index if they're important banking families
+        # Extract surnames from proper names
         proper_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', chunk)
         
         for full_name in proper_names:
@@ -820,8 +831,8 @@ def build_indices(chunks, chunk_ids):
             surname = canonicalize_term(surname_raw)
             surname_lower = surname.lower()
             
-            # CRITICAL: Only index if surname is an important banking family
-            if surname_lower not in IMPORTANT_BANKING_SURNAMES:
+            # Skip generic words and very short tokens
+            if len(surname_lower) < 3 or surname_lower in GENERIC_WORDS_TO_EXCLUDE:
                 continue
             
             # Index surname (preserving capitalization)

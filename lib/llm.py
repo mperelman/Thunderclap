@@ -85,6 +85,11 @@ class LLMAnswerGenerator:
             "output_token" in msg or
             "token_count" in msg
         )
+
+    def _is_key_leaked_error(self, exc: Exception) -> bool:
+        """Check if exception indicates the API key was leaked/compromised."""
+        msg = str(exc).lower()
+        return "leaked" in msg or "compromised" in msg or "exposed" in msg
     
     def _is_actual_quota_exhaustion(self, exc: Exception) -> bool:
         """Check if this is actual daily quota exhaustion (not just rate limiting or token quota)."""
@@ -111,6 +116,35 @@ class LLMAnswerGenerator:
             return float(match.group(1))
         return None  # Use exponential backoff
 
+    def _run_async(self, coro):
+        """Run a coroutine safely from sync code, even if a loop is active."""
+        import asyncio
+        try:
+            asyncio.get_running_loop()
+            # Running loop exists; run in a new thread with its own loop
+            result = [None]
+            error = [None]
+            
+            def run_in_thread():
+                try:
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    result[0] = new_loop.run_until_complete(coro)
+                    new_loop.close()
+                except Exception as e:
+                    error[0] = e
+            
+            import threading
+            thread = threading.Thread(target=run_in_thread)
+            thread.start()
+            thread.join()
+            if error[0]:
+                raise error[0]
+            return result[0]
+        except RuntimeError:
+            # No running loop
+            return asyncio.run(coro)
+
     def call_api(self, prompt: str) -> str:
         """
         Make a single API call with the given prompt.
@@ -124,6 +158,8 @@ class LLMAnswerGenerator:
         Raises:
             Exception: If API call fails and no fallback available
         """
+        # Async-first: route sync calls through async client
+        return self._run_async(self.call_api_async(prompt))
         if not self.client:
             raise Exception("No LLM client available. Set GEMINI_API_KEY environment variable.")
         
@@ -367,6 +403,8 @@ class LLMAnswerGenerator:
         Returns:
             Generated narrative answer
         """
+        # Async-first: route sync calls through async client
+        return self._run_async(self.generate_answer_async(question, chunks))
         # CRITICAL: Limit chunks here as a safety net (in case query_engine.py didn't limit)
         # This prevents token quota errors even if limiting was missed earlier
         # Use same conservative limits (40%) as query_engine.py

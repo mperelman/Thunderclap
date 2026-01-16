@@ -260,6 +260,16 @@ class QueryEngine:
         if lookup_term in self.term_to_chunks:
             all_chunk_ids.update(self.term_to_chunks[lookup_term])
         
+        def _should_expand_association(base_term: str, associated_term: str) -> bool:
+            if not base_term or not associated_term:
+                return False
+            base_lower = base_term.lower()
+            assoc_lower = associated_term.lower()
+            if base_lower == assoc_lower:
+                return False
+            # Only expand when the base term is contained as a whole word in the associated term
+            return re.search(rf'\\b{re.escape(base_lower)}\\b', assoc_lower) is not None
+
         # Expand search using entity associations
         # Check if this term has associated terms (e.g., "Lyonnais" -> "Crédit Lyonnais")
         if self.entity_associations:
@@ -270,7 +280,7 @@ class QueryEngine:
                     associated_terms = self.entity_associations[check_term]
                     # Add chunks from associated terms
                     for associated_term in associated_terms:
-                        if associated_term in self.term_to_chunks:
+                        if associated_term in self.term_to_chunks and _should_expand_association(check_term, associated_term):
                             all_chunk_ids.update(self.term_to_chunks[associated_term])
                             print(f"  [SEARCH_EXPAND] Expanded '{term}' to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
         
@@ -709,17 +719,17 @@ class QueryEngine:
                 chunks.update(self.term_to_chunks[term])
             # Expand using entity associations (check both original and lowercase)
             if self.entity_associations:
+                term_lower = term.lower()
                 # Check original term
                 if term in self.entity_associations:
                     for associated_term in self.entity_associations[term]:
-                        if associated_term in self.term_to_chunks:
+                        if associated_term in self.term_to_chunks and re.search(rf'\\b{re.escape(term_lower)}\\b', associated_term.lower()):
                             chunks.update(self.term_to_chunks[associated_term])
                             print(f"  [EXPAND] Expanded '{term}' to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
                 # Also check lowercase version (for case-insensitive matching)
-                term_lower = term.lower()
                 if term_lower in self.entity_associations and term_lower != term:
                     for associated_term in self.entity_associations[term_lower]:
-                        if associated_term in self.term_to_chunks:
+                        if associated_term in self.term_to_chunks and re.search(rf'\\b{re.escape(term_lower)}\\b', associated_term.lower()):
                             chunks.update(self.term_to_chunks[associated_term])
                             print(f"  [EXPAND] Expanded '{term}' (via lowercase) to include '{associated_term}' ({len(self.term_to_chunks[associated_term])} chunks)")
             return chunks
@@ -2267,7 +2277,17 @@ ENTITY INTRODUCTIONS (MANDATORY):
         try:
             if not isinstance(text, str):
                 return True
-            if "no relevant information found" in text.lower():
+            lower_text = text.lower()
+            if "no relevant information found" in lower_text:
+                return True
+            no_info_phrases = [
+                "no information",
+                "no relevant information",
+                "provided documents do not contain",
+                "cannot be generated",
+                "not available"
+            ]
+            if any(phrase in lower_text for phrase in no_info_phrases):
                 return True
             # Too short or too few paragraphs
             if len(text.strip()) < 300 or self._para_count(text) < 3:
@@ -2865,24 +2885,46 @@ Generate a thematically organized narrative with cultural explanations:"""
         estimated_time = total_batches * pause_time
         print(f"  [INFO] Will process {total_batches} batches (~{chunks_per_batch} chunks/batch, ~{estimated_time//60} min {estimated_time%60} sec)")
         
-        for i in range(0, len(chunks), chunks_per_batch):
-            batch = chunks[i:i + chunks_per_batch]
-            batch_num = i // chunks_per_batch + 1
-            
-            # Calculate actual tokens for this batch
-            batch_words = sum(len(chunk[0].split()) for chunk in batch)
-            batch_tokens = int(batch_words * TOKENS_PER_WORD + prompt_overhead_tokens)
-            
-            print(f"  [BATCH {batch_num}/{total_batches}] Processing {len(batch)} chunks (~{batch_tokens:,} tokens)...")
-            
-            # Generate narrative for this batch
-            narrative = self.llm.generate_answer(question, batch)
-            narratives.append(narrative)
-            
-            # Wait between batches to avoid rate limit (if not last batch)
-            if i + chunks_per_batch < len(chunks):
-                print(f"  [WAIT] Pausing {pause_time} seconds to avoid rate limit...")
-                time.sleep(pause_time)
+        # Prefer parallel async processing when multiple API keys are available
+        use_parallel = (
+            self.use_async
+            and getattr(self.llm, "key_manager", None) is not None
+            and self.llm.key_manager.get_available_count() > 1
+            and total_batches > 1
+        )
+        
+        if use_parallel:
+            try:
+                narratives = self._run_batched_parallel(
+                    question=question,
+                    chunks=chunks,
+                    chunks_per_batch=chunks_per_batch,
+                    total_batches=total_batches
+                )
+            except Exception as e:
+                print(f"  [WARN] Parallel batching failed ({e}); falling back to sequential batching")
+                narratives = []
+        
+        # Sequential fallback (or default)
+        if not narratives:
+            for i in range(0, len(chunks), chunks_per_batch):
+                batch = chunks[i:i + chunks_per_batch]
+                batch_num = i // chunks_per_batch + 1
+                
+                # Calculate actual tokens for this batch
+                batch_words = sum(len(chunk[0].split()) for chunk in batch)
+                batch_tokens = int(batch_words * TOKENS_PER_WORD + prompt_overhead_tokens)
+                
+                print(f"  [BATCH {batch_num}/{total_batches}] Processing {len(batch)} chunks (~{batch_tokens:,} tokens)...")
+                
+                # Generate narrative for this batch
+                narrative = self.llm.generate_answer(question, batch)
+                narratives.append(narrative)
+                
+                # Wait between batches to avoid rate limit (if not last batch)
+                if i + chunks_per_batch < len(chunks):
+                    print(f"  [WAIT] Pausing {pause_time} seconds to avoid rate limit...")
+                    time.sleep(pause_time)
         
         # Combine all narratives
         print(f"  [COMBINE] Merging {len(narratives)} narrative sections...")
@@ -2916,12 +2958,71 @@ Other Instructions:
 Answer:"""
         
         try:
-            response = self.llm.client.generate_content(combined_prompt)
-            return response.text
+            return self.llm.call_api(combined_prompt)
         except Exception as e:
             print(f"  [WARN] Failed to combine narratives: {e}, using concatenation fallback")
             # Fallback: just concatenate
             return "\n\n---\n\n".join(narratives)
+
+    def _run_batched_parallel(
+        self,
+        question: str,
+        chunks: list,
+        chunks_per_batch: int,
+        total_batches: int
+    ) -> list:
+        """Run batched LLM calls in parallel using multiple API keys."""
+        import asyncio
+        
+        async def _run_async():
+            # Cap concurrency to available keys (and global safety max)
+            available_keys = 0
+            if getattr(self.llm, "key_manager", None) is not None:
+                available_keys = self.llm.key_manager.get_available_count()
+            max_concurrent = max(1, min(available_keys or 1, 10))
+            semaphore = asyncio.Semaphore(max_concurrent)
+            
+            print(f"  [PARALLEL] Running {total_batches} batches with concurrency={max_concurrent}")
+            tasks = []
+            
+            for i in range(0, len(chunks), chunks_per_batch):
+                batch = chunks[i:i + chunks_per_batch]
+                batch_num = i // chunks_per_batch + 1
+                
+                async def process_batch(b=batch, bn=batch_num):
+                    async with semaphore:
+                        print(f"  [BATCH {bn}/{total_batches}] (parallel) {len(b)} chunks...")
+                        return await self.llm.generate_answer_async(question, b)
+                
+                tasks.append(process_batch())
+            
+            return await asyncio.gather(*tasks)
+        
+        try:
+            loop = asyncio.get_running_loop()
+            result = [None]
+            error = [None]
+            
+            def run_in_thread():
+                try:
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    result[0] = new_loop.run_until_complete(_run_async())
+                    new_loop.close()
+                except Exception as e:
+                    error[0] = e
+            
+            import threading
+            thread = threading.Thread(target=run_in_thread)
+            thread.start()
+            thread.join()
+            
+            if error[0]:
+                raise error[0]
+            return result[0]
+        except RuntimeError:
+            # No running loop, safe to run directly
+            return asyncio.run(_run_async())
     
     def get_stats(self) -> Dict:
         """Get database statistics."""

@@ -333,7 +333,14 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         def run_query():
             nonlocal qe
             qe = QueryEngine(gemini_api_key=current_key, use_async=False)
-            return qe.query(question, use_llm=True)
+            try:
+                return qe.query(question, use_llm=True)
+            except Exception as e:
+                error_msg = str(e).lower()
+                if any(token in error_msg for token in ("429", "quota", "rate limit")):
+                    print(f"[JOB {job_id}] LLM rate limit/quota hit - falling back to raw search results")
+                    return qe.query(question, use_llm=False)
+                raise
         
         # Run query in executor with timeout
         loop = asyncio.get_event_loop()

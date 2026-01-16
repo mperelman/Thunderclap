@@ -38,7 +38,7 @@ class APIKeyManager:
     - Distributes load across all keys
     """
     
-    def __init__(self, api_keys: Optional[List[str]] = None):
+    def __init__(self, api_keys: Optional[List[str]] = None, include_env_keys: bool = True):
         """
         Initialize key manager.
         
@@ -57,18 +57,19 @@ class APIKeyManager:
         else:
             self._load_keys_from_test_file()
         
-        # CRITICAL: Prioritize environment variables (Railway/production)
-        # This is the ONLY secure source - never load from files in production
-        # Try GEMINI_API_KEY first, then try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
-        env_key = os.getenv('GEMINI_API_KEY')
-        if env_key and env_key.startswith("AIza"):
-            self.keys.append(KeyStatus(key=env_key, name="Env Key"))
-        
-        # Try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
-        for i in range(1, 21):  # Check up to 20 numbered keys
-            numbered_key = os.getenv(f'GEMINI_API_KEY_{i}')
-            if numbered_key and numbered_key.startswith("AIza"):
-                self.keys.append(KeyStatus(key=numbered_key, name=f"Env Key #{i}"))
+        if include_env_keys:
+            # CRITICAL: Prioritize environment variables (Railway/production)
+            # This is the ONLY secure source - never load from files in production
+            # Try GEMINI_API_KEY first, then try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+            env_key = os.getenv('GEMINI_API_KEY')
+            if env_key and env_key.startswith("AIza"):
+                self.keys.append(KeyStatus(key=env_key, name="Env Key"))
+            
+            # Try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+            for i in range(1, 21):  # Check up to 20 numbered keys
+                numbered_key = os.getenv(f'GEMINI_API_KEY_{i}')
+                if numbered_key and numbered_key.startswith("AIza"):
+                    self.keys.append(KeyStatus(key=numbered_key, name=f"Env Key #{i}"))
         
         # Only use file-based loading if NO environment variables found (local dev only)
         if not self.keys:
