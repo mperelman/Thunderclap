@@ -759,10 +759,10 @@ async def upload_endnotes(file: UploadFile = File(...), content_encoding: Option
     from lib.config import DATA_DIR
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    if file.filename != "endnotes.json":
+    if file.filename not in ["endnotes.json", "endnotes.json.gz"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Expected filename 'endnotes.json', got '{file.filename}'"
+            detail=f"Expected filename 'endnotes.json' or 'endnotes.json.gz', got '{file.filename}'"
         )
 
     try:
@@ -801,10 +801,10 @@ async def upload_chunk_to_endnotes(file: UploadFile = File(...), content_encodin
     from lib.config import DATA_DIR
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    if file.filename != "chunk_to_endnotes.json":
+    if file.filename not in ["chunk_to_endnotes.json", "chunk_to_endnotes.json.gz"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Expected filename 'chunk_to_endnotes.json', got '{file.filename}'"
+            detail=f"Expected filename 'chunk_to_endnotes.json' or 'chunk_to_endnotes.json.gz', got '{file.filename}'"
         )
 
     try:
