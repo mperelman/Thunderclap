@@ -333,7 +333,17 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         def run_query():
             nonlocal qe
             qe = QueryEngine(gemini_api_key=current_key, use_async=True)
+            max_chunks_override = None
+            normalized = question.lower().strip()
+            if normalized.startswith("tell me about "):
+                subject = normalized.replace("tell me about ", "", 1).strip()
+                if subject and len(subject.split()) <= 2:
+                    max_chunks_override = 40
+            if max_chunks_override:
+                print(f"[JOB {job_id}] Using max_chunks={max_chunks_override} for short subject query")
             try:
+                if max_chunks_override:
+                    return qe.query(question, max_chunks=max_chunks_override, use_llm=True)
                 return qe.query(question, use_llm=True)
             except Exception as e:
                 error_msg = str(e).lower()
