@@ -1842,7 +1842,27 @@ def build_endnote_mappings(documents, chunks, chunk_ids):
             prefixed_id = f"{doc_name}:{endnote_id}"
             all_endnotes[prefixed_id] = endnote_text
     
+    # Deduplicate endnotes by text (normalize whitespace/case)
+    canonical_by_text = {}
+    duplicate_to_canonical = {}
+    for endnote_id, endnote_text in all_endnotes.items():
+        normalized = " ".join(endnote_text.split()).lower()
+        if normalized in canonical_by_text:
+            duplicate_to_canonical[endnote_id] = canonical_by_text[normalized]
+        else:
+            canonical_by_text[normalized] = endnote_id
+    if duplicate_to_canonical:
+        deduped_endnotes = {}
+        for endnote_id, endnote_text in all_endnotes.items():
+            canonical_id = duplicate_to_canonical.get(endnote_id, endnote_id)
+            if canonical_id == endnote_id:
+                deduped_endnotes[endnote_id] = endnote_text
+        all_endnotes = deduped_endnotes
+        print(f"[OK] Deduplicated endnotes: removed {len(duplicate_to_canonical)} duplicates")
+
     # Map chunks to endnotes
+    # Allow small proximity window to catch endnotes referenced just after chunk boundary
+    proximity_chars = 200
     for doc in documents:
         if 'body_paragraphs' not in doc:
             continue
@@ -1864,10 +1884,12 @@ def build_endnote_mappings(documents, chunks, chunk_ids):
                     para_end = para_start + len(para['text'])
                     
                     # If paragraph overlaps with chunk, add its endnotes
-                    if para_start <= chunk_idx + len(chunk_text) and para_end >= chunk_idx:
+                    chunk_end = chunk_idx + len(chunk_text)
+                    if para_start <= chunk_end + proximity_chars and para_end >= chunk_idx - proximity_chars:
                         for endnote_id in para['endnote_ids']:
                             prefixed_id = f"{doc_name}:{endnote_id}"
-                            chunk_endnote_ids.append(prefixed_id)
+                            canonical_id = duplicate_to_canonical.get(prefixed_id, prefixed_id)
+                            chunk_endnote_ids.append(canonical_id)
                     
                     para_start = para_end + 1  # +1 for newline
                 

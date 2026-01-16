@@ -745,6 +745,103 @@ CRITICAL: FRAME MODERN REFERENCES AS LEGACY CONTINUITY (CRITICAL):
 """
 
 # ============================================================================
+# GLOBAL WRITING & ANALYSIS INSTRUCTIONS
+# ============================================================================
+
+GLOBAL_WRITING_ANALYSIS_INSTRUCTIONS = """
+GLOBAL WRITING & ANALYSIS INSTRUCTIONS:
+1. Chronology Is Mandatory
+- The entire text must move strictly forward in time from start to finish.
+- No flashbacks, no retroactive explanations, no late insertion of early-life or ancestry details.
+- Each paragraph must represent a later moment than the one before it.
+2. Introduction Rules
+- The introduction must establish:
+  - Who the subject is
+  - The starting time period
+  - Why the subject matters at that point in time
+- Do not introduce elite networks, marriages, firms, or influence before anchoring time and context.
+3. Paragraph Discipline
+- One paragraph = one development (event, shift, or decision).
+- Do not mix biography, business, politics, and family alliances in the same paragraph unless they occur simultaneously.
+4. Ideas Must Obey Time
+- Conceptual or thematic paragraphs must be anchored to a specific period.
+- No free-floating analysis detached from chronology.
+- If an idea spans multiple decades:
+  - Introduce it at the earliest relevant point
+  - Revisit only when it evolves or produces a new outcome
+5. Examples Belong to Their Era
+- Examples must be placed where they occurred historically.
+- Never use later outcomes to explain earlier actions.
+- If multiple examples occur across time, split them into separate paragraphs.
+6. Cause -> Effect Structure
+- Every major event must clearly state:
+  - What changed
+  - Why it happened
+  - What it enabled next
+- Avoid descriptive listing without causal linkage.
+7. Controlled Use of Names and Networks
+- Introduce institutions, families, or firms only when they become relevant.
+- No prestige stacking or name clustering without explaining the concrete advantage gained.
+- Kinship, marriage, or affiliation must have an explicit functional role.
+8. No Retroactive Importance
+- Do not describe early events using significance gained decades later.
+- Importance must be framed as it was understood at the time.
+9. Transitions Are Required
+- Each paragraph must connect to the previous one with:
+  - A time marker, or
+  - A causal transition
+- The reader should be able to trace a continuous timeline without rearranging text.
+10. Repetition Is Not Reinforcement
+- Do not restate ancestry, elite ties, or status unless new information is added.
+- Consolidate background details early.
+11. Synthesis Comes Last
+- Only the final paragraph may:
+  - Collapse time
+  - Identify long-term patterns
+  - Draw generalized conclusions
+- No new facts in the conclusion.
+12. Clarity Over Flourish
+- Precision beats elegance.
+- If a sentence does more than one job, split it.
+- Avoid vague abstractions that substitute for explanation.
+
+HARD FAILURE TEST (NON-NEGOTIABLE):
+- If a reader cannot draw a straight, uninterrupted timeline from top to bottom without reordering sentences, the response fails.
+- Ideas explain events; they do not reorder them.
+
+FOCUS & NARRATIVE CONTROL RULES:
+13. Single Narrative Center
+- The text must have one primary subject (person, family, or entity).
+- All information must be relevant only insofar as it advances understanding of that subject.
+14. Subordinate Figures Are Context, Not Co-Stars
+- Secondary individuals (ancestors, in-laws, partners, firms) may appear only to explain a concrete effect on the primary subject.
+- Do not shift narrative attention away from the primary subject to explore others' histories.
+15. No Ancestral Detours
+- Ancestry is introduced once, briefly, and only if it directly explains access, capital, or position.
+- Do not narrate the ancestor's independent story unless it directly produces an outcome for the main subject.
+16. Relevance Test (Mandatory)
+- For every paragraph, the AI must be able to answer:
+  - How does this paragraph advance the primary subject's position, power, or trajectory at this moment in time?
+  - If it doesn't, the paragraph is removed or rewritten.
+17. Proper Handling of Influential Relatives
+- When mentioning relatives (e.g., Honig, Weiss):
+  - Limit description to the specific mechanism of influence (legal services, capital access, marriage alliance).
+  - Do not describe their broader prominence unless it materially affects the subject.
+18. No Focus Drift Within Paragraphs
+- A paragraph may reference secondary figures, but the grammatical subject should return to the primary subject.
+- Sentences should be written so the reader never forgets who the paragraph is about.
+19. Explicit Scope Control
+- The AI must not expand the scope beyond the stated subject.
+- If a broader pattern is relevant (e.g., elite intermarriage), it must be framed as a pattern affecting the subject, not as an independent topic.
+20. Focus-Safe Conclusion
+- The conclusion must synthesize the subject's trajectory, not the network's prestige.
+- Other figures are referenced only as structural forces shaping the subject's outcome.
+
+ENFORCEMENT RULE:
+- If a paragraph could survive unchanged in a biography of someone else, it does not belong.
+"""
+
+# ============================================================================
 # BATCH PROMPT BUILDER
 # ============================================================================
 
@@ -993,6 +1090,10 @@ SECTIONS TO MERGE:
 YOUR TASK: Create ONE complete narrative (not separate sections). Deduplicate information, organize chronologically by time period, and maintain analytical framework THROUGHOUT.
 
 {CRITICAL_RELEVANCE_AND_ACCURACY}
+
+FINAL-STAGE WRITING & ANALYSIS INSTRUCTIONS (APPLY AT MERGE ONLY):
+
+{GLOBAL_WRITING_ANALYSIS_INSTRUCTIONS}
 
 CRITICAL: FILTER FOR RELEVANCE WHILE MERGING
 - As you merge, REMOVE any information that doesn't directly involve the query subject

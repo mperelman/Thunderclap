@@ -128,6 +128,9 @@ class QueryEngine:
         
         # Initialize answer reviewer
         self.reviewer = AnswerReviewer()
+
+        # Cache for document paragraph data (endnote targeting)
+        self._doc_paragraph_cache = {}
         
         print("  [OK] Query engine ready\n")
     
@@ -171,6 +174,8 @@ class QueryEngine:
         
         endnotes_file = os.path.join(DATA_DIR, 'endnotes.json')
         chunk_mapping_file = os.path.join(DATA_DIR, 'chunk_to_endnotes.json')
+        print(f"  [ENDNOTES] Loading endnotes from: {endnotes_file}")
+        print(f"  [ENDNOTES] Loading chunk mapping from: {chunk_mapping_file}")
         
         try:
             if os.path.exists(endnotes_file):
@@ -178,17 +183,80 @@ class QueryEngine:
                     self.endnotes = json.load(f)
                 print(f"      - {len(self.endnotes):,} endnotes loaded")
             else:
+                print("      - endnotes.json not found")
                 self.endnotes = {}
             
             if os.path.exists(chunk_mapping_file):
                 with open(chunk_mapping_file, 'r', encoding='utf-8') as f:
                     self.chunk_to_endnotes = json.load(f)
             else:
+                print("      - chunk_to_endnotes.json not found")
                 self.chunk_to_endnotes = {}
         except Exception as e:
             print(f"    [WARNING] Could not load endnotes: {e}")
             self.endnotes = {}
             self.chunk_to_endnotes = {}
+
+    def _get_cached_paragraphs(self, filename: str) -> list:
+        """Load cached body_paragraphs for a document, if available."""
+        if filename in self._doc_paragraph_cache:
+            return self._doc_paragraph_cache[filename]
+        try:
+            from lib.document_parser import get_cache_path
+            cache_path = get_cache_path(filename)
+            if os.path.exists(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    cached = json.load(f)
+                paragraphs = cached.get('body_paragraphs', [])
+                self._doc_paragraph_cache[filename] = paragraphs
+                return paragraphs
+        except Exception:
+            pass
+        self._doc_paragraph_cache[filename] = []
+        return []
+
+    @staticmethod
+    def _paragraph_in_chunk(para_text_lower: str, chunk_text_lower: str) -> bool:
+        """Heuristic check for paragraph overlap with chunk text."""
+        if not para_text_lower or not chunk_text_lower:
+            return False
+        if para_text_lower in chunk_text_lower:
+            return True
+        if len(para_text_lower) > 120:
+            start_snip = para_text_lower[:120].strip()
+            end_snip = para_text_lower[-120:].strip()
+            if (start_snip and start_snip in chunk_text_lower) or (end_snip and end_snip in chunk_text_lower):
+                return True
+        return False
+
+    def _select_endnotes_for_chunk(self, chunk_text: str, filename: str, subject_terms: list) -> list:
+        """
+        Select endnotes that immediately follow mentions of subject terms within
+        paragraphs overlapping this chunk. Returns prefixed endnote IDs.
+        """
+        if not subject_terms or not filename:
+            return []
+        paragraphs = self._get_cached_paragraphs(filename)
+        if not paragraphs:
+            return []
+        doc_name = filename.replace('.docx', '')
+        chunk_lower = chunk_text.lower()
+        matched_ids = []
+        for para in paragraphs:
+            endnote_ids = para.get('endnote_ids') or []
+            if not endnote_ids:
+                continue
+            para_text = para.get('text', '')
+            if not para_text:
+                continue
+            para_lower = para_text.lower()
+            if not any(term in para_lower for term in subject_terms):
+                continue
+            if not self._paragraph_in_chunk(para_lower, chunk_lower):
+                continue
+            # Take the first endnote as the "immediate" reference for this paragraph
+            matched_ids.append(f"{doc_name}:{endnote_ids[0]}")
+        return matched_ids
     
     def search_endnotes(self, term: str, max_results: int = 20) -> List[tuple]:
         """
@@ -1036,12 +1104,26 @@ class QueryEngine:
         if len(chunk_ids_list) < SPARSE_RESULTS_THRESHOLD and self.chunk_to_endnotes and self.endnotes:
             print(f"  [AUGMENT] Sparse results - including endnotes linked to {len(chunk_ids_list)} chunks...")
             endnote_ids = set()
-            
-            # Get all endnote IDs linked to the chunks we found
-            for chunk_id in chunk_ids_list:
-                if chunk_id in self.chunk_to_endnotes:
-                    endnote_ids.update(self.chunk_to_endnotes[chunk_id])
-            
+            # Prefer precise endnotes tied to paragraphs containing subject terms
+            subject_terms_for_endnotes = []
+            if subject_terms:
+                subject_terms_for_endnotes.extend([t.lower() for t in subject_terms])
+            if subject_phrases:
+                subject_terms_for_endnotes.extend([p.lower() for p in subject_phrases])
+            subject_terms_for_endnotes = [t for t in subject_terms_for_endnotes if t]
+
+            if subject_terms_for_endnotes:
+                for chunk_id, chunk_text, meta in zip(data['ids'], data['documents'], data['metadatas']):
+                    filename = meta.get('filename')
+                    matched = self._select_endnotes_for_chunk(chunk_text, filename, subject_terms_for_endnotes)
+                    endnote_ids.update(matched)
+
+            # Fallback: if no targeted endnotes found, use chunk-to-endnote mapping
+            if not endnote_ids:
+                for chunk_id in chunk_ids_list:
+                    if chunk_id in self.chunk_to_endnotes:
+                        endnote_ids.update(self.chunk_to_endnotes[chunk_id])
+
             # Include entire endnote texts (no searching - just include what's linked)
             if endnote_ids:
                 for endnote_id in endnote_ids:
@@ -1055,7 +1137,7 @@ class QueryEngine:
                         }
                         endnote_chunks.append((text, metadata))
                 
-                print(f"  [AUGMENT] Added {len(endnote_chunks)} endnotes linked to chunks ({len(chunk_ids_list)} chunks → {len(endnote_chunks)} endnotes)")
+                print(f"  [AUGMENT] Added {len(endnote_chunks)} endnotes linked to chunks ({len(chunk_ids_list)} chunks -> {len(endnote_chunks)} endnotes)")
         
         # Generate answer using advanced LLM if available
         if use_llm and self.llm:

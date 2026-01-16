@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- Version: 2025-01-22-18:00 - Gold Theme v8 - BUILD: gold02-hyperlink-fix -->
-    <meta name="build-id" content="gold06-2026-01-15-white-sparse-chains">
+    <meta name="build-id" content="gold08-2026-01-16-organic-chain-bg">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -16,7 +16,7 @@
         // Cache busting - check version but don't block execution
         (function() {
             const CURRENT_VERSION = '9';
-            const BUILD_ID = 'gold06-2026-01-15-white-sparse-chains';
+            const BUILD_ID = 'gold08-2026-01-16-organic-chain-bg';
             const urlParams = new URLSearchParams(window.location.search);
             const currentVersion = urlParams.get('v');
             
@@ -52,11 +52,11 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: #ffffff;
-            background-image:
-                repeating-linear-gradient(45deg, rgba(209, 168, 64, 0.22) 0 2px, rgba(255, 255, 255, 0.22) 2px 12px),
-                repeating-linear-gradient(-45deg, rgba(209, 168, 64, 0.16) 0 2px, rgba(255, 255, 255, 0.16) 2px 12px);
-            background-size: 80px 80px, 80px 80px;
+            background-color: #fff7e6;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'><rect width='1600' height='900' fill='%23fff7e6'/><g fill='none' stroke-linecap='round' stroke-opacity='0.35'><path d='M-120 140 C 120 20, 360 260, 620 120 S 980 40, 1240 140 S 1520 260, 1760 120' stroke='%23d1a840' stroke-width='2.2'/><path d='M-140 360 C 80 520, 360 200, 640 360 S 980 520, 1260 360 S 1520 200, 1740 360' stroke='%23caa13b' stroke-width='1.9'/><path d='M-80 620 C 140 760, 380 540, 660 640 S 1020 760, 1320 640 S 1560 520, 1760 680' stroke='%23d1a840' stroke-width='2.1'/><path d='M120 40 C 260 240, 520 260, 760 80 S 1120 -20, 1480 120' stroke='%23caa13b' stroke-width='1.7'/><path d='M-80 820 C 180 620, 520 920, 860 780 S 1220 640, 1660 840' stroke='%23d1a840' stroke-width='2.0'/></g><g fill='none' stroke-linecap='round' stroke-opacity='0.28'><path d='M-200 260 C 60 120, 280 320, 520 220 S 900 120, 1180 260 S 1480 380, 1780 260' stroke='%23c08f2f' stroke-width='1.6'/><path d='M-200 520 C 40 700, 300 460, 580 540 S 980 720, 1320 520 S 1560 420, 1780 560' stroke='%23c08f2f' stroke-width='1.5'/><path d='M-120 740 C 120 900, 420 700, 700 760 S 1040 820, 1340 700 S 1560 600, 1760 740' stroke='%23c08f2f' stroke-width='1.6'/></g><g fill='none' stroke-linecap='round' stroke-opacity='0.4'><path d='M220 -80 C 260 120, 480 160, 620 40 S 920 -80, 1240 40' stroke='%23d9b157' stroke-width='2.0'/><path d='M360 920 C 560 720, 840 980, 1140 860 S 1480 760, 1760 920' stroke='%23d9b157' stroke-width='1.8'/></g></svg>");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             align-items: center;
