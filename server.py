@@ -752,6 +752,90 @@ async def upload_index(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
+
+@app.post("/admin/upload-endnotes")
+async def upload_endnotes(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
+    """Upload endnotes.json via HTTP."""
+    from lib.config import DATA_DIR
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    if file.filename != "endnotes.json":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Expected filename 'endnotes.json', got '{file.filename}'"
+        )
+
+    try:
+        content = await file.read()
+
+        # Handle gzip compression if present
+        if content_encoding == "gzip":
+            import gzip
+            content = gzip.decompress(content)
+        elif len(content) >= 2 and content[0] == 0x1f and content[1] == 0x8b:
+            import gzip
+            content = gzip.decompress(content)
+
+        # Validate JSON
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            raise ValueError("Root must be a dictionary")
+
+        target_path = os.path.join(DATA_DIR, "endnotes.json")
+        with open(target_path, 'wb') as f:
+            f.write(content)
+
+        return {
+            "status": "success",
+            "message": f"Endnotes uploaded successfully ({len(data):,} entries)",
+            "path": target_path,
+            "size_bytes": len(content)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+@app.post("/admin/upload-chunk-to-endnotes")
+async def upload_chunk_to_endnotes(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
+    """Upload chunk_to_endnotes.json via HTTP."""
+    from lib.config import DATA_DIR
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    if file.filename != "chunk_to_endnotes.json":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Expected filename 'chunk_to_endnotes.json', got '{file.filename}'"
+        )
+
+    try:
+        content = await file.read()
+
+        # Handle gzip compression if present
+        if content_encoding == "gzip":
+            import gzip
+            content = gzip.decompress(content)
+        elif len(content) >= 2 and content[0] == 0x1f and content[1] == 0x8b:
+            import gzip
+            content = gzip.decompress(content)
+
+        # Validate JSON
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            raise ValueError("Root must be a dictionary")
+
+        target_path = os.path.join(DATA_DIR, "chunk_to_endnotes.json")
+        with open(target_path, 'wb') as f:
+            f.write(content)
+
+        return {
+            "status": "success",
+            "message": f"Chunk-to-endnotes uploaded successfully ({len(data):,} chunks)",
+            "path": target_path,
+            "size_bytes": len(content)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     print("="*60)
