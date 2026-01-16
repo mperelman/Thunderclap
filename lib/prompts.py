@@ -302,6 +302,18 @@ WRITING STYLE: Mix Bernanke (analytical rigor, economic precision) + Maya Angelo
 """
 
 # ============================================================================
+# ENDNOTES GUIDANCE
+# ============================================================================
+
+ENDNOTE_RULES = """
+ENDNOTES RULES (CRITICAL):
+- Endnotes are supplemental and may be imprecise; they must NOT drive the narrative.
+- Use endnotes ONLY to confirm or clarify details that already appear in the body text.
+- If a detail appears only in endnotes and not in the body text, DO NOT include it.
+- If endnotes conflict with body text, follow the body text.
+"""
+
+# ============================================================================
 # OTHER RULES
 # ============================================================================
 
@@ -908,6 +920,8 @@ Historical Documents:
 {context}
 
 {critical_rules}
+
+{ENDNOTE_RULES}
 
 NARRATIVE RULES:
 
