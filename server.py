@@ -332,7 +332,7 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         qe = None
         def run_query():
             nonlocal qe
-            qe = QueryEngine(gemini_api_key=current_key, use_async=False)
+            qe = QueryEngine(gemini_api_key=current_key, use_async=True)
             try:
                 return qe.query(question, use_llm=True)
             except Exception as e:
