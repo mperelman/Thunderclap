@@ -1752,6 +1752,9 @@ class QueryEngine:
                     self._record_token_usage(estimated_total)
                     # Minimal review (1 iteration max) for small queries to avoid timeout
                     ans = self._review_and_fix_answer(ans, chunks, question, max_iterations=1, query_start_time=query_start)
+                    # Ensure no-info responses are never returned when chunks exist
+                    if self._is_no_info_answer(ans) or (not self._has_related_questions(ans)) or self._para_count(ans) < 3:
+                        ans = self._polish_answer(question, ans, chunks)
                     query_duration = time.time() - query_start
                     print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s, answer length: {len(ans)} chars")
                     return ans
