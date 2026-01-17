@@ -2730,6 +2730,21 @@ STRICT RULES:
         result = re.sub(r'\.\s*\.', '.', result)
         result = re.sub(r'\s+', ' ', result)
         return result.strip()
+
+    def _filter_chunks_by_question_terms(self, question: str, chunks: List[tuple]) -> List[tuple]:
+        """Filter chunks to those that contain meaningful question terms (fallback for no-info answers)."""
+        if not question or not chunks:
+            return chunks
+        tokens = re.findall(r"[A-Za-z']+", question)
+        terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
+        if not terms:
+            return chunks
+        filtered = []
+        for text, meta in chunks:
+            tl = text.lower()
+            if any(term in tl for term in terms):
+                filtered.append((text, meta))
+        return filtered or chunks
     
     def _polish_answer(self, question: str, text: str, chunks: Optional[List[tuple]] = None) -> str:
         """Append a Related Questions section if missing (answerable from chunks) and ensure minimum paragraph count."""
@@ -2737,11 +2752,12 @@ STRICT RULES:
         text = self._remove_source_references(text)
         output = text or ""
         if chunks and self._is_no_info_answer(output):
+            filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
             context_text = "\n\n".join([
                 f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                for text, meta in chunks
+                for text, meta in filtered_chunks
             ])
-            return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
+            return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
         # Ensure minimum paragraphs
         if self._para_count(output) < 3:
             output = output.strip() + "\n\n" + "**Additional Context:**\n- Clarify scope across decades present in sources.\n- Highlight leadership where mentioned (chairs, directors).\n"
