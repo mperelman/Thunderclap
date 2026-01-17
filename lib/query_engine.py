@@ -1146,12 +1146,6 @@ class QueryEngine:
                 (text, meta)
                 for text, meta in zip(data['documents'], data['metadatas'])
             ]
-            # For small, specific queries, focus chunks on subject mentions to reduce drift
-            if subject_terms and len(chunks) <= 20:
-                focused = self._focus_chunks_on_subject(chunks, subject_terms)
-                if focused and focused != chunks:
-                    print(f"  [FOCUS] Reduced chunk text to subject-only sentences ({len(chunks)} chunks)")
-                    chunks = focused
             # Ideology tightening: for Marxism/Socialism/Communism/Collectivism, filter to finance-relevant chunks
             if self._is_ideology_query(question):
                 chunks = self._filter_chunks_for_ideology(chunks, question)
@@ -2753,23 +2747,6 @@ STRICT RULES:
                 filtered.append((text, meta))
         return filtered or chunks
 
-    def _focus_chunks_on_subject(self, chunks: List[tuple], subject_terms: List[str]) -> List[tuple]:
-        """Reduce chunk text to sentences mentioning subject terms (keeps focus for small queries)."""
-        if not chunks or not subject_terms:
-            return chunks
-        terms = [t.lower() for t in subject_terms if t]
-        if not terms:
-            return chunks
-        focused = []
-        for text, meta in chunks:
-            if not isinstance(text, str) or not text.strip():
-                continue
-            # Split into sentences; keep only sentences that mention subject terms
-            sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-            kept = [s for s in sentences if any(term in s.lower() for term in terms)]
-            if kept:
-                focused.append(("\n".join(kept).strip(), meta))
-        return focused or chunks
     
     def _polish_answer(self, question: str, text: str, chunks: Optional[List[tuple]] = None) -> str:
         """Append a Related Questions section if missing (answerable from chunks) and ensure minimum paragraph count."""
