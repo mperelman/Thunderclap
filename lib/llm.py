@@ -233,6 +233,7 @@ class LLMAnswerGenerator:
                     self.key_manager.reset_key_errors(current_key)
                 
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
+                finish_reason = None
                 if response.candidates and len(response.candidates) > 0:
                     candidate = response.candidates[0]
                     if hasattr(candidate, 'finish_reason'):
@@ -245,10 +246,16 @@ class LLMAnswerGenerator:
                             # MAX_TOKENS - response was truncated, but we can still use it
                             print(f"  [WARN] Response hit token limit (finish_reason=2), may be truncated")
                 try:
-                    return response.text
+                    text = response.text
+                    if not text or not text.strip():
+                        raise Exception("Empty response text")
+                    return text
                 except Exception as text_err:
                     # If response.text fails (e.g., finish_reason=2 MAX_TOKENS), try to get partial response
                     error_str = str(text_err)
+                    if finish_reason == 1:
+                        # STOP with no parts/text -> treat as transient empty response and retry
+                        raise Exception("Empty response (finish_reason=1)")
                     if "finish_reason" in error_str or "Part" in error_str or "part" in error_str.lower():
                         if response.candidates and len(response.candidates) > 0:
                             candidate = response.candidates[0]
