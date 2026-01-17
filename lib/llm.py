@@ -234,7 +234,8 @@ class LLMAnswerGenerator:
                 
                 # Check finish_reason: 0=UNSPECIFIED, 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION
                 finish_reason = None
-                if response.candidates and len(response.candidates) > 0:
+                has_candidates = bool(response.candidates and len(response.candidates) > 0)
+                if has_candidates:
                     candidate = response.candidates[0]
                     if hasattr(candidate, 'finish_reason'):
                         finish_reason = candidate.finish_reason
@@ -253,6 +254,8 @@ class LLMAnswerGenerator:
                 except Exception as text_err:
                     # If response.text fails (e.g., finish_reason=2 MAX_TOKENS), try to get partial response
                     error_str = str(text_err)
+                    if not has_candidates:
+                        return ""
                     if finish_reason == 1:
                         # STOP with no parts/text -> return empty so caller can retry/fallback
                         return ""
