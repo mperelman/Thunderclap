@@ -42,6 +42,7 @@ CRITICAL: ACCURACY - NEVER FABRICATE (ABSOLUTE PRIORITY):
 - Do NOT add dates, years, or time periods unless documents explicitly state them
 - Do NOT combine information from different sentences unless documents explicitly connect them
 - Use EXACT spellings and titles from the text (no anglicizing names, no adding Jr./Sr./II/III unless explicitly stated)
+- If any text is provided, you MUST write a narrative based on it; NEVER say "no information" or "not available."
 - BAD: Document says "One of FTX's prosecutors was DOJ Assistant Attorney Danielle Sassoon" → LLM writes "Danielle Sassoon served as a DOJ Assistant Attorney in 2022, during the Panic of 2023 involving SVB and Signature Bank" (WRONG - added 2022 and Panic of 2023 connection that isn't in source)
 - GOOD: "One of FTX's prosecutors was DOJ Assistant Attorney Danielle Sassoon" (exactly as document states)
 - Better to be incomplete than inaccurate
