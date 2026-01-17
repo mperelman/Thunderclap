@@ -1146,6 +1146,12 @@ class QueryEngine:
                 (text, meta)
                 for text, meta in zip(data['documents'], data['metadatas'])
             ]
+            # For small, specific queries, focus chunks on subject mentions to reduce drift
+            if subject_terms and len(chunks) <= 20:
+                focused = self._focus_chunks_on_subject(chunks, subject_terms)
+                if focused and focused != chunks:
+                    print(f"  [FOCUS] Reduced chunk text to subject-only sentences ({len(chunks)} chunks)")
+                    chunks = focused
             # Ideology tightening: for Marxism/Socialism/Communism/Collectivism, filter to finance-relevant chunks
             if self._is_ideology_query(question):
                 chunks = self._filter_chunks_for_ideology(chunks, question)
@@ -1750,8 +1756,8 @@ class QueryEngine:
                     estimated_input_tokens = self._estimate_tokens_for_chunks(chunks)
                     estimated_total = estimated_input_tokens + estimated_output_tokens
                     self._record_token_usage(estimated_total)
-                    # Minimal review (1 iteration max) for small queries to avoid timeout
-                    ans = self._review_and_fix_answer(ans, chunks, question, max_iterations=1, query_start_time=query_start)
+                    # Skip review for very small queries to reduce latency
+                    ans = self._review_and_fix_answer(ans, chunks, question, max_iterations=0, query_start_time=query_start)
                     # Ensure no-info responses are never returned when chunks exist
                     if self._is_no_info_answer(ans) or (not self._has_related_questions(ans)) or self._para_count(ans) < 3:
                         ans = self._polish_answer(question, ans, chunks)
@@ -2557,11 +2563,12 @@ STRICT RULES:
                     answer = self.llm.generate_answer(question, reduced_chunks)
                 if not answer or not answer.strip() or self._is_no_info_answer(answer):
                     print("  [FALLBACK] No usable answer after retry; using raw chunks")
+                    filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
                     context_text = "\n\n".join([
                         f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in chunks
+                        for text, meta in filtered_chunks
                     ])
-                    return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
+                    return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
             # Ensure structure & related questions
             if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                 answer = self._polish_answer(question, answer)
@@ -2745,6 +2752,24 @@ STRICT RULES:
             if any(term in tl for term in terms):
                 filtered.append((text, meta))
         return filtered or chunks
+
+    def _focus_chunks_on_subject(self, chunks: List[tuple], subject_terms: List[str]) -> List[tuple]:
+        """Reduce chunk text to sentences mentioning subject terms (keeps focus for small queries)."""
+        if not chunks or not subject_terms:
+            return chunks
+        terms = [t.lower() for t in subject_terms if t]
+        if not terms:
+            return chunks
+        focused = []
+        for text, meta in chunks:
+            if not isinstance(text, str) or not text.strip():
+                continue
+            # Split into sentences; keep only sentences that mention subject terms
+            sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+            kept = [s for s in sentences if any(term in s.lower() for term in terms)]
+            if kept:
+                focused.append(("\n".join(kept).strip(), meta))
+        return focused or chunks
     
     def _polish_answer(self, question: str, text: str, chunks: Optional[List[tuple]] = None) -> str:
         """Append a Related Questions section if missing (answerable from chunks) and ensure minimum paragraph count."""
@@ -3853,11 +3878,12 @@ Answer:"""
             print(f"    [LLM_CALL] Completed in {llm_duration:.1f}s (~{estimated_total:,} total tokens, {len(result)} chars)")
             if not result or not result.strip():
                 print("    [LLM_CALL] Empty response detected; falling back to raw chunks")
+                filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
                 context_text = "\n\n".join([
                     f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                    for text, meta in chunks
+                    for text, meta in filtered_chunks
                 ])
-                return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
+                return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
             if chunks and self._is_no_info_answer(result):
                 print("    [LLM_CALL] No-info answer detected with chunks present; forcing rewrite")
                 from lib.prompts import build_prompt
@@ -3865,11 +3891,12 @@ Answer:"""
                 result = self.llm.call_api(force_prompt)
                 if not result or not result.strip():
                     print("    [LLM_CALL] Empty response after rewrite; falling back to raw chunks")
+                    filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
                     context_text = "\n\n".join([
                         f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in chunks
+                        for text, meta in filtered_chunks
                     ])
-                    return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
+                    return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
             return result
         except Exception as e:
             llm_duration = time.time() - llm_start
