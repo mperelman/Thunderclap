@@ -1260,6 +1260,10 @@ class QueryEngine:
             # This prevents replacing many chunks with just 1-2 cached chunks
             original_chunk_count = len(chunks)
             if not is_firm_query and original_chunk_count > 0:
+                # Skip preprocessed cache for small-result queries to avoid off-topic cache matches
+                if original_chunk_count < 25:
+                    print(f"  [SKIP_CACHE] Skipping preprocessed file for small query ({original_chunk_count} chunks)")
+                else:
                 cached_chunks = self._try_use_preprocessed_file(chunks, question)
                 if cached_chunks:
                     # Only use cache if it doesn't lose too much context
