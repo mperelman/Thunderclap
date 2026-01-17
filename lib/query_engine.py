@@ -2529,14 +2529,19 @@ STRICT RULES:
             print(f"  [OPTIMIZE] Small query ({len(chunks)} chunks) - skipping period splitting, using single LLM call")
             answer = self.llm.generate_answer(question, chunks)
             # Check for empty answer (can happen if LLM hits token limit)
-            if not answer or not answer.strip():
-                print(f"  [WARN] Empty answer detected, attempting retry with reduced chunks...")
+            if not answer or not answer.strip() or self._is_no_info_answer(answer):
+                print(f"  [WARN] Empty/no-info answer detected, attempting retry with reduced chunks...")
                 if len(chunks) > 10:
                     reduced_chunks = chunks[:10]
                     print(f"  [RETRY] Retrying with {len(reduced_chunks)} chunks (reduced from {len(chunks)})")
                     answer = self.llm.generate_answer(question, reduced_chunks)
-                else:
-                    return f"I apologize, but I encountered an issue generating a response for '{question}'. The response may have exceeded token limits. Please try rephrasing your question or breaking it into smaller parts."
+                if not answer or not answer.strip() or self._is_no_info_answer(answer):
+                    print("  [FALLBACK] No usable answer after retry; using raw chunks")
+                    context_text = "\n\n".join([
+                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                        for text, meta in chunks
+                    ])
+                    return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
             # Ensure structure & related questions
             if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                 answer = self._polish_answer(question, answer)
@@ -2590,14 +2595,19 @@ STRICT RULES:
                 answer = self.llm.generate_answer(question, filtered_chunks)
             print(f"  [DEBUG] Simple path returned: {len(answer)} chars, {len(answer.split(chr(10)+chr(10)))} paragraphs")
             # Check for empty answer (can happen if LLM hits token limit)
-            if not answer or not answer.strip():
-                print(f"  [WARN] Empty answer detected, attempting retry with reduced chunks...")
+            if not answer or not answer.strip() or self._is_no_info_answer(answer):
+                print(f"  [WARN] Empty/no-info answer detected, attempting retry with reduced chunks...")
                 if len(filtered_chunks) > 10:
                     reduced_chunks = filtered_chunks[:10]
                     print(f"  [RETRY] Retrying with {len(reduced_chunks)} chunks (reduced from {len(filtered_chunks)})")
                     answer = self.llm.generate_answer(question, reduced_chunks)
-                else:
-                    return f"I apologize, but I encountered an issue generating a response for '{question}'. The response may have exceeded token limits. Please try rephrasing your question or breaking it into smaller parts."
+                if not answer or not answer.strip() or self._is_no_info_answer(answer):
+                    print("  [FALLBACK] No usable answer after retry; using raw chunks")
+                    context_text = "\n\n".join([
+                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                        for text, meta in filtered_chunks
+                    ])
+                    return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
             # Ensure structure & related questions
             if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                 answer = self._polish_answer(question, answer)
