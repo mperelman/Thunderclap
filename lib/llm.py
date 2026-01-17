@@ -404,7 +404,7 @@ class LLMAnswerGenerator:
                 raise
         raise last_err or Exception(f"API call failed after {max_attempts} retries")
     
-    def generate_answer(self, question: str, chunks: list) -> str:
+    def generate_answer(self, question: str, chunks: list, key_facts: list | None = None) -> str:
         """
         Generate narrative answer from question and chunks.
         Builds prompt and calls API.
@@ -441,7 +441,7 @@ class LLMAnswerGenerator:
                 chunks = chunks[:max_chunks]
         
         from lib.prompts import build_prompt
-        prompt = build_prompt(question, chunks)
+        prompt = build_prompt(question, chunks, key_facts=key_facts)
         return self.call_api(prompt)
     
     async def call_api_async(self, prompt: str) -> str:
@@ -762,7 +762,7 @@ class LLMAnswerGenerator:
                 raise
         raise last_err or Exception(f"Async API call failed after {max_attempts} retries")
     
-    async def generate_answer_async(self, question: str, chunks: list) -> str:
+    async def generate_answer_async(self, question: str, chunks: list, key_facts: list | None = None) -> str:
         """
         Generate narrative answer asynchronously from question and chunks.
         Builds prompt and calls API async.
@@ -775,5 +775,5 @@ class LLMAnswerGenerator:
             Generated narrative answer
         """
         from lib.prompts import build_prompt
-        prompt = build_prompt(question, chunks)
+        prompt = build_prompt(question, chunks, key_facts=key_facts)
         return await self.call_api_async(prompt)

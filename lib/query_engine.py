@@ -1745,7 +1745,8 @@ class QueryEngine:
                     else:
                         print(f"  [OK] Sending {len(chunks)} chunks to LLM (minimum: {min_required})")
                     self._wait_for_token_rate_limit(chunks)
-                    ans = self.llm.generate_answer(question, chunks)
+                    key_facts = self._extract_subject_key_facts(chunks, subject_terms or [])
+                    ans = self.llm.generate_answer(question, chunks, key_facts=key_facts)
                     estimated_output_tokens = len(ans.split()) * TOKENS_PER_WORD
                     estimated_input_tokens = self._estimate_tokens_for_chunks(chunks)
                     estimated_total = estimated_input_tokens + estimated_output_tokens
@@ -2547,7 +2548,8 @@ STRICT RULES:
         # This avoids 6-20 second waits between periods that cause timeouts
         if len(chunks) <= 20:
             print(f"  [OPTIMIZE] Small query ({len(chunks)} chunks) - skipping period splitting, using single LLM call")
-            answer = self.llm.generate_answer(question, chunks)
+            key_facts = self._extract_subject_key_facts(chunks, subject_terms or [])
+            answer = self.llm.generate_answer(question, chunks, key_facts=key_facts)
             # Check for empty answer (can happen if LLM hits token limit)
             if not answer or not answer.strip() or self._is_no_info_answer(answer):
                 print(f"  [WARN] Empty/no-info answer detected, attempting retry with reduced chunks...")
@@ -2746,6 +2748,42 @@ STRICT RULES:
             if any(term in tl for term in terms):
                 filtered.append((text, meta))
         return filtered or chunks
+
+    def _extract_subject_key_facts(self, chunks: List[tuple], subject_terms: List[str], max_facts: int = 8) -> List[str]:
+        """Extract a small set of subject-linked sentences to force inclusion of key facts."""
+        if not chunks or not subject_terms:
+            return []
+        terms = [t.lower() for t in subject_terms if t]
+        if not terms:
+            return []
+        kin_terms = [
+            "married", "wife", "husband", "son", "daughter", "brother", "sister",
+            "cousin", "in-law", "related", "grandniece", "grandson", "granddaughter"
+        ]
+        scored = []
+        seen = set()
+        order = 0
+        for text, _meta in chunks:
+            if not isinstance(text, str):
+                continue
+            sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+            for s in sentences:
+                sl = s.lower()
+                if not s or not any(term in sl for term in terms):
+                    continue
+                norm = re.sub(r'\s+', ' ', sl).strip()
+                if norm in seen:
+                    continue
+                seen.add(norm)
+                score = 1
+                if "rothschild" in sl:
+                    score += 3
+                if any(k in sl for k in kin_terms):
+                    score += 2
+                scored.append((score, order, s.strip()))
+                order += 1
+        scored.sort(key=lambda t: (-t[0], t[1]))
+        return [s for _score, _order, s in scored[:max_facts]]
 
     
     def _polish_answer(self, question: str, text: str, chunks: Optional[List[tuple]] = None) -> str:

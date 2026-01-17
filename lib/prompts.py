@@ -861,7 +861,7 @@ ENFORCEMENT RULE:
 # BATCH PROMPT BUILDER
 # ============================================================================
 
-def build_prompt(question: str, chunks: list, is_control_influence: bool = False) -> str:
+def build_prompt(question: str, chunks: list, is_control_influence: bool = False, key_facts: list | None = None) -> str:
     """
     Build a prompt for generating a narrative answer.
     Wrapper for build_batch_prompt for compatibility.
@@ -874,10 +874,10 @@ def build_prompt(question: str, chunks: list, is_control_influence: bool = False
     Returns:
         Complete prompt string
     """
-    return build_batch_prompt(question, chunks, is_control_influence=is_control_influence)
+    return build_batch_prompt(question, chunks, is_control_influence=is_control_influence, key_facts=key_facts)
 
 
-def build_batch_prompt(question: str, chunks: list, batch_context: str = "", is_control_influence: bool = False) -> str:
+def build_batch_prompt(question: str, chunks: list, batch_context: str = "", is_control_influence: bool = False, key_facts: list | None = None) -> str:
     """
     Build a prompt for processing a single batch of chunks.
     
@@ -897,6 +897,11 @@ def build_batch_prompt(question: str, chunks: list, batch_context: str = "", is_
         context_parts.append(f"[Source {i}: {source}]\n{chunk}\n")
     
     context = "\n---\n".join(context_parts)
+    
+    key_facts_block = ""
+    if key_facts:
+        key_facts_lines = "\n".join(f"- {fact}" for fact in key_facts)
+        key_facts_block = f"\nMANDATORY FACTS TO INCLUDE:\n{key_facts_lines}\n"
     
     # Only include control/influence guidance if explicitly a control/influence query
     # Check question for control keywords as fallback
@@ -919,6 +924,7 @@ def build_batch_prompt(question: str, chunks: list, batch_context: str = "", is_
             critical_rules = CRITICAL_RELEVANCE_AND_ACCURACY
     
     prompt = f"""Write a factual overview about {question}. Use ONLY the text below and never mention sources.
+{key_facts_block}
 
 Historical Documents:
 {context}
