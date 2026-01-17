@@ -314,6 +314,7 @@ ENDNOTES RULES (CRITICAL):
 - Use endnotes ONLY to confirm or clarify details that already appear in the body text.
 - If a detail appears only in endnotes and not in the body text, DO NOT include it.
 - If endnotes conflict with body text, follow the body text.
+- Naming rule for endnotes: If the body text uses I/II/III, you MUST use I/II/III. Never convert to Jr./Sr. from endnotes, and never add Jr./Sr. unless the body text explicitly uses Jr./Sr.
  - If the body text names specific institutions or partners tied to the subject (e.g., listings, financing, mergers), you MUST include those names in the narrative.
 """
 
