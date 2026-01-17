@@ -836,6 +836,53 @@ async def upload_chunk_to_endnotes(file: UploadFile = File(...), content_encodin
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
+
+@app.get("/admin/build-info")
+async def build_info():
+    """Return runtime build + data diagnostics for debugging deployments."""
+    from lib.config import INDICES_FILE, DATA_DIR, VECTORDB_DIR, COLLECTION_NAME
+    info = {
+        "build_id": os.getenv("BUILD_ID"),
+        "indices_path": INDICES_FILE,
+        "indices_exists": os.path.exists(INDICES_FILE),
+        "endnotes_path": os.path.join(DATA_DIR, "endnotes.json"),
+        "endnotes_exists": os.path.exists(os.path.join(DATA_DIR, "endnotes.json")),
+        "chunk_to_endnotes_path": os.path.join(DATA_DIR, "chunk_to_endnotes.json"),
+        "chunk_to_endnotes_exists": os.path.exists(os.path.join(DATA_DIR, "chunk_to_endnotes.json")),
+        "vectordb_path": VECTORDB_DIR,
+        "vectordb_exists": os.path.exists(VECTORDB_DIR),
+        "collection_name": COLLECTION_NAME,
+    }
+    try:
+        if os.path.exists(INDICES_FILE):
+            with open(INDICES_FILE, "r", encoding="utf-8") as f:
+                indices = json.load(f)
+            term_to_chunks = indices.get("term_to_chunks", {})
+            info["term_count"] = len(term_to_chunks)
+            info["cullman_chunks"] = term_to_chunks.get("Cullman") or term_to_chunks.get("cullman") or []
+            info["cullman_chunk_count"] = len(info["cullman_chunks"])
+    except Exception as e:
+        info["indices_error"] = str(e)
+    try:
+        if os.path.exists(os.path.join(DATA_DIR, "endnotes.json")):
+            with open(os.path.join(DATA_DIR, "endnotes.json"), "r", encoding="utf-8") as f:
+                endnotes = json.load(f)
+            info["endnotes_count"] = len(endnotes)
+        if os.path.exists(os.path.join(DATA_DIR, "chunk_to_endnotes.json")):
+            with open(os.path.join(DATA_DIR, "chunk_to_endnotes.json"), "r", encoding="utf-8") as f:
+                chunk_map = json.load(f)
+            info["chunk_to_endnotes_count"] = len(chunk_map)
+    except Exception as e:
+        info["endnotes_error"] = str(e)
+    try:
+        import chromadb
+        client = chromadb.PersistentClient(path=VECTORDB_DIR)
+        coll = client.get_collection(name=COLLECTION_NAME)
+        info["collection_count"] = coll.count()
+    except Exception as e:
+        info["collection_error"] = str(e)
+    return info
+
 if __name__ == "__main__":
     import uvicorn
     print("="*60)
