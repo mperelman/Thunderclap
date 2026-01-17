@@ -1795,6 +1795,13 @@ class QueryEngine:
                 # Review and fix answer against criteria (reduced iterations for small queries)
                 max_review_iter = 1 if len(original_chunks) <= 15 else MAX_REVIEW_ITERATIONS
                 ans = self._review_and_fix_answer(ans, original_chunks, question, max_iterations=max_review_iter, query_start_time=query_start)
+                if self._is_no_info_answer(ans):
+                    print("  [FALLBACK] No-info answer after review; using raw chunks")
+                    context_text = "\n\n".join([
+                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                        for text, meta in original_chunks
+                    ])
+                    ans = f"Found {len(original_chunks)} relevant passages:\n\n{context_text}"
                 query_duration = time.time() - query_start
                 print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s, answer length: {len(ans)} chars")
                 return ans
