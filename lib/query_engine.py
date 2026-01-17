@@ -2429,6 +2429,23 @@ ENTITY INTRODUCTIONS (MANDATORY):
         except Exception:
             return True
         return False
+
+    def _is_no_info_answer(self, text: str) -> bool:
+        """Detect refusal/no-info answers that should never appear when chunks exist."""
+        if not isinstance(text, str):
+            return True
+        lower_text = text.lower()
+        no_info_phrases = [
+            "no information",
+            "no relevant information",
+            "not available",
+            "cannot be generated",
+            "unable to provide",
+            "not mentioned within the text",
+            "provided documents",
+            "provided historical documents"
+        ]
+        return any(phrase in lower_text for phrase in no_info_phrases)
     
     def _build_prompt_grounded(self, question: str, chunks: list) -> str:
         """Ask the LLM to answer ONLY from the provided chunks, restating the topic and forbidding speculation."""
@@ -3782,6 +3799,11 @@ Answer:"""
             self._record_token_usage(estimated_total)
             llm_duration = time.time() - llm_start
             print(f"    [LLM_CALL] Completed in {llm_duration:.1f}s (~{estimated_total:,} total tokens, {len(result)} chars)")
+            if chunks and self._is_no_info_answer(result):
+                print("    [LLM_CALL] No-info answer detected with chunks present; forcing rewrite")
+                from lib.prompts import build_prompt
+                force_prompt = build_prompt(question, chunks) + "\n\nCRITICAL: You MUST answer using the provided text. Do NOT say there is no information."
+                result = self.llm.call_api(force_prompt)
             return result
         except Exception as e:
             llm_duration = time.time() - llm_start
