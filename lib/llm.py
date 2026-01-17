@@ -254,8 +254,8 @@ class LLMAnswerGenerator:
                     # If response.text fails (e.g., finish_reason=2 MAX_TOKENS), try to get partial response
                     error_str = str(text_err)
                     if finish_reason == 1:
-                        # STOP with no parts/text -> treat as transient empty response and retry
-                        raise Exception("Empty response (finish_reason=1)")
+                        # STOP with no parts/text -> return empty so caller can retry/fallback
+                        return ""
                     if "finish_reason" in error_str or "Part" in error_str or "part" in error_str.lower():
                         if response.candidates and len(response.candidates) > 0:
                             candidate = response.candidates[0]
@@ -270,6 +270,9 @@ class LLMAnswerGenerator:
                                 for part in candidate.parts:
                                     if hasattr(part, 'text') and part.text:
                                         return part.text
+                    # If we can't extract partial response, return empty for caller to handle
+                    if finish_reason in (1, 2):
+                        return ""
                     # If we can't extract partial response, raise with clearer message
                     if "finish_reason" in error_str and "2" in error_str:
                         # finish_reason 2 = MAX_TOKENS, not a safety filter

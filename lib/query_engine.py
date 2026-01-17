@@ -3799,11 +3799,25 @@ Answer:"""
             self._record_token_usage(estimated_total)
             llm_duration = time.time() - llm_start
             print(f"    [LLM_CALL] Completed in {llm_duration:.1f}s (~{estimated_total:,} total tokens, {len(result)} chars)")
+            if not result or not result.strip():
+                print("    [LLM_CALL] Empty response detected; falling back to raw chunks")
+                context_text = "\n\n".join([
+                    f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                    for text, meta in chunks
+                ])
+                return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
             if chunks and self._is_no_info_answer(result):
                 print("    [LLM_CALL] No-info answer detected with chunks present; forcing rewrite")
                 from lib.prompts import build_prompt
                 force_prompt = build_prompt(question, chunks) + "\n\nCRITICAL: You MUST answer using the provided text. Do NOT say there is no information."
                 result = self.llm.call_api(force_prompt)
+                if not result or not result.strip():
+                    print("    [LLM_CALL] Empty response after rewrite; falling back to raw chunks")
+                    context_text = "\n\n".join([
+                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                        for text, meta in chunks
+                    ])
+                    return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
             return result
         except Exception as e:
             llm_duration = time.time() - llm_start
