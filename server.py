@@ -883,6 +883,35 @@ async def build_info():
         info["collection_error"] = str(e)
     return info
 
+
+@app.get("/admin/chunks")
+async def admin_chunks(term: str, limit: int = 3):
+    """Return sample chunks for a term to verify retrieval content."""
+    from lib.config import INDICES_FILE, VECTORDB_DIR, COLLECTION_NAME
+    term = term.strip()
+    if not term:
+        raise HTTPException(status_code=400, detail="term is required")
+    if not os.path.exists(INDICES_FILE):
+        raise HTTPException(status_code=500, detail="indices.json not found")
+    with open(INDICES_FILE, "r", encoding="utf-8") as f:
+        indices = json.load(f)
+    term_to_chunks = indices.get("term_to_chunks", {})
+    chunk_ids = term_to_chunks.get(term) or term_to_chunks.get(term.lower()) or term_to_chunks.get(term.capitalize()) or []
+    if not chunk_ids:
+        return {"term": term, "chunks": [], "chunk_count": 0}
+    # Fetch from chroma
+    import chromadb
+    client = chromadb.PersistentClient(path=VECTORDB_DIR)
+    coll = client.get_collection(name=COLLECTION_NAME)
+    data = coll.get(ids=chunk_ids[:max(1, limit)])
+    chunks = []
+    for text, meta in zip(data.get("documents", []), data.get("metadatas", [])):
+        chunks.append({
+            "filename": meta.get("filename"),
+            "text": text[:2000]
+        })
+    return {"term": term, "chunk_count": len(chunk_ids), "chunks": chunks}
+
 if __name__ == "__main__":
     import uvicorn
     print("="*60)
