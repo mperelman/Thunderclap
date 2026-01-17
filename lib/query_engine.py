@@ -2449,8 +2449,14 @@ ENTITY INTRODUCTIONS (MANDATORY):
             "cannot be generated",
             "unable to provide",
             "not mentioned within the text",
+            "does not contain information",
+            "do not contain information",
+            "not contain information",
+            "no information regarding",
+            "no information about",
             "provided documents",
-            "provided historical documents"
+            "provided historical documents",
+            "provided text"
         ]
         return any(phrase in lower_text for phrase in no_info_phrases)
     
@@ -2723,6 +2729,12 @@ STRICT RULES:
         # CRITICAL: Remove any source references that slipped through
         text = self._remove_source_references(text)
         output = text or ""
+        if chunks and self._is_no_info_answer(output):
+            context_text = "\n\n".join([
+                f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                for text, meta in chunks
+            ])
+            return f"Found {len(chunks)} relevant passages:\n\n{context_text}"
         # Ensure minimum paragraphs
         if self._para_count(output) < 3:
             output = output.strip() + "\n\n" + "**Additional Context:**\n- Clarify scope across decades present in sources.\n- Highlight leadership where mentioned (chairs, directors).\n"
