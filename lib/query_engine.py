@@ -445,6 +445,12 @@ class QueryEngine:
             raw_tokens,
             canonical_map
         )
+        explicit_term = self._resolve_direct_term(question)
+        if explicit_term:
+            if explicit_term not in subject_terms:
+                subject_terms.insert(0, explicit_term)
+            if explicit_term not in subject_phrases:
+                subject_phrases.insert(0, explicit_term)
         # Extract law tokens (e.g., TA86) and expanded phrases (e.g., Treasury Tax Act 1986)
         law_terms = self._extract_law_tokens(question)
         
@@ -468,7 +474,9 @@ class QueryEngine:
         # restrict intersection to the acronym token to avoid diluting with generic words.
         # Treat ANY ALL-CAPS token as an acronym for retrieval anchoring
         acronyms = [tok for tok in raw_tokens if tok.isupper()]
-        if acronyms:
+        if explicit_term:
+            intersect_terms = [explicit_term]
+        elif acronyms:
             intersect_terms = [a for a in acronyms if a in self.term_to_chunks]
         else:
             # For each keyword, find ALL variants (plural/singular/case) to maximize recall
@@ -3276,6 +3284,38 @@ Answer:"""
                     add_phrase("securities & exchange commission")
         
         return subject_terms, subject_phrases
+
+    def _resolve_direct_term(self, question: str) -> Optional[str]:
+        """Resolve a direct query phrase to an indexed term if present."""
+        if not question or not isinstance(question, str):
+            return None
+
+        q = question.strip().strip('?').strip()
+        if not q:
+            return None
+
+        prefixes = (
+            "tell me about ",
+            "who is ",
+            "who was ",
+            "what is ",
+            "what was ",
+            "explain ",
+            "describe "
+        )
+        for prefix in prefixes:
+            if q.lower().startswith(prefix):
+                q = q[len(prefix):].strip()
+                break
+
+        if not q:
+            return None
+
+        lower_map = {}
+        for term in self.term_to_chunks.keys():
+            lower_map.setdefault(term.lower(), term)
+
+        return lower_map.get(q.lower())
 
     def _filter_comma_mentions(self, chunks: List[tuple], question: str) -> Optional[List[tuple]]:
         """
