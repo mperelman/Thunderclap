@@ -639,10 +639,10 @@ def get_indexed_terms():
                 # Double-check it's not a common word we missed
                 if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
                     filtered_terms.append(term)
-            
+
+        if filtered_terms:
             return {"terms": filtered_terms}
-        else:
-            return {"terms": []}
+        return {"terms": []}
     except Exception as e:
         print(f"[ERROR] Failed to load indexed terms: {e}")
         return {"terms": []}

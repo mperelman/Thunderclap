@@ -135,6 +135,7 @@
         
         .input-group {
             margin-bottom: 20px;
+            position: relative;
         }
         
         input[type="text"] {
@@ -149,6 +150,55 @@
         input[type="text"]:focus {
             outline: none;
             border-color: #C0C0C0;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            top: calc(100% - 2px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 20;
+            display: none;
+        }
+
+        .autocomplete-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .autocomplete-item:first-child {
+            border-top: none;
+        }
+
+        .autocomplete-item:hover {
+            background: #faf7ec;
+        }
+
+        .autocomplete-term {
+            color: #222;
+            font-size: 0.98em;
+        }
+
+        .autocomplete-tag {
+            color: #7a7a7a;
+            font-size: 0.75em;
+            padding: 2px 6px;
+            border: 1px solid #e1e1e1;
+            border-radius: 999px;
+            white-space: nowrap;
+            background: #f8f8f8;
         }
         
         button {
@@ -522,8 +572,10 @@
                 type="text" 
                 id="question" 
                 placeholder="Ask about families, panics, identities, or institutions..."
+                autocomplete="off"
                 maxlength="500"
             >
+            <div id="autocomplete-results" class="autocomplete-results" role="listbox" aria-label="Search suggestions"></div>
         </div>
         
         <button id="ask-thunderclap-btn">Ask Thunderclap</button>
@@ -559,6 +611,188 @@
         let tabs = [];
         let activeTabId = null;
         let tabCounter = 0;
+
+        // Sample term lists (used for modal and tags in autocomplete)
+        const families = [
+            ["Rothschild Paris", "Tell me about Paris Rothschild banking"],
+            ["Rothschild London", "Tell me about London Rothschild banking"],
+            ["Rothschild Vienna", "Tell me about Vienna Rothschild banking"],
+            ["Lazard Paris", "Tell me about Lazard Paris banking"],
+            ["Lazard London", "Tell me about Lazard London banking"],
+            ["Lazard New York", "Tell me about Lazard New York banking"],
+            ["Morgan London", "Tell me about Morgan banking in London"],
+            ["Morgan Paris", "Tell me about Morgan banking in Paris"],
+            ["Morgan Grenfell", "Tell me about Morgan Grenfell"],
+            ["Baring Brothers", "Tell me about Baring Brothers"],
+            ["Hope & Co.", "Tell me about Hope banking"],
+            ["Warburg Hamburg", "Tell me about the Warburgs in Hamburg"],
+            ["Kuhn, Loeb & Co.", "Tell me about Kuhn, Loeb & Co. banking"],
+            ["Jacob Schiff", "Tell me about Jacob Schiff"],
+            ["Sassoon Bombay", "Tell me about the Sassoons in Bombay"],
+            ["Sassoon Shanghai", "Tell me about the Sassoons in Shanghai"],
+            ["Kadoorie Hong Kong", "Tell me about the Kadoories in Hong Kong"],
+            ["Goldsmid London", "Tell me about Goldsmid bankers"],
+            ["Hambro Copenhagen", "Tell me about Hambro bankers"],
+            ["Montefiore London", "Tell me about Montefiore bankers"],
+            ["Speyer Frankfurt", "Tell me about Speyer bankers"],
+            ["Crédit Mobilier", "Tell me about Crédit Mobilier"],
+            ["Crédit Lyonnais", "Tell me about Crédit Lyonnais"],
+            ["Banque de France", "Tell me about Banque de France"],
+            ["National City Bank", "Tell me about National City Bank"],
+            ["First National Boston", "Tell me about First National Bank of Boston"],
+            ["Bank of America", "Tell me about Bank of America"],
+            ["Bank of Montreal", "Tell me about Bank of Montreal"],
+            ["Hamburg-America finance", "Tell me about Hamburg-America finance"],
+            ["Brown Brothers Harriman", "Tell me about Brown Brothers Harriman"],
+            ["Federal Reserve System (FRS)", "Tell me about the Federal Reserve System (FRS)"],
+            ["Federal Reserve Bank of New York (FRBNY)", "Tell me about the Federal Reserve Bank of New York (FRBNY)"],
+            ["Bank of England (BOE)", "Tell me about the Bank of England (BOE)"],
+            ["First Bank of the United States", "Tell me about the First Bank of the United States"],
+            ["Second Bank of the United States", "Tell me about the Second Bank of the United States"],
+            ["Reconstruction Finance Corporation (RFC)", "Tell me about the Reconstruction Finance Corporation (RFC)"],
+            ["Securities and Exchange Commission (US SEC)", "Tell me about the United States Securities and Exchange Commission (SEC)"],
+            ["War Finance Corporation", "Tell me about the War Finance Corporation"]
+        ];
+
+        const markets = [
+            ["MMEU (Eurodollar) money market", "Tell me about the MMEU (Eurodollar) money market"],
+            ["ABCP (asset-backed commercial paper)", "Tell me about asset-backed commercial paper (ABCP) conduits"],
+            ["Long-term capital flows", "Tell me about long-term capital markets"],
+            ["Eurodollar offshore deposits", "Tell me about the Eurodollar market (USD offshore)"],
+            ["Sukarno-era Indonesian bonds", "Tell me about the Sukarno-era bond market"],
+            ["Ottoman debt market", "Tell me about the Ottoman Empire's debt market"],
+            ["Colonial silver trade", "Tell me about colonial-era silver markets"],
+            ["Railroad securities", "Tell me about railroad securities trading"],
+            ["Real estate trusts (REITs)", "Tell me about real estate finance (REITs)"],
+            ["Conglomerate stocks", "Tell me about conglomerate equities"],
+            ["Technology stocks", "Tell me about technology equities"],
+            ["Slave finance markets", "Tell me about slave trading finance"],
+            ["DEI investment programs", "Tell me about diversity finance initiatives"]
+        ];
+
+        const concepts = [
+            ["Kinlinks in finance", "Tell me about kinlinks (family networks) in banking"],
+            ["Minority middlemen", "Tell me about minority middlemen in finance"],
+            ["Cousinhood marriages", "Tell me about cousinhood marriage networks"],
+            ["Merchant diasporas", "Tell me about merchant diasporas in banking"],
+            ["Cartelization", "Tell me about cartelization in banking"],
+            ["Tax farming", "Tell me about tax farming in finance"],
+            ["Courtier capitalism", "Tell me about courtier capitalism"],
+            ["Socialism & banking", "Tell me about socialism's relationship with banking"],
+            ["Marxism & capital", "Tell me about Marxist critiques of banking"],
+            ["Nazism & banking", "Tell me about Nazi banking policies"],
+            ["Command economies", "Tell me about command economies and finance"],
+            ["Capitalism & free markets", "Tell me about capitalist/free-market banking"]
+        ];
+
+        const identities = [
+            ["Sephardim", "Tell me about Sephardim"],
+            ["Ashkenazim", "Tell me about Ashkenazim"],
+            ["Court Jews", "Tell me about Court Jews"],
+            ["Quakers", "Tell me about Quakers"],
+            ["Huguenots", "Tell me about Huguenots"],
+            ["Puritans", "Tell me about Puritans"],
+            ["Greeks", "Tell me about Greeks"],
+            ["Catholics", "Tell me about Catholics"],
+            ["Templars", "Tell me about Templars"],
+            ["Armenians", "Tell me about Armenians"],
+            ["Parsees", "Tell me about Parsees"],
+            ["Banias", "Tell me about Banias"],
+            ["Dalits", "Tell me about Dalits"],
+            ["Sunnis", "Tell me about Sunnis"],
+            ["Old Believers", "Tell me about Old Believers"],
+            ["Boston Brahmin", "Tell me about Boston Brahmin"],
+            ["Knickerbockers", "Tell me about Knickerbockers"],
+            ["Women", "Tell me about Women"],
+            ["Blacks", "Tell me about Blacks"],
+            ["Gays", "Tell me about Gays"],
+            ["Hispanics", "Tell me about Hispanics"],
+            ["Chinese", "Tell me about Chinese"],
+            ["Japanese", "Tell me about Japanese"],
+            ["Koreans", "Tell me about Koreans"]
+        ];
+
+        const panics = [
+            "Panic of 1763","Panic of 1772","Panic of 1792","Panic of 1797",
+            "Panic of 1810","Panic of 1819","Panic of 1825","Panic of 1837",
+            "Panic of 1847","Panic of 1857","Panic of 1866","Panic of 1873",
+            "Panic of 1884","Panic of 1890","Panic of 1893","Panic of 1896",
+            "Panic of 1720","Panic of 1763","Panic of 1772","Panic of 1792",
+            "Panic of 1819","Panic of 1825","Panic of 1837","Panic of 1848",
+            "Panic of 1857","Panic of 1866","Panic of 1873","Panic of 1884",
+            "Panic of 1893","Panic of 1907","Panic of 1914","Panic of 1920",
+            "Panic of 1929","Panic of 1937","Panic of 1948","Panic of 1970",
+            "Panic of 1974","Panic of 1987","Panic of 1989","Panic of 1997",
+            "Panic of 2007","Panic of 2020","Panic of 2023"
+        ];
+
+        const geographies = [
+            ["London", "Tell me about London banking"],
+            ["Paris", "Tell me about Paris banking"],
+            ["Frankfurt", "Tell me about Frankfurt banking"],
+            ["Amsterdam", "Tell me about Amsterdam banking"],
+            ["Vienna", "Tell me about Vienna banking"],
+            ["Berlin", "Tell me about Berlin banking"],
+            ["Moscow", "Tell me about Moscow banking"],
+            ["New York", "Tell me about New York banking"],
+            ["Boston", "Tell me about Boston banking"],
+            ["Bombay", "Tell me about Bombay banking"],
+            ["Calcutta", "Tell me about Calcutta banking"],
+            ["Shanghai", "Tell me about Shanghai banking"],
+            ["Hong Kong", "Tell me about Hong Kong banking"],
+            ["Baghdad", "Tell me about Baghdad banking"],
+            ["Cairo", "Tell me about Cairo banking"],
+            ["Jerusalem", "Tell me about Jerusalem banking"],
+            ["Philadelphia", "Tell me about Philadelphia banking"],
+            ["Singapore", "Tell me about Singapore banking"],
+            ["Ottoman Empire", "Tell me about Ottoman Empire banking"],
+            ["British Empire", "Tell me about British imperial banking"],
+            ["United Kingdom", "Tell me about British/UK banking"],
+            ["United States", "Tell me about United States banking"],
+            ["France", "Tell me about French banking"],
+            ["Germany", "Tell me about German banking"],
+            ["Netherlands", "Tell me about Dutch banking"],
+            ["Italy", "Tell me about Italian banking"],
+            ["Spain", "Tell me about Spanish banking"],
+            ["Portugal", "Tell me about Portuguese banking"],
+            ["Switzerland", "Tell me about Swiss banking"],
+            ["Scandinavia", "Tell me about Scandinavian banking"],
+            ["Russia", "Tell me about Russian banking"],
+            ["India", "Tell me about Indian banking"],
+            ["China", "Tell me about Chinese banking"],
+            ["Japan", "Tell me about Japanese banking"],
+            ["Southeast Asia", "Tell me about Southeast Asian banking"],
+            ["Middle East", "Tell me about Middle Eastern banking"],
+            ["North Africa", "Tell me about North African banking"],
+            ["West Africa", "Tell me about West African banking"],
+            ["Caribbean", "Tell me about Caribbean banking"],
+            ["Latin America", "Tell me about Latin American banking"],
+            ["Brazil", "Tell me about Brazilian banking"],
+            ["Argentina", "Tell me about Argentine banking"]
+        ];
+
+        const SAMPLE_TAGS = new Map();
+        function registerSampleTags(tagLabel, items) {
+            items.forEach(item => {
+                const term = Array.isArray(item) ? item[0] : item;
+                if (!term) return;
+                const key = term.toLowerCase();
+                if (!SAMPLE_TAGS.has(key)) {
+                    SAMPLE_TAGS.set(key, new Set());
+                }
+                SAMPLE_TAGS.get(key).add(tagLabel);
+            });
+        }
+        registerSampleTags('Family', families);
+        registerSampleTags('Identity', identities);
+        registerSampleTags('Market', markets);
+        registerSampleTags('Concept', concepts);
+        registerSampleTags('Panic', panics);
+        registerSampleTags('Geography', geographies);
+
+        // Autocomplete state
+        let indexedTermsLower = [];
+        const MAX_AUTOCOMPLETE_RESULTS = 12;
         
         function createTab(question, jobId) {
             const tabId = `tab-${++tabCounter}`;
@@ -1178,6 +1412,11 @@
                     // Sort by length (longest first) to match longer terms first
                     indexedTerms.sort((a, b) => b.length - a.length);
                     indexedTermsLoaded = true;
+                    buildAutocompleteIndex();
+                    const input = document.getElementById('question');
+                    if (input && input.value) {
+                        renderAutocompleteResults(getAutocompleteSuggestions(input.value));
+                    }
                     console.log(`[HYPERLINK] ✅ Loaded ${indexedTerms.length} indexed terms for hyperlinking`);
                     console.log('[HYPERLINK] Sample terms:', indexedTerms.slice(0, 10));
                     return Promise.resolve();
@@ -1191,6 +1430,101 @@
                 console.error('[HYPERLINK] Error details:', e.message, e.stack);
                 return Promise.reject(e);
             }
+        }
+
+        function buildAutocompleteIndex() {
+            indexedTermsLower = indexedTerms.map(term => term.toLowerCase());
+        }
+
+        function getTagsForTerm(term) {
+            const tags = SAMPLE_TAGS.get(term.toLowerCase());
+            if (!tags || tags.size === 0) return '';
+            return Array.from(tags).join(', ');
+        }
+
+        function getAutocompleteSuggestions(query) {
+            if (!indexedTermsLoaded || indexedTerms.length === 0) return [];
+            const q = (query || '').trim().toLowerCase();
+            if (q.length < 2) return [];
+
+            const results = [];
+            const seen = new Set();
+
+            // Prefix matches first
+            for (let i = 0; i < indexedTermsLower.length; i++) {
+                const termLower = indexedTermsLower[i];
+                if (termLower.startsWith(q)) {
+                    if (!seen.has(termLower)) {
+                        results.push(indexedTerms[i]);
+                        seen.add(termLower);
+                    }
+                    if (results.length >= MAX_AUTOCOMPLETE_RESULTS) return results;
+                }
+            }
+
+            // Then contains matches
+            for (let i = 0; i < indexedTermsLower.length; i++) {
+                const termLower = indexedTermsLower[i];
+                if (!seen.has(termLower) && termLower.includes(q)) {
+                    results.push(indexedTerms[i]);
+                    seen.add(termLower);
+                    if (results.length >= MAX_AUTOCOMPLETE_RESULTS) break;
+                }
+            }
+
+            return results;
+        }
+
+        function hideAutocompleteResults() {
+            const container = document.getElementById('autocomplete-results');
+            if (container) {
+                container.style.display = 'none';
+                container.innerHTML = '';
+            }
+        }
+
+        function renderAutocompleteResults(suggestions) {
+            const container = document.getElementById('autocomplete-results');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!suggestions || suggestions.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            suggestions.forEach(term => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.setAttribute('role', 'option');
+
+                const termSpan = document.createElement('span');
+                termSpan.className = 'autocomplete-term';
+                termSpan.textContent = term;
+                item.appendChild(termSpan);
+
+                const tags = getTagsForTerm(term);
+                if (tags) {
+                    const tagSpan = document.createElement('span');
+                    tagSpan.className = 'autocomplete-tag';
+                    tagSpan.textContent = tags;
+                    item.appendChild(tagSpan);
+                }
+
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('question');
+                    if (input) {
+                        input.value = term;
+                        input.focus();
+                    }
+                    hideAutocompleteResults();
+                });
+
+                container.appendChild(item);
+            });
+
+            container.style.display = 'block';
         }
         
         function hyperlinkIndexedTerms(html) {
@@ -1464,164 +1798,6 @@
             if (existingModal) existingModal.remove();
             
             const chip = (label, prompt) => `<div class="quick-query" style="margin-bottom:8px;" onclick="selectIndexedQuery('${prompt.replace(/'/g, "\\'")}')">${label}</div>`;
-            
-            const families = [
-                ["Rothschild Paris", "Tell me about Paris Rothschild banking"],
-                ["Rothschild London", "Tell me about London Rothschild banking"],
-                ["Rothschild Vienna", "Tell me about Vienna Rothschild banking"],
-                ["Lazard Paris", "Tell me about Lazard Paris banking"],
-                ["Lazard London", "Tell me about Lazard London banking"],
-                ["Lazard New York", "Tell me about Lazard New York banking"],
-                ["Morgan London", "Tell me about Morgan banking in London"],
-                ["Morgan Paris", "Tell me about Morgan banking in Paris"],
-                ["Morgan Grenfell", "Tell me about Morgan Grenfell"],
-                ["Baring Brothers", "Tell me about Baring Brothers"],
-                ["Hope & Co.", "Tell me about Hope banking"],
-                ["Warburg Hamburg", "Tell me about the Warburgs in Hamburg"],
-                ["Kuhn, Loeb & Co.", "Tell me about Kuhn, Loeb & Co. banking"],
-                ["Jacob Schiff", "Tell me about Jacob Schiff"],
-                ["Sassoon Bombay", "Tell me about the Sassoons in Bombay"],
-                ["Sassoon Shanghai", "Tell me about the Sassoons in Shanghai"],
-                ["Kadoorie Hong Kong", "Tell me about the Kadoories in Hong Kong"],
-                ["Goldsmid London", "Tell me about Goldsmid bankers"],
-                ["Hambro Copenhagen", "Tell me about Hambro bankers"],
-                ["Montefiore London", "Tell me about Montefiore bankers"],
-                ["Speyer Frankfurt", "Tell me about Speyer bankers"],
-                ["Crédit Mobilier", "Tell me about Crédit Mobilier"],
-                ["Crédit Lyonnais", "Tell me about Crédit Lyonnais"],
-                ["Banque de France", "Tell me about Banque de France"],
-                ["National City Bank", "Tell me about National City Bank"],
-                ["First National Boston", "Tell me about First National Bank of Boston"],
-                ["Bank of America", "Tell me about Bank of America"],
-                ["Bank of Montreal", "Tell me about Bank of Montreal"],
-                ["Hamburg-America finance", "Tell me about Hamburg-America finance"],
-                ["Brown Brothers Harriman", "Tell me about Brown Brothers Harriman"],
-                ["Federal Reserve System (FRS)", "Tell me about the Federal Reserve System (FRS)"],
-                ["Federal Reserve Bank of New York (FRBNY)", "Tell me about the Federal Reserve Bank of New York (FRBNY)"],
-                ["Bank of England (BOE)", "Tell me about the Bank of England (BOE)"],
-                ["First Bank of the United States", "Tell me about the First Bank of the United States"],
-                ["Second Bank of the United States", "Tell me about the Second Bank of the United States"],
-                ["Reconstruction Finance Corporation (RFC)", "Tell me about the Reconstruction Finance Corporation (RFC)"],
-                ["Securities and Exchange Commission (US SEC)", "Tell me about the United States Securities and Exchange Commission (SEC)"],
-                ["War Finance Corporation", "Tell me about the War Finance Corporation"]
-            ];
-            
-            const markets = [
-                ["MMEU (Eurodollar) money market", "Tell me about the MMEU (Eurodollar) money market"],
-                ["ABCP (asset-backed commercial paper)", "Tell me about asset-backed commercial paper (ABCP) conduits"],
-                ["Long-term capital flows", "Tell me about long-term capital markets"],
-                ["Eurodollar offshore deposits", "Tell me about the Eurodollar market (USD offshore)"],
-                ["Sukarno-era Indonesian bonds", "Tell me about the Sukarno-era bond market"],
-                ["Ottoman debt market", "Tell me about the Ottoman Empire's debt market"],
-                ["Colonial silver trade", "Tell me about colonial-era silver markets"],
-                ["Railroad securities", "Tell me about railroad securities trading"],
-                ["Real estate trusts (REITs)", "Tell me about real estate finance (REITs)"],
-                ["Conglomerate stocks", "Tell me about conglomerate equities"],
-                ["Technology stocks", "Tell me about technology equities"],
-                ["Slave finance markets", "Tell me about slave trading finance"],
-                ["DEI investment programs", "Tell me about diversity finance initiatives"]
-            ];
-            
-            const concepts = [
-                ["Kinlinks in finance", "Tell me about kinlinks (family networks) in banking"],
-                ["Minority middlemen", "Tell me about minority middlemen in finance"],
-                ["Cousinhood marriages", "Tell me about cousinhood marriage networks"],
-                ["Merchant diasporas", "Tell me about merchant diasporas in banking"],
-                ["Cartelization", "Tell me about cartelization in banking"],
-                ["Tax farming", "Tell me about tax farming in finance"],
-                ["Courtier capitalism", "Tell me about courtier capitalism"],
-                ["Socialism & banking", "Tell me about socialism's relationship with banking"],
-                ["Marxism & capital", "Tell me about Marxist critiques of banking"],
-                ["Nazism & banking", "Tell me about Nazi banking policies"],
-                ["Command economies", "Tell me about command economies and finance"],
-                ["Capitalism & free markets", "Tell me about capitalist/free-market banking"]
-            ];
-            
-            const identities = [
-                ["Sephardim", "Tell me about Sephardim"],
-                ["Ashkenazim", "Tell me about Ashkenazim"],
-                ["Court Jews", "Tell me about Court Jews"],
-                ["Quakers", "Tell me about Quakers"],
-                ["Huguenots", "Tell me about Huguenots"],
-                ["Puritans", "Tell me about Puritans"],
-                ["Greeks", "Tell me about Greeks"],
-                ["Catholics", "Tell me about Catholics"],
-                ["Templars", "Tell me about Templars"],
-                ["Armenians", "Tell me about Armenians"],
-                ["Parsees", "Tell me about Parsees"],
-                ["Banias", "Tell me about Banias"],
-                ["Dalits", "Tell me about Dalits"],
-                ["Sunnis", "Tell me about Sunnis"],
-                ["Old Believers", "Tell me about Old Believers"],
-                ["Boston Brahmin", "Tell me about Boston Brahmin"],
-                ["Knickerbockers", "Tell me about Knickerbockers"],
-                ["Women", "Tell me about Women"],
-                ["Blacks", "Tell me about Blacks"],
-                ["Gays", "Tell me about Gays"],
-                ["Hispanics", "Tell me about Hispanics"],
-                ["Chinese", "Tell me about Chinese"],
-                ["Japanese", "Tell me about Japanese"],
-                ["Koreans", "Tell me about Koreans"]
-            ];
-            
-            const panics = [
-                "Panic of 1763","Panic of 1772","Panic of 1792","Panic of 1797",
-                "Panic of 1810","Panic of 1819","Panic of 1825","Panic of 1837",
-                "Panic of 1847","Panic of 1857","Panic of 1866","Panic of 1873",
-                "Panic of 1884","Panic of 1890","Panic of 1893","Panic of 1896",
-                "Panic of 1720","Panic of 1763","Panic of 1772","Panic of 1792",
-                "Panic of 1819","Panic of 1825","Panic of 1837","Panic of 1848",
-                "Panic of 1857","Panic of 1866","Panic of 1873","Panic of 1884",
-                "Panic of 1893","Panic of 1907","Panic of 1914","Panic of 1920",
-                "Panic of 1929","Panic of 1937","Panic of 1948","Panic of 1970",
-                "Panic of 1974","Panic of 1987","Panic of 1989","Panic of 1997",
-                "Panic of 2007","Panic of 2020","Panic of 2023"
-            ];
-            
-            const geographies = [
-                ["London", "Tell me about London banking"],
-                ["Paris", "Tell me about Paris banking"],
-                ["Frankfurt", "Tell me about Frankfurt banking"],
-                ["Amsterdam", "Tell me about Amsterdam banking"],
-                ["Vienna", "Tell me about Vienna banking"],
-                ["Berlin", "Tell me about Berlin banking"],
-                ["Moscow", "Tell me about Moscow banking"],
-                ["New York", "Tell me about New York banking"],
-                ["Boston", "Tell me about Boston banking"],
-                ["Bombay", "Tell me about Bombay banking"],
-                ["Calcutta", "Tell me about Calcutta banking"],
-                ["Shanghai", "Tell me about Shanghai banking"],
-                ["Hong Kong", "Tell me about Hong Kong banking"],
-                ["Baghdad", "Tell me about Baghdad banking"],
-                ["Cairo", "Tell me about Cairo banking"],
-                ["Jerusalem", "Tell me about Jerusalem banking"],
-                ["Philadelphia", "Tell me about Philadelphia banking"],
-                ["Singapore", "Tell me about Singapore banking"],
-                ["Ottoman Empire", "Tell me about Ottoman Empire banking"],
-                ["British Empire", "Tell me about British imperial banking"],
-                ["United Kingdom", "Tell me about British/UK banking"],
-                ["United States", "Tell me about United States banking"],
-                ["France", "Tell me about French banking"],
-                ["Germany", "Tell me about German banking"],
-                ["Netherlands", "Tell me about Dutch banking"],
-                ["Italy", "Tell me about Italian banking"],
-                ["Spain", "Tell me about Spanish banking"],
-                ["Portugal", "Tell me about Portuguese banking"],
-                ["Switzerland", "Tell me about Swiss banking"],
-                ["Scandinavia", "Tell me about Scandinavian banking"],
-                ["Russia", "Tell me about Russian banking"],
-                ["India", "Tell me about Indian banking"],
-                ["China", "Tell me about Chinese banking"],
-                ["Japan", "Tell me about Japanese banking"],
-                ["Southeast Asia", "Tell me about Southeast Asian banking"],
-                ["Middle East", "Tell me about Middle Eastern banking"],
-                ["North Africa", "Tell me about North African banking"],
-                ["West Africa", "Tell me about West African banking"],
-                ["Caribbean", "Tell me about Caribbean banking"],
-                ["Latin America", "Tell me about Latin American banking"],
-                ["Brazil", "Tell me about Brazilian banking"],
-                ["Argentina", "Tell me about Argentine banking"]
-            ];
             
             const renderChips = (items) => items.map(item => Array.isArray(item) ? chip(item[0], item[1]) : chip(item, `Tell me about ${item}`)).join('');
             
@@ -2283,6 +2459,23 @@
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         askQuestion();
+                    }
+                });
+                questionInput.addEventListener('input', function() {
+                    const suggestions = getAutocompleteSuggestions(questionInput.value);
+                    renderAutocompleteResults(suggestions);
+                });
+                questionInput.addEventListener('focus', function() {
+                    const suggestions = getAutocompleteSuggestions(questionInput.value);
+                    renderAutocompleteResults(suggestions);
+                });
+                questionInput.addEventListener('blur', function() {
+                    // Delay so clicks on suggestions still register
+                    setTimeout(hideAutocompleteResults, 120);
+                });
+                questionInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        hideAutocompleteResults();
                     }
                 });
                 console.log('✅ Enter key listener attached');
