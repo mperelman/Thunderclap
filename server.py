@@ -602,12 +602,19 @@ def get_indexed_terms():
         # This is simpler than filtering at multiple stages during indexing
         # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
         
-        # First, normalize terms: merge underscore/space variants, normalize apostrophes
-        # This handles "Protected Jew" vs "Protected_Jew", "Farmers'" vs "Farmers'"
+        # First, normalize terms: merge underscore/space variants, normalize apostrophes, merge case variants
+        # This handles "Protected Jew" vs "Protected_Jew", "Farmers'" vs "Farmers'", "ROTHSCHILD" vs "Rothschild"
         normalized_terms_pre = {}
         for term in terms:
             # Normalize: replace underscores with spaces, normalize apostrophes
             normalized = term.replace('_', ' ').replace("'", "'").replace("'", "'")
+            
+            # For proper nouns (single-word, all caps), normalize to proper case
+            # "ROTHSCHILD" -> "Rothschild"
+            # But preserve mixed-case distinctions (DuPont vs Dupont stay separate)
+            if normalized.isupper() and len(normalized.split()) == 1 and len(normalized) > 2:
+                normalized = normalized.capitalize()
+            
             # For firm names, also normalize "Co" variants
             # "Farmers' Loan & Trust" and "Farmers' Loan & Trust Co" should merge
             if normalized.endswith(' Co') or normalized.endswith(' Company'):
@@ -615,7 +622,22 @@ def get_indexed_terms():
                 if base:
                     normalized_terms_pre[base] = normalized_terms_pre.get(base, []) + [term]
                     continue
-            normalized_terms_pre[normalized] = normalized_terms_pre.get(normalized, []) + [term]
+            
+            # For single-word proper nouns, merge singular/plural variants
+            # "Rothschild" and "Rothschilds" should merge (use singular as base)
+            # But preserve case (DuPont vs Dupont stay separate)
+            if len(normalized.split()) == 1 and normalized[0].isupper():
+                base_key = normalized
+                # If plural, use singular as base
+                if normalized.lower().endswith('s') and not normalized.lower().endswith("'s") and len(normalized) > 3:
+                    base_key = normalized[:-1]
+                # Store with base key, but keep original term in variants
+                if base_key not in normalized_terms_pre:
+                    normalized_terms_pre[base_key] = []
+                normalized_terms_pre[base_key].append(term)
+            else:
+                # Multi-word or lowercase - keep as is
+                normalized_terms_pre[normalized] = normalized_terms_pre.get(normalized, []) + [term]
         
         # Filter out offensive/odd terms
         OFFENSIVE_TERMS = {'jewless', 'jew-less', 'jew less'}
@@ -654,6 +676,7 @@ def get_indexed_terms():
                 term_variants[normalized_key].extend(variants)
             else:
                 # Not in TERM_GROUPS, keep original normalized form
+                # (Singular/plural merging already done in first normalization pass)
                 if normalized not in term_variants:
                     term_variants[normalized] = []
                 term_variants[normalized].extend(variants)
