@@ -657,9 +657,32 @@ def get_indexed_terms():
                 normalized_terms[normalized] = variants[0] if variants else normalized
         
         # Now filter the normalized terms
+        # CRITICAL: Only include terms that have chunks associated with them
+        # Load term_to_chunks to check chunk counts (reuse data if already loaded)
+        term_to_chunks_for_filter = {}
+        if os.path.exists(INDICES_FILE):
+            with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                index_data = json.load(f)
+                term_to_chunks_for_filter = index_data.get('term_to_chunks', {})
+        
         filtered_terms = []
         seen_lower = set()  # Track lowercase to avoid duplicates
         for normalized_key, display_term in normalized_terms.items():
+            # CRITICAL: Skip terms with 0 chunks - they shouldn't appear in autofill
+            # Check all variants of the normalized term to see if any have chunks
+            has_chunks = False
+            if normalized_key in term_to_chunks_for_filter and len(term_to_chunks_for_filter[normalized_key]) > 0:
+                has_chunks = True
+            else:
+                # Check if any variant has chunks
+                for variant in term_variants.get(normalized_key, [normalized_key]):
+                    if variant in term_to_chunks_for_filter and len(term_to_chunks_for_filter[variant]) > 0:
+                        has_chunks = True
+                        break
+            
+            if not has_chunks:
+                continue  # Skip terms with no chunks
+            
             # Skip if too short
             if len(display_term) < 4:
                 continue
