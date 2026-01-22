@@ -750,6 +750,19 @@ class QueryEngine:
                         firm_name_phrases.append(firm_with_nb)
                         print(f"  [FIRM_NAME] Found indexed firm name (NB variant): '{firm_with_nb}' ({len(self.term_to_chunks[firm_with_nb])} chunks)")
                         break
+                
+                # FALLBACK: If exact match not found, mark this as a phrase to search for in chunks
+                # This handles cases where entity names exist in documents but weren't indexed as complete terms
+                # We'll filter chunks later to only include those with the exact phrase
+                if len(potential_firm.split()) >= 3 and not lookup_term:
+                    # Store the phrase for later filtering - we'll search for all words, then filter to exact phrase
+                    firm_name_phrases.append(potential_firm)
+                    print(f"  [FIRM_NAME] Will search for exact phrase: '{potential_firm}' (not in index, will filter chunks)")
+                    # Mark that we need phrase filtering
+                    if not hasattr(self, '_needs_phrase_filter'):
+                        self._needs_phrase_filter = {}
+                    self._needs_phrase_filter[potential_firm] = True
+                    break
         
         # Also try multi-word phrases (3+ words) from the question
         if len(meaningful) >= 3:
@@ -1096,6 +1109,29 @@ class QueryEngine:
             self.collection = self.chroma_client.get_collection(name=COLLECTION_NAME)
             print(f"    [RECONNECT] New collection ID: {self.collection.id}")
         data = self.collection.get(ids=chunk_ids_list)
+        
+        # Filter chunks for exact phrase matches if needed (for unindexed entity names)
+        if hasattr(self, '_needs_phrase_filter') and self._needs_phrase_filter:
+            filtered_ids = []
+            filtered_docs = []
+            filtered_metas = []
+            for phrase in self._needs_phrase_filter.keys():
+                phrase_lower = phrase.lower()
+                for i, (chunk_id, text, meta) in enumerate(zip(data['ids'], data['documents'], data['metadatas'])):
+                    # Check if chunk contains exact phrase (case-insensitive)
+                    if phrase_lower in text.lower():
+                        if chunk_id not in filtered_ids:
+                            filtered_ids.append(chunk_id)
+                            filtered_docs.append(text)
+                            filtered_metas.append(meta)
+            if filtered_ids:
+                print(f"  [PHRASE_FILTER] Filtered to {len(filtered_ids)} chunks containing exact phrase (from {len(chunk_ids_list)} chunks)")
+                data = {
+                    'ids': filtered_ids,
+                    'documents': filtered_docs,
+                    'metadatas': filtered_metas
+                }
+                chunk_ids_list = filtered_ids
         
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
