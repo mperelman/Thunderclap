@@ -1629,9 +1629,18 @@
                 // This is just a safety net - if generic words appear here, they need to be removed from the index
                 // The index is the source of truth for what should be hyperlinked
                 
+                // Exclude common generic words even if they're all caps
+                // These are not acronyms, just generic words that happen to be capitalized
+                const genericWords = ['tech', 'south', 'north', 'east', 'west', 'labor', 'labour', 
+                                     'department', 'work', 'works', 'state', 'states', 'national',
+                                     'federal', 'central', 'public', 'private', 'commercial'];
+                if (genericWords.includes(lower)) {
+                    return; // Skip generic words
+                }
+                
                 // ONLY hyperlink if:
                 // 1. Multi-word term (e.g., "Bank of Montreal", "David David")
-                // 2. All caps acronym 3+ chars (e.g., "SEC", "FDIC")
+                // 2. All caps acronym 3+ chars (e.g., "SEC", "FDIC") - but NOT generic words
                 // 3. Contains numbers/special characters (e.g., "BA1933", "TA1813")
                 // 4. Starts with "Panic of YYYY" (specific year pattern)
                 const isMultiWord = term.includes(' ');

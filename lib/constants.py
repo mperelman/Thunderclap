@@ -71,6 +71,10 @@ GENERIC_WORDS_TO_EXCLUDE = {
     'oil', 'oils', 'rival', 'rivals', 'orient', 'gained', 'gain', 'gains',
     'american', 'america', 'british', 'french', 'german', 'european', 'asian', 'african',
     'cities', 'city', 'town', 'towns', 'place', 'places', 'region', 'regions',
+    # Directional/geographic generic words (when standalone)
+    'north', 'south', 'east', 'west', 'northern', 'southern', 'eastern', 'western',
+    # Generic descriptive/occupational words
+    'tech', 'technology', 'labor', 'labour', 'work', 'works', 'department', 'departments',
     # Generic titles/roles (standalone)
     'director', 'directors', 'president', 'presidents', 'chairman', 'chairmen', 'governor', 'governors',
     'minister', 'ministers', 'secretary', 'secretaries', 'manager', 'managers', 'officer', 'officers',
