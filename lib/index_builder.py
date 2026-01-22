@@ -83,6 +83,7 @@ TERM_GROUPS = {
     'brahmin': ['brahmin', 'brahmins'],  # Ambiguous: Hindu caste OR Boston Brahmin elite
     'greek': ['greek', 'greeks'],
     'armenian': ['armenian', 'armenians'],
+    'arab': ['arab', 'arabs'],  # Arab identity
     'lebanese': ['lebanese', 'lebanon', 'maronite', 'maronites', 'phoenician'],  # Lebanese banking families
     
     # Asian banking families (can be Christian, Buddhist, or other - context determines)

@@ -602,7 +602,33 @@ def get_indexed_terms():
         # This is simpler than filtering at multiple stages during indexing
         # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
         
-        # First, deduplicate case variants using TERM_GROUPS
+        # First, normalize terms: merge underscore/space variants, normalize apostrophes
+        # This handles "Protected Jew" vs "Protected_Jew", "Farmers'" vs "Farmers'"
+        normalized_terms_pre = {}
+        for term in terms:
+            # Normalize: replace underscores with spaces, normalize apostrophes
+            normalized = term.replace('_', ' ').replace("'", "'").replace("'", "'")
+            # For firm names, also normalize "Co" variants
+            # "Farmers' Loan & Trust" and "Farmers' Loan & Trust Co" should merge
+            if normalized.endswith(' Co') or normalized.endswith(' Company'):
+                base = normalized.rsplit(' Co', 1)[0].rsplit(' Company', 1)[0].strip()
+                if base:
+                    normalized_terms_pre[base] = normalized_terms_pre.get(base, []) + [term]
+                    continue
+            normalized_terms_pre[normalized] = normalized_terms_pre.get(normalized, []) + [term]
+        
+        # Filter out offensive/odd terms
+        OFFENSIVE_TERMS = {'jewless', 'jew-less', 'jew less'}
+        filtered_terms_pre = {}
+        for normalized, variants in normalized_terms_pre.items():
+            if normalized.lower() in OFFENSIVE_TERMS:
+                continue  # Skip offensive terms
+            # Filter out generic phrases like "National Women" (should just be "Women")
+            if normalized.lower() in ['national women', 'national woman']:
+                continue
+            filtered_terms_pre[normalized] = variants
+        
+        # Now deduplicate case variants using TERM_GROUPS
         # This ensures "BLACK", "Black", "black", "Blacks", "blacks" all become one entry
         from lib.index_builder import TERM_GROUPS
         term_normalization_map = {}
@@ -618,30 +644,42 @@ def get_indexed_terms():
         # Normalize terms: use TERM_GROUPS main term if available, otherwise keep original
         # First pass: collect all variants for each normalized term
         term_variants = {}  # normalized -> list of all variants
-        for term in terms:
-            term_lower = term.lower().strip()
+        for normalized, variants in filtered_terms_pre.items():
+            term_lower = normalized.lower().strip()
             # Check if this term (or its lowercase) is in TERM_GROUPS
             if term_lower in term_normalization_map:
-                normalized = term_normalization_map[term_lower]
+                normalized_key = term_normalization_map[term_lower]
+                if normalized_key not in term_variants:
+                    term_variants[normalized_key] = []
+                term_variants[normalized_key].extend(variants)
+            else:
+                # Not in TERM_GROUPS, keep original normalized form
                 if normalized not in term_variants:
                     term_variants[normalized] = []
-                term_variants[normalized].append(term)
-            else:
-                # Not in TERM_GROUPS, keep original
-                if term not in term_variants:
-                    term_variants[term] = []
-                term_variants[term].append(term)
+                term_variants[normalized].extend(variants)
         
         # Second pass: for each normalized term, pick the best display version
-        # Prefer: capitalized plural > capitalized singular > lowercase
+        # Prefer: capitalized plural > capitalized singular > space version (not underscore) > lowercase
         normalized_terms = {}
         for normalized, variants in term_variants.items():
-            # Find plural variants (capitalized preferred)
-            plural_capitalized = [v for v in variants if v.lower().endswith('s') and not v.lower().endswith("'s") and v[0].isupper() and not v.isupper()]
-            plural_lowercase = [v for v in variants if v.lower().endswith('s') and not v.lower().endswith("'s") and v.islower()]
-            # Find singular capitalized variants
-            singular_capitalized = [v for v in variants if not v.lower().endswith('s') and v[0].isupper() and not v.isupper()]
-            singular_lowercase = [v for v in variants if not v.lower().endswith('s') and v.islower()]
+            # Normalize all variants (replace underscores with spaces, normalize apostrophes)
+            normalized_variants = [v.replace('_', ' ').replace("'", "'").replace("'", "'") for v in variants]
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_variants = []
+            for v in normalized_variants:
+                if v not in seen:
+                    seen.add(v)
+                    unique_variants.append(v)
+            
+            # Find plural variants (capitalized preferred, no underscores)
+            plural_capitalized = [v for v in unique_variants if v.lower().endswith('s') and not v.lower().endswith("'s") and v[0].isupper() and not v.isupper() and '_' not in v]
+            plural_lowercase = [v for v in unique_variants if v.lower().endswith('s') and not v.lower().endswith("'s") and v.islower() and '_' not in v]
+            # Find singular capitalized variants (no underscores)
+            singular_capitalized = [v for v in unique_variants if not v.lower().endswith('s') and v[0].isupper() and not v.isupper() and '_' not in v]
+            singular_lowercase = [v for v in unique_variants if not v.lower().endswith('s') and v.islower() and '_' not in v]
+            # Find any variant without underscores (prefer spaces over underscores)
+            no_underscore = [v for v in unique_variants if '_' not in v]
             
             # Pick best display version
             if plural_capitalized:
@@ -652,9 +690,12 @@ def get_indexed_terms():
                 normalized_terms[normalized] = singular_capitalized[0]  # "Black"
             elif singular_lowercase:
                 normalized_terms[normalized] = singular_lowercase[0].capitalize()  # "black" -> "Black"
+            elif no_underscore:
+                # Prefer space version over underscore version
+                normalized_terms[normalized] = no_underscore[0]
             else:
                 # Fallback: use first variant or normalized term
-                normalized_terms[normalized] = variants[0] if variants else normalized
+                normalized_terms[normalized] = unique_variants[0] if unique_variants else normalized
         
         # Now filter the normalized terms
         # CRITICAL: Only include terms that have chunks associated with them
@@ -671,12 +712,20 @@ def get_indexed_terms():
             # CRITICAL: Skip terms with 0 chunks - they shouldn't appear in autofill
             # Check all variants of the normalized term to see if any have chunks
             has_chunks = False
+            # Check normalized key first
             if normalized_key in term_to_chunks_for_filter and len(term_to_chunks_for_filter[normalized_key]) > 0:
                 has_chunks = True
             else:
-                # Check if any variant has chunks
-                for variant in term_variants.get(normalized_key, [normalized_key]):
+                # Check all original variants (before normalization)
+                all_variants = term_variants.get(normalized_key, [normalized_key])
+                for variant in all_variants:
+                    # Check original variant
                     if variant in term_to_chunks_for_filter and len(term_to_chunks_for_filter[variant]) > 0:
+                        has_chunks = True
+                        break
+                    # Also check normalized version of variant (underscore -> space)
+                    variant_normalized = variant.replace('_', ' ').replace("'", "'").replace("'", "'")
+                    if variant_normalized != variant and variant_normalized in term_to_chunks_for_filter and len(term_to_chunks_for_filter[variant_normalized]) > 0:
                         has_chunks = True
                         break
             
