@@ -314,30 +314,41 @@ class QueryEngine:
                 break
         
         # Try multiple lookup strategies (index preserves capitalization)
+        # CRITICAL: For proper nouns/names, preserve case to distinguish different entities
+        # (e.g., "DuPont" vs "Dupont" are different families)
+        # Only use case-insensitive fallback for identity terms in TERM_GROUPS
+        
         # Priority order:
-        # 1. TERM_GROUPS main term (if applicable) - ensures we get merged chunks
-        # 2. Lowercase canonical (for case-insensitive lookups)
-        # 3. Lowercase original (fallback)
-        # 4. Original term (preserves case: "Crédit Lyonnais")
-        # 5. Canonicalized original (removes possessives but preserves case)
+        # 1. Exact term match (preserves case: "DuPont" vs "Dupont")
+        # 2. Canonicalized original (removes possessives but preserves case)
+        # 3. TERM_GROUPS main term (if applicable) - only for identity terms
+        # 4. Lowercase fallback - ONLY if term is in TERM_GROUPS (identity terms)
         lookup_terms = []
-        if term_groups_main and term_groups_main in self.term_to_chunks:
-            lookup_terms.append(term_groups_main)
-        if canonical != term_lower and canonical in self.term_to_chunks:
-            lookup_terms.append(canonical)
-        if term_lower not in lookup_terms and term_lower in self.term_to_chunks:
-            lookup_terms.append(term_lower)
+        
+        # Always try exact match first (case-sensitive)
         if term in self.term_to_chunks:
             lookup_terms.append(term)
         if canonical_original != term and canonical_original not in lookup_terms and canonical_original in self.term_to_chunks:
             lookup_terms.append(canonical_original)
         
-        # Use first found lookup term, or fallback to canonical/lowercase/main term
-        lookup_term = lookup_terms[0] if lookup_terms else (term_groups_main if term_groups_main and term_groups_main in self.term_to_chunks else (canonical if canonical in self.term_to_chunks else term_lower))
+        # For identity terms in TERM_GROUPS, allow case-insensitive lookup
+        if term_groups_main:
+            if term_groups_main in self.term_to_chunks:
+                lookup_terms.append(term_groups_main)
+            # Also try lowercase variants for identity terms
+            if canonical != term_lower and canonical in self.term_to_chunks and canonical not in lookup_terms:
+                lookup_terms.append(canonical)
+            if term_lower not in lookup_terms and term_lower in self.term_to_chunks:
+                lookup_terms.append(term_lower)
+        # For non-identity terms (proper nouns), DON'T use lowercase fallback
+        # This preserves case distinctions like "DuPont" vs "Dupont"
+        
+        # Use first found lookup term, prioritizing exact case match
+        lookup_term = lookup_terms[0] if lookup_terms else None
         
         # Collect chunk IDs from the main term
         all_chunk_ids = set()
-        if lookup_term in self.term_to_chunks:
+        if lookup_term and lookup_term in self.term_to_chunks:
             all_chunk_ids.update(self.term_to_chunks[lookup_term])
         
         def _should_expand_association(base_term: str, associated_term: str) -> bool:
@@ -750,19 +761,6 @@ class QueryEngine:
                         firm_name_phrases.append(firm_with_nb)
                         print(f"  [FIRM_NAME] Found indexed firm name (NB variant): '{firm_with_nb}' ({len(self.term_to_chunks[firm_with_nb])} chunks)")
                         break
-                
-                # FALLBACK: If exact match not found, mark this as a phrase to search for in chunks
-                # This handles cases where entity names exist in documents but weren't indexed as complete terms
-                # We'll filter chunks later to only include those with the exact phrase
-                if len(potential_firm.split()) >= 3 and not lookup_term:
-                    # Store the phrase for later filtering - we'll search for all words, then filter to exact phrase
-                    firm_name_phrases.append(potential_firm)
-                    print(f"  [FIRM_NAME] Will search for exact phrase: '{potential_firm}' (not in index, will filter chunks)")
-                    # Mark that we need phrase filtering
-                    if not hasattr(self, '_needs_phrase_filter'):
-                        self._needs_phrase_filter = {}
-                    self._needs_phrase_filter[potential_firm] = True
-                    break
         
         # Also try multi-word phrases (3+ words) from the question
         if len(meaningful) >= 3:
@@ -1109,29 +1107,6 @@ class QueryEngine:
             self.collection = self.chroma_client.get_collection(name=COLLECTION_NAME)
             print(f"    [RECONNECT] New collection ID: {self.collection.id}")
         data = self.collection.get(ids=chunk_ids_list)
-        
-        # Filter chunks for exact phrase matches if needed (for unindexed entity names)
-        if hasattr(self, '_needs_phrase_filter') and self._needs_phrase_filter:
-            filtered_ids = []
-            filtered_docs = []
-            filtered_metas = []
-            for phrase in self._needs_phrase_filter.keys():
-                phrase_lower = phrase.lower()
-                for i, (chunk_id, text, meta) in enumerate(zip(data['ids'], data['documents'], data['metadatas'])):
-                    # Check if chunk contains exact phrase (case-insensitive)
-                    if phrase_lower in text.lower():
-                        if chunk_id not in filtered_ids:
-                            filtered_ids.append(chunk_id)
-                            filtered_docs.append(text)
-                            filtered_metas.append(meta)
-            if filtered_ids:
-                print(f"  [PHRASE_FILTER] Filtered to {len(filtered_ids)} chunks containing exact phrase (from {len(chunk_ids_list)} chunks)")
-                data = {
-                    'ids': filtered_ids,
-                    'documents': filtered_docs,
-                    'metadatas': filtered_metas
-                }
-                chunk_ids_list = filtered_ids
         
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
