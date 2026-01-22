@@ -1667,14 +1667,25 @@
                 // For multi-word terms, use a more flexible pattern that doesn't require word boundaries
                 // between words (e.g., "Warburg New York" should match even if there's punctuation)
                 // For single-word terms, use strict word boundaries
+                // CRITICAL: Use case-sensitive matching for proper nouns to distinguish "DuPont" vs "Dupont"
+                // Only use case-insensitive for identity terms (which are handled separately)
                 let regex;
+                const originalTermHasMixedCase = originalTerm !== originalTerm.toLowerCase() && originalTerm !== originalTerm.toUpperCase();
+                const isProperNoun = originalTermHasMixedCase && !lowerTerm.includes(' '); // Single-word mixed case = likely proper noun
+                
                 if (lowerTerm.includes(' ')) {
                     // Multi-word: allow spaces, hyphens, and punctuation between words
                     // But require word boundaries at start and end
+                    // Use case-insensitive for multi-word (usually phrases, not proper nouns)
                     const flexiblePattern = escaped.replace(/\s+/g, '[\\s\\-.,;:!?]*');
                     regex = new RegExp(`\\b${flexiblePattern}\\b`, 'gi');
+                } else if (isProperNoun) {
+                    // Single-word proper noun with mixed case: use case-sensitive matching
+                    // This distinguishes "DuPont" from "Dupont"
+                    const escapedOriginal = originalTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    regex = new RegExp(`\\b(${escapedOriginal})\\b`, 'g');
                 } else {
-                    // Single-word: strict word boundaries
+                    // Single-word: strict word boundaries, case-insensitive for acronyms/common terms
                     regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
                 }
                 
