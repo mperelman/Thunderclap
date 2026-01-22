@@ -606,8 +606,10 @@ def get_indexed_terms():
         # This handles "Protected Jew" vs "Protected_Jew", "Farmers'" vs "Farmers'", "ROTHSCHILD" vs "Rothschild"
         normalized_terms_pre = {}
         for term in terms:
-            # Normalize: replace underscores with spaces, normalize apostrophes
+            # Normalize: replace underscores with spaces, normalize apostrophes, strip trailing apostrophes
             normalized = term.replace('_', ' ').replace("'", "'").replace("'", "'")
+            # Strip trailing apostrophes (e.g., "Morgan Grenfell'" -> "Morgan Grenfell")
+            normalized = normalized.rstrip("'").rstrip("'")
             
             # For proper nouns (single-word, all caps), normalize to proper case
             # "ROTHSCHILD" -> "Rothschild"
@@ -685,8 +687,8 @@ def get_indexed_terms():
         # Prefer: capitalized plural > capitalized singular > space version (not underscore) > lowercase
         normalized_terms = {}
         for normalized, variants in term_variants.items():
-            # Normalize all variants (replace underscores with spaces, normalize apostrophes)
-            normalized_variants = [v.replace('_', ' ').replace("'", "'").replace("'", "'") for v in variants]
+            # Normalize all variants (replace underscores with spaces, normalize apostrophes, strip trailing apostrophes)
+            normalized_variants = [v.replace('_', ' ').replace("'", "'").replace("'", "'").rstrip("'").rstrip("'") for v in variants]
             # Remove duplicates while preserving order
             seen = set()
             unique_variants = []
@@ -704,21 +706,43 @@ def get_indexed_terms():
             # Find any variant without underscores (prefer spaces over underscores)
             no_underscore = [v for v in unique_variants if '_' not in v]
             
+            # Determine if this is an identity term (should prefer plural) or a surname (should prefer singular)
+            # Identity terms are in TERM_GROUPS, surnames are typically single capitalized words
+            is_identity_term = term_lower in term_normalization_map
+            is_likely_surname = len(normalized.split()) == 1 and normalized[0].isupper() and not is_identity_term
+            
             # Pick best display version
-            if plural_capitalized:
-                normalized_terms[normalized] = plural_capitalized[0]  # "Blacks"
-            elif plural_lowercase:
-                normalized_terms[normalized] = plural_lowercase[0].capitalize()  # "blacks" -> "Blacks"
-            elif singular_capitalized:
-                normalized_terms[normalized] = singular_capitalized[0]  # "Black"
-            elif singular_lowercase:
-                normalized_terms[normalized] = singular_lowercase[0].capitalize()  # "black" -> "Black"
-            elif no_underscore:
-                # Prefer space version over underscore version
-                normalized_terms[normalized] = no_underscore[0]
+            if is_likely_surname:
+                # For surnames, prefer singular form
+                if singular_capitalized:
+                    normalized_terms[normalized] = singular_capitalized[0]  # "Seligman"
+                elif singular_lowercase:
+                    normalized_terms[normalized] = singular_lowercase[0].capitalize()  # "seligman" -> "Seligman"
+                elif plural_capitalized:
+                    # Fallback to plural if no singular exists
+                    normalized_terms[normalized] = plural_capitalized[0]  # "Seligmans"
+                elif plural_lowercase:
+                    normalized_terms[normalized] = plural_lowercase[0].capitalize()  # "seligmans" -> "Seligmans"
+                elif no_underscore:
+                    normalized_terms[normalized] = no_underscore[0]
+                else:
+                    normalized_terms[normalized] = unique_variants[0] if unique_variants else normalized
             else:
-                # Fallback: use first variant or normalized term
-                normalized_terms[normalized] = unique_variants[0] if unique_variants else normalized
+                # For identity terms and other terms, prefer plural
+                if plural_capitalized:
+                    normalized_terms[normalized] = plural_capitalized[0]  # "Blacks"
+                elif plural_lowercase:
+                    normalized_terms[normalized] = plural_lowercase[0].capitalize()  # "blacks" -> "Blacks"
+                elif singular_capitalized:
+                    normalized_terms[normalized] = singular_capitalized[0]  # "Black"
+                elif singular_lowercase:
+                    normalized_terms[normalized] = singular_lowercase[0].capitalize()  # "black" -> "Black"
+                elif no_underscore:
+                    # Prefer space version over underscore version
+                    normalized_terms[normalized] = no_underscore[0]
+                else:
+                    # Fallback: use first variant or normalized term
+                    normalized_terms[normalized] = unique_variants[0] if unique_variants else normalized
         
         # Now filter the normalized terms
         # CRITICAL: Only include terms that have chunks associated with them
