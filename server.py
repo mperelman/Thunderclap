@@ -601,15 +601,76 @@ def get_indexed_terms():
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
         # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
-        filtered_terms = []
+        
+        # First, deduplicate case variants using TERM_GROUPS
+        # This ensures "BLACK", "Black", "black", "Blacks", "blacks" all become one entry
+        from lib.index_builder import TERM_GROUPS
+        term_normalization_map = {}
+        for main_term, variants in TERM_GROUPS.items():
+            # Map all variants to the main term
+            term_normalization_map[main_term] = main_term
+            for variant in variants:
+                term_normalization_map[variant] = main_term
+                # Also map uppercase and capitalized versions
+                term_normalization_map[variant.upper()] = main_term
+                term_normalization_map[variant.capitalize()] = main_term
+        
+        # Normalize terms: use TERM_GROUPS main term if available, otherwise keep original
+        # First pass: collect all variants for each normalized term
+        term_variants = {}  # normalized -> list of all variants
         for term in terms:
+            term_lower = term.lower().strip()
+            # Check if this term (or its lowercase) is in TERM_GROUPS
+            if term_lower in term_normalization_map:
+                normalized = term_normalization_map[term_lower]
+                if normalized not in term_variants:
+                    term_variants[normalized] = []
+                term_variants[normalized].append(term)
+            else:
+                # Not in TERM_GROUPS, keep original
+                if term not in term_variants:
+                    term_variants[term] = []
+                term_variants[term].append(term)
+        
+        # Second pass: for each normalized term, pick the best display version
+        # Prefer: capitalized plural > capitalized singular > lowercase
+        normalized_terms = {}
+        for normalized, variants in term_variants.items():
+            # Find plural variants (capitalized preferred)
+            plural_capitalized = [v for v in variants if v.lower().endswith('s') and not v.lower().endswith("'s") and v[0].isupper() and not v.isupper()]
+            plural_lowercase = [v for v in variants if v.lower().endswith('s') and not v.lower().endswith("'s") and v.islower()]
+            # Find singular capitalized variants
+            singular_capitalized = [v for v in variants if not v.lower().endswith('s') and v[0].isupper() and not v.isupper()]
+            singular_lowercase = [v for v in variants if not v.lower().endswith('s') and v.islower()]
+            
+            # Pick best display version
+            if plural_capitalized:
+                normalized_terms[normalized] = plural_capitalized[0]  # "Blacks"
+            elif plural_lowercase:
+                normalized_terms[normalized] = plural_lowercase[0].capitalize()  # "blacks" -> "Blacks"
+            elif singular_capitalized:
+                normalized_terms[normalized] = singular_capitalized[0]  # "Black"
+            elif singular_lowercase:
+                normalized_terms[normalized] = singular_lowercase[0].capitalize()  # "black" -> "Black"
+            else:
+                # Fallback: use first variant or normalized term
+                normalized_terms[normalized] = variants[0] if variants else normalized
+        
+        # Now filter the normalized terms
+        filtered_terms = []
+        seen_lower = set()  # Track lowercase to avoid duplicates
+        for normalized_key, display_term in normalized_terms.items():
             # Skip if too short
-            if len(term) < 4:
+            if len(display_term) < 4:
                 continue
             # Skip generic words/phrases (comprehensive list)
-            if should_exclude_term(term):
+            if should_exclude_term(display_term):
                 continue
-            term_lower = term.lower().strip()
+            term_lower = display_term.lower().strip()
+            # Skip if we've already added this (case-insensitive)
+            if term_lower in seen_lower:
+                continue
+            seen_lower.add(term_lower)
             # Skip if it's just a number
             if term_lower.isdigit():
                 continue
@@ -619,26 +680,26 @@ def get_indexed_terms():
             # Skip if it's a common verb form (ends in -ed, -ing, -s, etc.)
             if term_lower.endswith(('ed', 'ing', 'ly', 'er', 'est', 'tion', 'sion', 'ment', 'ness', 'ity', 'ies', 'ied')):
                 # But allow if it's capitalized (might be a name)
-                if not term[0].isupper():
+                if not display_term[0].isupper():
                     continue
             # ONLY include terms that are clearly entities:
             # 1. Multi-word phrases (e.g., "Bank of Montreal", "David David")
-            if ' ' in term:
-                filtered_terms.append(term)
+            if ' ' in display_term:
+                filtered_terms.append(display_term)
             # 2. Proper nouns (start with capital letter)
-            elif term[0].isupper():
-                filtered_terms.append(term)
+            elif display_term[0].isupper():
+                filtered_terms.append(display_term)
             # 3. Acronyms (all caps, at least 2 chars)
-            elif term.isupper() and len(term) >= 2:
-                filtered_terms.append(term)
+            elif display_term.isupper() and len(display_term) >= 2:
+                filtered_terms.append(display_term)
             # 4. Mixed case (e.g., "iPhone", "McDonald")
-            elif any(c.isupper() for c in term[1:]):
-                filtered_terms.append(term)
+            elif any(c.isupper() for c in display_term[1:]):
+                filtered_terms.append(display_term)
             # 5. Lowercase but long and not a common word (likely specific entity)
-            elif len(term) >= 8 and not should_exclude_term(term):
+            elif len(display_term) >= 8 and not should_exclude_term(display_term):
                 # Double-check it's not a common word we missed
                 if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
-                    filtered_terms.append(term)
+                    filtered_terms.append(display_term)
 
         if filtered_terms:
             return {"terms": filtered_terms}

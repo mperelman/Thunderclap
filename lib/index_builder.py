@@ -867,24 +867,46 @@ def build_indices(chunks, chunk_ids):
         ]
         
         visible = strip_tags(chunk)
-        for pattern in identity_terms:
-            matches = re.finditer(pattern, visible, re.IGNORECASE)
-            for match in matches:
-                # Preserve case but normalize spaces to underscores
-                identity_term = match.group(1).replace(' ', '_')
-                canonical = canonicalize_term(identity_term)
-                target = canonical if canonical else identity_term
-                term_counts[target] = term_counts.get(target, 0) + 1
-                if target not in term_to_chunks:
-                    term_to_chunks[target] = []
-                term_to_chunks[target].append(chunk_id)
-                # Also index with spaces (for natural search)
-                space_version = target.replace('_', ' ')
-                if space_version != target:
-                    term_counts[space_version] = term_counts.get(space_version, 0) + 1
-                    if space_version not in term_to_chunks:
-                        term_to_chunks[space_version] = []
-                    term_to_chunks[space_version].append(chunk_id)
+        visible_lower = visible.lower()
+        identity_finance_keywords = [
+            'bank', 'banking', 'banker', 'bankers', 'finance', 'financial',
+            'financier', 'financiers', 'investment', 'investor', 'investors',
+            'capital', 'credit', 'loan', 'lending', 'insurance', 'securities',
+            'bond', 'bonds', 'stock', 'stocks', 'exchange', 'cdfi', 'lic', 'mesbic'
+        ]
+        has_identity_finance = any(keyword in visible_lower for keyword in identity_finance_keywords)
+        def normalize_identity_term(raw: str) -> str:
+            """
+            Normalize identity term to lowercase to match TERM_GROUPS main terms.
+            This ensures "Black", "BLACK", "black", "Blacks", "blacks" all merge to "black".
+            """
+            term = raw.replace('_', ' ').strip().lower()
+            # Check if this term (or a variant) is in TERM_GROUPS
+            # If so, use the main term from TERM_GROUPS to ensure proper merging
+            for main_term, variants in TERM_GROUPS.items():
+                if term == main_term or term in variants:
+                    return main_term
+            # If not in TERM_GROUPS, return lowercase version
+            return term
+
+        if has_identity_finance:
+            for pattern in identity_terms:
+                matches = re.finditer(pattern, visible, re.IGNORECASE)
+                for match in matches:
+                    identity_term = normalize_identity_term(match.group(1))
+                    canonical = canonicalize_term(identity_term)
+                    target = canonical if canonical else identity_term
+                    term_counts[target] = term_counts.get(target, 0) + 1
+                    if target not in term_to_chunks:
+                        term_to_chunks[target] = []
+                    term_to_chunks[target].append(chunk_id)
+                    # Also index underscore version for identity detector compatibility
+                    underscore_version = target.replace(' ', '_')
+                    if underscore_version != target:
+                        term_counts[underscore_version] = term_counts.get(underscore_version, 0) + 1
+                        if underscore_version not in term_to_chunks:
+                            term_to_chunks[underscore_version] = []
+                        term_to_chunks[underscore_version].append(chunk_id)
         
         # Index firm names (italicized)
         # Pattern 1: Complete firm name in single <italic> tag: <italic>FirmName</italic>

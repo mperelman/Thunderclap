@@ -305,23 +305,35 @@ class QueryEngine:
         canonical = canonicalize_term(term_lower)
         canonical_original = canonicalize_term(term)  # Preserve original case
         
+        # Check if this term is in TERM_GROUPS - if so, prioritize the main term
+        from .index_builder import TERM_GROUPS
+        term_groups_main = None
+        for main_term, variants in TERM_GROUPS.items():
+            if term_lower == main_term or term_lower in variants:
+                term_groups_main = main_term
+                break
+        
         # Try multiple lookup strategies (index preserves capitalization)
-        # 1. Original term (preserves case: "Crédit Lyonnais")
-        # 2. Canonicalized original (removes possessives but preserves case)
-        # 3. Lowercase canonical (for case-insensitive lookups)
-        # 4. Lowercase original (fallback)
+        # Priority order:
+        # 1. TERM_GROUPS main term (if applicable) - ensures we get merged chunks
+        # 2. Lowercase canonical (for case-insensitive lookups)
+        # 3. Lowercase original (fallback)
+        # 4. Original term (preserves case: "Crédit Lyonnais")
+        # 5. Canonicalized original (removes possessives but preserves case)
         lookup_terms = []
-        if term in self.term_to_chunks:
-            lookup_terms.append(term)
-        if canonical_original != term and canonical_original in self.term_to_chunks:
-            lookup_terms.append(canonical_original)
+        if term_groups_main and term_groups_main in self.term_to_chunks:
+            lookup_terms.append(term_groups_main)
         if canonical != term_lower and canonical in self.term_to_chunks:
             lookup_terms.append(canonical)
         if term_lower not in lookup_terms and term_lower in self.term_to_chunks:
             lookup_terms.append(term_lower)
+        if term in self.term_to_chunks:
+            lookup_terms.append(term)
+        if canonical_original != term and canonical_original not in lookup_terms and canonical_original in self.term_to_chunks:
+            lookup_terms.append(canonical_original)
         
-        # Use first found lookup term, or fallback to canonical/lowercase
-        lookup_term = lookup_terms[0] if lookup_terms else (canonical if canonical in self.term_to_chunks else term_lower)
+        # Use first found lookup term, or fallback to canonical/lowercase/main term
+        lookup_term = lookup_terms[0] if lookup_terms else (term_groups_main if term_groups_main and term_groups_main in self.term_to_chunks else (canonical if canonical in self.term_to_chunks else term_lower))
         
         # Collect chunk IDs from the main term
         all_chunk_ids = set()
@@ -1167,10 +1179,9 @@ class QueryEngine:
             if is_identity_query:
                 # Strict banking/finance keywords only (exclude general "trade", "commerce", "economic" which can be non-banking)
                 strict_finance_keywords = ['bank', 'banking', 'banker', 'bankers', 'finance', 'financial', 'financier', 'financiers',
-                                          'investment', 'investor', 'investors', 'capital', 'credit', 'loan', 'lending', 
-                                          'firm', 'company', 'corporation', 'enterprise', 'insurance', 'lic', 'mesbic', 'cdfi',
-                                          'supplier', 'contract', 'wealth', 'business', 'businesses',
-                                          'stock', 'stocks', 'bond', 'bonds', 'securities', 'exchange', 'market', 'markets']
+                                          'investment', 'investor', 'investors', 'capital', 'credit', 'loan', 'lending',
+                                          'insurance', 'securities', 'bond', 'bonds', 'stock', 'stocks', 'exchange',
+                                          'cdfi', 'lic', 'mesbic']
                 # Exclude chunks that mention non-banking economic terms without banking terms
                 exclude_if_only = ['slave trade', 'transatlantic', 'colonial econom', 'loyalist', 'settlement', 'colony', 'migration']
                 
@@ -1238,7 +1249,8 @@ class QueryEngine:
                     print(f"  [FILTER] Filtered {len(chunks)} chunks to {len(filtered_chunks)} finance-relevant chunks for identity query (required finance keywords, excluded non-banking)")
                     chunks = filtered_chunks
                 else:
-                    print(f"  [WARN] No finance-relevant chunks found after filtering - using all chunks")
+                    print(f"  [WARN] No finance-relevant chunks found after filtering for identity query")
+                    return "No finance-specific information found in the indexed documents for this identity term."
             
             # Append endnote chunks
             if endnote_chunks:
