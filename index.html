@@ -1654,71 +1654,17 @@
                     return;
                 }
                 
-                // Exclude very short terms that cause false positives (2 chars or less)
-                if (term.length <= 2) {
-                    return;
-                }
+                // Trust the backend filtering - if a term is in the index and sent to frontend, it should be hyperlinkable
+                // The /terms endpoint already filters out:
+                // - Generic words/phrases
+                // - Terms with 0 chunks
+                // - Very short lowercase terms
+                // - Verb forms, numbers, etc.
+                // So we can be permissive here - only exclude the query subject itself
                 
-                // Exclude common short words even if they're acronyms
-                const shortCommonWords = ['co', 'era', 'inc', 'ltd', 'corp'];
-                if (shortCommonWords.includes(lower)) {
-                    return;
-                }
-                
-                // NOTE: Generic words should NOT be in the index (filtered at indexing time)
-                // This is just a safety net - if generic words appear here, they need to be removed from the index
-                // The index is the source of truth for what should be hyperlinked
-                
-                // Exclude common generic words even if they're all caps
-                // These are not acronyms, just generic words that happen to be capitalized
-                const genericWords = ['tech', 'south', 'north', 'east', 'west', 'labor', 'labour', 
-                                     'department', 'work', 'works', 'state', 'states', 'national',
-                                     'federal', 'central', 'public', 'private', 'commercial',
-                                     'officials', 'official', 'policy', 'policies', 'funded', 'funding', 'fund', 'funds',
-                                     'affairs', 'affair', 'chief', 'rabbi', 'rabbis', 'chief rabbi',
-                                     'central bank', 'national bank'];  // Multi-word generic phrases
-                if (genericWords.includes(lower)) {
-                    return; // Skip generic words
-                }
-                
-                // Exclude generic phrases that are parts of firm names
-                // "Central Bank" and "National Bank" should only hyperlink as part of full firm names
-                if (lower === 'central bank' || lower === 'national bank') {
-                    // Only allow if it's part of a longer firm name (check if there's a longer variant)
-                    const hasLongerVariant = indexedTerms.some(t => 
-                        t.toLowerCase().includes(lower) && t.toLowerCase() !== lower && t.length > term.length
-                    );
-                    if (!hasLongerVariant) {
-                        return; // Skip standalone "Central Bank" or "National Bank"
-                    }
-                }
-                
-                // ONLY hyperlink if:
-                // 1. Multi-word term (e.g., "Bank of Montreal", "David David")
-                // 2. All caps acronym 3+ chars (e.g., "SEC", "FDIC") - but NOT generic words
-                // 3. Contains numbers/special characters (e.g., "BA1933", "TA1813")
-                // 4. Starts with "Panic of YYYY" (specific year pattern)
-                // 5. Single-word proper noun (capitalized, not all caps, not generic) - e.g., "Franks", "Hart", "Rothschild", "Li", "Wu"
-                const isMultiWord = term.includes(' ');
-                const isAcronym = term === term.toUpperCase() && term.length >= 3;
-                const hasNumbersOrSpecialChars = /[0-9\-_&]/.test(term);
-                const isPanicWithYear = /^panic of \d{4}$/i.test(term);
-                // Exclude only very common generic 2-3 char words that are clearly not surnames
-                // Be conservative - many short words are legitimate surnames (e.g., "Li", "Wu", "Byk", "Kux", "Gut", "Coe")
-                const genericShortWords = ['sea', 'bay'];  // Only exclude clearly geographic/generic terms
-                // Single-word proper noun: starts with capital, not all caps, not generic, at least 2 chars
-                // Allow 2-3 char proper nouns (e.g., "Li", "Wu", "Du", "Yu", "Byk", "Kux", "Gut", "Coe") but exclude clearly generic words
-                const isProperNoun = term.length >= 2 && 
-                                    term[0] === term[0].toUpperCase() && 
-                                    term !== term.toUpperCase() && 
-                                    !term.includes(' ') &&
-                                    !genericWords.includes(lower) &&
-                                    !genericShortWords.includes(lower);
-                
-                if (isMultiWord || isAcronym || hasNumbersOrSpecialChars || isPanicWithYear || isProperNoun) {
-                    if (!termMap.has(lower)) {
-                        termMap.set(lower, term);
-                    }
+                // Add all terms to the map (backend has already done the filtering)
+                if (!termMap.has(lower)) {
+                    termMap.set(lower, term);
                 }
             });
             
