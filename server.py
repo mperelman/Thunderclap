@@ -820,9 +820,66 @@ def get_indexed_terms():
                 if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
                     filtered_terms.append(display_term)
 
+        # Build identity cross-references for autofill
+        # Load identity detection results to map surnames <-> identities
+        identity_metadata = {}
+        surname_to_identities = {}  # "parsons" -> ["black"]
+        identity_to_surnames = {}   # "black" -> ["parsons", "mcguire", ...]
+        
+        identity_file = os.path.join('data', 'identity_detection_v3.json')
+        if os.path.exists(identity_file):
+            try:
+                with open(identity_file, 'r', encoding='utf-8') as f:
+                    identity_data = json.load(f)
+                
+                # Build surname -> identities mapping
+                for identity, data in identity_data.get('identities', {}).items():
+                    identity_lower = identity.lower()
+                    families = data.get('families', [])
+                    individuals = data.get('individuals', [])
+                    names = families + individuals
+                    
+                    # Build identity -> surnames mapping
+                    if identity_lower not in identity_to_surnames:
+                        identity_to_surnames[identity_lower] = []
+                    
+                    for name in names:
+                        name_lower = name.lower()
+                        # Build surname -> identities mapping
+                        if name_lower not in surname_to_identities:
+                            surname_to_identities[name_lower] = []
+                        if identity_lower not in surname_to_identities[name_lower]:
+                            surname_to_identities[name_lower].append(identity_lower)
+                        
+                        # Build identity -> surnames mapping (capitalize for display)
+                        name_display = name.capitalize() if name else name
+                        if name_display not in identity_to_surnames[identity_lower]:
+                            identity_to_surnames[identity_lower].append(name_display)
+            except Exception as e:
+                print(f"[WARN] Failed to load identity metadata: {e}")
+        
+        # Add identity metadata to terms
+        for term in filtered_terms:
+            term_lower = term.lower()
+            metadata = {}
+            
+            # If term is a surname, add its identities
+            if term_lower in surname_to_identities:
+                metadata['identities'] = surname_to_identities[term_lower]
+            
+            # If term is an identity, add related surnames (limit to top 10 for autofill)
+            if term_lower in identity_to_surnames:
+                metadata['related_surnames'] = identity_to_surnames[term_lower][:10]
+            
+            if metadata:
+                identity_metadata[term] = metadata
+        
         if filtered_terms:
-            return {"terms": filtered_terms}
-        return {"terms": []}
+            return {
+                "terms": filtered_terms,
+                "identity_metadata": identity_metadata
+            }
+        return {"terms": [], "identity_metadata": {}}
     except Exception as e:
         print(f"[ERROR] Failed to load indexed terms: {e}")
         return {"terms": []}

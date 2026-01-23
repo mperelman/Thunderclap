@@ -792,6 +792,7 @@
 
         // Autocomplete state
         let indexedTermsLower = [];
+        let identityMetadata = {};  // term -> {identities: [...], related_surnames: [...]}
         const MAX_AUTOCOMPLETE_RESULTS = 12;
         
         function createTab(question, jobId) {
@@ -1409,6 +1410,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     indexedTerms = data.terms || [];
+                    identityMetadata = data.identity_metadata || {};
                     // Sort by length (longest first) to match longer terms first
                     indexedTerms.sort((a, b) => b.length - a.length);
                     indexedTermsLoaded = true;
@@ -1437,9 +1439,26 @@
         }
 
         function getTagsForTerm(term) {
-            const tags = SAMPLE_TAGS.get(term.toLowerCase());
-            if (!tags || tags.size === 0) return '';
-            return Array.from(tags).join(', ');
+            // First check identity metadata (from server)
+            const metadata = identityMetadata[term];
+            if (metadata) {
+                const tags = [];
+                // If term is a surname, show its identities
+                if (metadata.identities && metadata.identities.length > 0) {
+                    tags.push(...metadata.identities.map(id => id.charAt(0).toUpperCase() + id.slice(1)));
+                }
+                // If term is an identity, show "Identity" tag
+                if (metadata.related_surnames && metadata.related_surnames.length > 0) {
+                    tags.push('Identity');
+                }
+                if (tags.length > 0) {
+                    return tags.join(', ');
+                }
+            }
+            // Fallback to SAMPLE_TAGS (hardcoded)
+            const sampleTags = SAMPLE_TAGS.get(term.toLowerCase());
+            if (!sampleTags || sampleTags.size === 0) return '';
+            return Array.from(sampleTags).join(', ');
         }
 
         function getAutocompleteSuggestions(query) {
@@ -1450,6 +1469,15 @@
             const results = [];
             const seen = new Set();
 
+            // Check if query matches an identity term - if so, also show related surnames
+            let relatedSurnames = [];
+            for (const [term, metadata] of Object.entries(identityMetadata)) {
+                if (term.toLowerCase() === q && metadata.related_surnames) {
+                    relatedSurnames = metadata.related_surnames;
+                    break;
+                }
+            }
+
             // Prefix matches first
             for (let i = 0; i < indexedTermsLower.length; i++) {
                 const termLower = indexedTermsLower[i];
@@ -1458,7 +1486,7 @@
                         results.push(indexedTerms[i]);
                         seen.add(termLower);
                     }
-                    if (results.length >= MAX_AUTOCOMPLETE_RESULTS) return results;
+                    if (results.length >= MAX_AUTOCOMPLETE_RESULTS && relatedSurnames.length === 0) return results;
                 }
             }
 
@@ -1468,7 +1496,19 @@
                 if (!seen.has(termLower) && termLower.includes(q)) {
                     results.push(indexedTerms[i]);
                     seen.add(termLower);
-                    if (results.length >= MAX_AUTOCOMPLETE_RESULTS) break;
+                    if (results.length >= MAX_AUTOCOMPLETE_RESULTS && relatedSurnames.length === 0) break;
+                }
+            }
+
+            // If query matches an identity, add related surnames (up to 5)
+            if (relatedSurnames.length > 0) {
+                for (const surname of relatedSurnames.slice(0, 5)) {
+                    const surnameLower = surname.toLowerCase();
+                    if (!seen.has(surnameLower) && indexedTerms.includes(surname)) {
+                        results.push(surname);
+                        seen.add(surnameLower);
+                        if (results.length >= MAX_AUTOCOMPLETE_RESULTS) break;
+                    }
                 }
             }
 
