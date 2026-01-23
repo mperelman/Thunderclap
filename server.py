@@ -813,8 +813,12 @@ def get_indexed_terms():
             if not has_chunks:
                 continue  # Skip terms with no chunks
             
-            # Skip if too short
-            if len(display_term) < 4:
+            # Skip if too short (but allow 2-3 char proper nouns like "Li", "Wu")
+            # Only skip if it's a single lowercase word (likely not a proper noun)
+            if len(display_term) < 2:
+                continue
+            # Skip 2-3 char terms that are all lowercase (likely not proper nouns)
+            if len(display_term) < 4 and display_term.islower():
                 continue
             # Skip generic words/phrases (comprehensive list)
             if should_exclude_term(display_term):

@@ -1698,17 +1698,21 @@
                 // 2. All caps acronym 3+ chars (e.g., "SEC", "FDIC") - but NOT generic words
                 // 3. Contains numbers/special characters (e.g., "BA1933", "TA1813")
                 // 4. Starts with "Panic of YYYY" (specific year pattern)
-                // 5. Single-word proper noun (capitalized, not all caps, not generic) - e.g., "Franks", "Hart", "Rothschild"
+                // 5. Single-word proper noun (capitalized, not all caps, not generic) - e.g., "Franks", "Hart", "Rothschild", "Li", "Wu"
                 const isMultiWord = term.includes(' ');
                 const isAcronym = term === term.toUpperCase() && term.length >= 3;
                 const hasNumbersOrSpecialChars = /[0-9\-_&]/.test(term);
                 const isPanicWithYear = /^panic of \d{4}$/i.test(term);
-                // Single-word proper noun: starts with capital, not all caps, not generic, at least 4 chars
-                const isProperNoun = term.length >= 4 && 
+                // Exclude common generic 2-3 char words that aren't surnames
+                const genericShortWords = ['sea', 'bay', 'law', 'fox', 'jay', 'lea', 'gut', 'cox', 'fax', 'ren', 'coe', 'abs', 'ker', 'byk', 'tov', 'kux'];
+                // Single-word proper noun: starts with capital, not all caps, not generic, at least 2 chars
+                // Allow 2-3 char proper nouns (e.g., "Li", "Wu", "Du", "Yu") but exclude generic words
+                const isProperNoun = term.length >= 2 && 
                                     term[0] === term[0].toUpperCase() && 
                                     term !== term.toUpperCase() && 
                                     !term.includes(' ') &&
-                                    !genericWords.includes(lower);
+                                    !genericWords.includes(lower) &&
+                                    !genericShortWords.includes(lower);
                 
                 if (isMultiWord || isAcronym || hasNumbersOrSpecialChars || isPanicWithYear || isProperNoun) {
                     if (!termMap.has(lower)) {
