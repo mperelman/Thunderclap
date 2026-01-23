@@ -732,17 +732,39 @@ def get_indexed_terms():
                 if plural_capitalized:
                     normalized_terms[normalized] = plural_capitalized[0]  # "Blacks"
                 elif plural_lowercase:
-                    normalized_terms[normalized] = plural_lowercase[0].capitalize()  # "blacks" -> "Blacks"
+                    # For multi-word terms, use title case; for single-word, capitalize first letter
+                    if ' ' in plural_lowercase[0]:
+                        normalized_terms[normalized] = plural_lowercase[0].title()  # "protected jews" -> "Protected Jews"
+                    else:
+                        normalized_terms[normalized] = plural_lowercase[0].capitalize()  # "blacks" -> "Blacks"
                 elif singular_capitalized:
-                    normalized_terms[normalized] = singular_capitalized[0]  # "Black"
+                    normalized_terms[normalized] = singular_capitalized[0]  # "Black", "Protected Jew"
                 elif singular_lowercase:
-                    normalized_terms[normalized] = singular_lowercase[0].capitalize()  # "black" -> "Black"
+                    # For multi-word terms, use title case; for single-word, capitalize first letter
+                    if ' ' in singular_lowercase[0]:
+                        normalized_terms[normalized] = singular_lowercase[0].title()  # "protected jew" -> "Protected Jew"
+                    else:
+                        normalized_terms[normalized] = singular_lowercase[0].capitalize()  # "black" -> "Black"
                 elif no_underscore:
-                    # Prefer space version over underscore version
-                    normalized_terms[normalized] = no_underscore[0]
+                    # Prefer space version over underscore version, and ensure proper capitalization
+                    if ' ' in no_underscore[0] and no_underscore[0].islower():
+                        normalized_terms[normalized] = no_underscore[0].title()  # "protected jew" -> "Protected Jew"
+                    else:
+                        normalized_terms[normalized] = no_underscore[0]
                 else:
-                    # Fallback: use first variant or normalized term
-                    normalized_terms[normalized] = unique_variants[0] if unique_variants else normalized
+                    # Fallback: use first variant or normalized term, with proper capitalization
+                    if unique_variants:
+                        fallback = unique_variants[0]
+                        if ' ' in fallback and fallback.islower():
+                            normalized_terms[normalized] = fallback.title()  # "protected jew" -> "Protected Jew"
+                        else:
+                            normalized_terms[normalized] = fallback
+                    else:
+                        # Use normalized term with proper capitalization
+                        if ' ' in normalized and normalized.islower():
+                            normalized_terms[normalized] = normalized.title()  # "protected jew" -> "Protected Jew"
+                        else:
+                            normalized_terms[normalized] = normalized
         
         # Now filter the normalized terms
         # CRITICAL: Only include terms that have chunks associated with them

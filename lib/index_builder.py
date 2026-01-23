@@ -68,7 +68,7 @@ TERM_GROUPS = {
     'orthodox': ['orthodox', 'eastern orthodox', 'greek orthodox'],  # Eastern Orthodox
     
     # Jewish hierarchy (general -> specific)
-    'jewish': ['jew', 'jews', 'jewish'],  # General (includes all Jewish subgroups)
+    'jewish': ['jew', 'jews', 'jewish', 'jewless'],  # General (includes all Jewish subgroups)
     'sephardi': ['sephardi', 'sephardim', 'sephardic'],  # Specific: Spain/Portugal diaspora
     'ashkenazi': ['ashkenazi', 'ashkenazim', 'ashkenazic'],  # Specific: Poland/Germany
     'court jew': ['court jew', 'court jews'],  # Specific: political elite
