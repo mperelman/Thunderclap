@@ -65,6 +65,8 @@ GENERIC_WORDS_TO_EXCLUDE = {
     'bank', 'banks', 'banking', 'employee', 'employees', 'worker', 'workers', 'staff', 'member', 'members',
     'financial', 'finance', 'financing', 'credit', 'credits', 'capital', 'securities', 'assets',
     'officials', 'official', 'policy', 'policies', 'funded', 'funding', 'fund', 'funds',
+    'affairs', 'affair',  # Generic word (e.g., "Ministry of Internal Affairs" - don't index "affairs" standalone)
+    'chief', 'rabbi', 'rabbis', 'chief rabbi',  # Generic titles (don't index standalone)
     # Generic descriptive words
     'political', 'politics', 'economic', 'economy', 'commercial', 'trade', 'trading', 'commerce',
     'war', 'wars', 'conflict', 'conflicts', 'battle', 'battles',

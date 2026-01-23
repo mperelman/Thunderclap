@@ -1675,6 +1675,7 @@
                                      'department', 'work', 'works', 'state', 'states', 'national',
                                      'federal', 'central', 'public', 'private', 'commercial',
                                      'officials', 'official', 'policy', 'policies', 'funded', 'funding', 'fund', 'funds',
+                                     'affairs', 'affair', 'chief', 'rabbi', 'rabbis', 'chief rabbi',
                                      'central bank', 'national bank'];  // Multi-word generic phrases
                 if (genericWords.includes(lower)) {
                     return; // Skip generic words
@@ -1697,12 +1698,19 @@
                 // 2. All caps acronym 3+ chars (e.g., "SEC", "FDIC") - but NOT generic words
                 // 3. Contains numbers/special characters (e.g., "BA1933", "TA1813")
                 // 4. Starts with "Panic of YYYY" (specific year pattern)
+                // 5. Single-word proper noun (capitalized, not all caps, not generic) - e.g., "Franks", "Hart", "Rothschild"
                 const isMultiWord = term.includes(' ');
                 const isAcronym = term === term.toUpperCase() && term.length >= 3;
                 const hasNumbersOrSpecialChars = /[0-9\-_&]/.test(term);
                 const isPanicWithYear = /^panic of \d{4}$/i.test(term);
+                // Single-word proper noun: starts with capital, not all caps, not generic, at least 4 chars
+                const isProperNoun = term.length >= 4 && 
+                                    term[0] === term[0].toUpperCase() && 
+                                    term !== term.toUpperCase() && 
+                                    !term.includes(' ') &&
+                                    !genericWords.includes(lower);
                 
-                if (isMultiWord || isAcronym || hasNumbersOrSpecialChars || isPanicWithYear) {
+                if (isMultiWord || isAcronym || hasNumbersOrSpecialChars || isPanicWithYear || isProperNoun) {
                     if (!termMap.has(lower)) {
                         termMap.set(lower, term);
                     }
