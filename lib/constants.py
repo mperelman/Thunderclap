@@ -64,6 +64,7 @@ GENERIC_WORDS_TO_EXCLUDE = {
     # Generic banking/finance words (standalone)
     'bank', 'banks', 'banking', 'employee', 'employees', 'worker', 'workers', 'staff', 'member', 'members',
     'financial', 'finance', 'financing', 'credit', 'credits', 'capital', 'securities', 'assets',
+    'officials', 'official', 'policy', 'policies', 'funded', 'funding', 'fund', 'funds',
     # Generic descriptive words
     'political', 'politics', 'economic', 'economy', 'commercial', 'trade', 'trading', 'commerce',
     'war', 'wars', 'conflict', 'conflicts', 'battle', 'battles',

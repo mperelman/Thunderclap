@@ -756,6 +756,18 @@ def get_indexed_terms():
         filtered_terms = []
         seen_lower = set()  # Track lowercase to avoid duplicates
         for normalized_key, display_term in normalized_terms.items():
+            # CRITICAL: Skip generic phrases that should only appear as part of longer firm names
+            # "Central Bank" and "National Bank" should not be hyperlinked standalone
+            if normalized_key.lower() in ['central bank', 'national bank']:
+                # Only allow if there's a longer variant (e.g., "Central Bank of Chile")
+                has_longer_variant = False
+                for other_term in normalized_terms.keys():
+                    if other_term.lower() != normalized_key.lower() and normalized_key.lower() in other_term.lower():
+                        has_longer_variant = True
+                        break
+                if not has_longer_variant:
+                    continue  # Skip standalone "Central Bank" or "National Bank"
+            
             # CRITICAL: Skip terms with 0 chunks - they shouldn't appear in autofill
             # Check all variants of the normalized term to see if any have chunks
             has_chunks = False

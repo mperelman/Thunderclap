@@ -1673,9 +1673,23 @@
                 // These are not acronyms, just generic words that happen to be capitalized
                 const genericWords = ['tech', 'south', 'north', 'east', 'west', 'labor', 'labour', 
                                      'department', 'work', 'works', 'state', 'states', 'national',
-                                     'federal', 'central', 'public', 'private', 'commercial'];
+                                     'federal', 'central', 'public', 'private', 'commercial',
+                                     'officials', 'official', 'policy', 'policies', 'funded', 'funding', 'fund', 'funds',
+                                     'central bank', 'national bank'];  // Multi-word generic phrases
                 if (genericWords.includes(lower)) {
                     return; // Skip generic words
+                }
+                
+                // Exclude generic phrases that are parts of firm names
+                // "Central Bank" and "National Bank" should only hyperlink as part of full firm names
+                if (lower === 'central bank' || lower === 'national bank') {
+                    // Only allow if it's part of a longer firm name (check if there's a longer variant)
+                    const hasLongerVariant = indexedTerms.some(t => 
+                        t.toLowerCase().includes(lower) && t.toLowerCase() !== lower && t.length > term.length
+                    );
+                    if (!hasLongerVariant) {
+                        return; // Skip standalone "Central Bank" or "National Bank"
+                    }
                 }
                 
                 // ONLY hyperlink if:
@@ -1750,7 +1764,8 @@
             
             // Remove overlapping/nested matches (keep the longest/earliest one)
             // CRITICAL: This prevents "Warburg" and "New York" from being matched when "Warburg New York" is already matched
-            // Also prevents adjacent single-word matches that could form a multi-word term
+            // Also prevents "Laos" from being matched when "Bank of Laos" is already matched
+            // Also prevents "National Bank" from being matched when "Hungarian National Bank" is already matched
             const nonOverlapping = [];
             for (const match of matches) {
                 const matchStart = match.index;
@@ -1763,32 +1778,62 @@
                     
                     // Check if this match overlaps with or is nested within an existing match
                     // Overlap if: match starts inside existing, match ends inside existing, or match completely contains existing
-                    return (matchStart >= existingStart && matchStart < existingEnd) ||
-                           (matchEnd > existingStart && matchEnd <= existingEnd) ||
-                           (matchStart <= existingStart && matchEnd >= existingEnd);
+                    const isNested = (matchStart >= existingStart && matchEnd <= existingEnd) ||
+                                    (matchStart > existingStart && matchEnd < existingEnd);
+                    const isOverlapping = (matchStart >= existingStart && matchStart < existingEnd) ||
+                                         (matchEnd > existingStart && matchEnd <= existingEnd) ||
+                                         (matchStart <= existingStart && matchEnd >= existingEnd);
+                    
+                    // If this match is nested within an existing longer match, skip it
+                    if (isNested && existing.length > match.length) {
+                        return true;
+                    }
+                    // If existing match is nested within this match (this is longer), remove existing
+                    if (isNested && match.length > existing.length) {
+                        const existingIndex = nonOverlapping.indexOf(existing);
+                        if (existingIndex >= 0) {
+                            nonOverlapping.splice(existingIndex, 1);
+                        }
+                        return false; // Don't skip this match, we removed the shorter one
+                    }
+                    
+                    return isOverlapping;
                 });
                 
                 if (overlaps) {
                     continue; // Skip this match - it overlaps with an existing one
                 }
                 
-                // CRITICAL: Also check if this single-word match is adjacent to another single-word match
-                // If two adjacent single-word terms could form a multi-word term, prefer skipping the shorter ones
-                // This prevents "Warburg" and "New York" from both being hyperlinked when they appear together
+                // CRITICAL: Check if this single-word match is part of a longer multi-word match
+                // If "Bank of Laos" exists, don't hyperlink "Laos" separately
+                // If "Hungarian National Bank" exists, don't hyperlink "National Bank" separately
                 if (!match.lowerTerm.includes(' ')) {
-                    // This is a single-word match - check if it's adjacent to another single-word match
-                    const isAdjacentToSingleWord = nonOverlapping.some(existing => {
-                        if (existing.lowerTerm.includes(' ')) return false; // Existing is multi-word, keep it
-                        const existingEnd = existing.index + existing.length;
-                        const gap = Math.abs(matchStart - existingEnd);
-                        // If gap is small (0-2 chars, allowing for space/punctuation), they're adjacent
-                        return gap <= 2;
+                    // This is a single-word match - check if it's contained in any longer match
+                    const isPartOfLongerMatch = matches.some(otherMatch => {
+                        if (otherMatch === match) return false;
+                        if (!otherMatch.lowerTerm.includes(' ')) return false; // Other is also single-word
+                        const otherStart = otherMatch.index;
+                        const otherEnd = otherMatch.index + otherMatch.length;
+                        // Check if this single-word match is within the longer match
+                        return matchStart >= otherStart && matchEnd <= otherEnd;
                     });
                     
-                    if (isAdjacentToSingleWord) {
-                        // Skip this single-word match if there's an adjacent single-word match
-                        // This prevents "Warburg" and "New York" from both being hyperlinked
-                        continue;
+                    if (isPartOfLongerMatch) {
+                        continue; // Skip - this is part of a longer match
+                    }
+                } else {
+                    // This is a multi-word match - check if any shorter match is nested within it
+                    // Remove any shorter matches that are nested
+                    for (let i = nonOverlapping.length - 1; i >= 0; i--) {
+                        const existing = nonOverlapping[i];
+                        if (existing === match) continue;
+                        const existingStart = existing.index;
+                        const existingEnd = existing.index + existing.length;
+                        // If existing is shorter and nested within this match, remove it
+                        if (existing.length < match.length &&
+                            existingStart >= matchStart && existingEnd <= matchEnd) {
+                            nonOverlapping.splice(i, 1);
+                        }
                     }
                 }
                 
@@ -1803,7 +1848,7 @@
             for (const match of nonOverlapping) {
                 const query = `Tell me about ${match.term}`;
                 const escapedQuery = query.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
-                const link = `<a href="#" class="indexed-term-link" onclick="event.preventDefault(); selectIndexedQuery('${escapedQuery}'); return false;" style="color: #c9a227; text-decoration: underline; cursor: pointer;" title="Click to search for: ${match.term}">${match.text}</a>`;
+                const link = `<a href="#" class="indexed-term-link" onclick="event.preventDefault(); event.stopPropagation(); selectIndexedQuery('${escapedQuery}'); return false;" style="color: #c9a227; text-decoration: underline; cursor: pointer;" title="Click to search for: ${match.term}">${match.text}</a>`;
                 
                 result = result.substring(0, match.index) + link + result.substring(match.index + match.length);
             }
@@ -1844,11 +1889,15 @@
         }
         
         function selectIndexedQuery(query) {
-            document.getElementById('question').value = query;
+            const input = document.getElementById('question');
+            if (input) {
+                input.value = query;
+                input.focus();
+            }
             const modal = document.getElementById('indexed-modal');
             if (modal) modal.remove();
-            // Optionally auto-submit the query
-            // askQuestion(); // Uncomment if you want clicking a term to auto-search
+            // Don't auto-submit - let user review the query first
+            // The hyperlink remains visible after clicking
         }
 
         
