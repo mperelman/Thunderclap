@@ -1703,10 +1703,11 @@
                 const isAcronym = term === term.toUpperCase() && term.length >= 3;
                 const hasNumbersOrSpecialChars = /[0-9\-_&]/.test(term);
                 const isPanicWithYear = /^panic of \d{4}$/i.test(term);
-                // Exclude common generic 2-3 char words that aren't surnames
-                const genericShortWords = ['sea', 'bay', 'law', 'fox', 'jay', 'lea', 'gut', 'cox', 'fax', 'ren', 'coe', 'abs', 'ker', 'byk', 'tov', 'kux'];
+                // Exclude only very common generic 2-3 char words that are clearly not surnames
+                // Be conservative - many short words are legitimate surnames (e.g., "Li", "Wu", "Byk", "Kux", "Gut", "Coe")
+                const genericShortWords = ['sea', 'bay'];  // Only exclude clearly geographic/generic terms
                 // Single-word proper noun: starts with capital, not all caps, not generic, at least 2 chars
-                // Allow 2-3 char proper nouns (e.g., "Li", "Wu", "Du", "Yu") but exclude generic words
+                // Allow 2-3 char proper nouns (e.g., "Li", "Wu", "Du", "Yu", "Byk", "Kux", "Gut", "Coe") but exclude clearly generic words
                 const isProperNoun = term.length >= 2 && 
                                     term[0] === term[0].toUpperCase() && 
                                     term !== term.toUpperCase() && 
