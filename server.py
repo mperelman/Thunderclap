@@ -641,8 +641,9 @@ def get_indexed_terms():
                 # Multi-word or lowercase - keep as is
                 normalized_terms_pre[normalized] = normalized_terms_pre.get(normalized, []) + [term]
         
-        # Filter out offensive/odd terms
-        OFFENSIVE_TERMS = {'jewless', 'jew-less', 'jew less'}
+        # Filter out offensive/odd terms (but NOT terms that are in TERM_GROUPS - they'll be merged)
+        # "jewless" is in TERM_GROUPS and will merge with "jewish", so don't filter it here
+        OFFENSIVE_TERMS = set()  # Removed 'jewless' - it's in TERM_GROUPS and will merge with 'jewish'
         filtered_terms_pre = {}
         for normalized, variants in normalized_terms_pre.items():
             if normalized.lower() in OFFENSIVE_TERMS:
@@ -729,7 +730,22 @@ def get_indexed_terms():
                     normalized_terms[normalized] = unique_variants[0] if unique_variants else normalized
             else:
                 # For identity terms and other terms, prefer plural
-                if plural_capitalized:
+                # BUT: For multi-word identity terms like "court jew", prefer singular form (not "court jews")
+                # Check if this is a multi-word identity term that should use singular
+                is_multi_word_identity = is_identity_term and ' ' in normalized
+                if is_multi_word_identity:
+                    # For multi-word identity terms, prefer singular capitalized form
+                    if singular_capitalized:
+                        normalized_terms[normalized] = singular_capitalized[0]  # "Court Jew" not "Court Jews"
+                    elif singular_lowercase:
+                        normalized_terms[normalized] = singular_lowercase[0].title()  # "court jew" -> "Court Jew"
+                    elif plural_capitalized:
+                        normalized_terms[normalized] = plural_capitalized[0]  # Fallback to plural
+                    elif plural_lowercase:
+                        normalized_terms[normalized] = plural_lowercase[0].title()  # "court jews" -> "Court Jews"
+                    else:
+                        normalized_terms[normalized] = unique_variants[0] if unique_variants else normalized
+                elif plural_capitalized:
                     normalized_terms[normalized] = plural_capitalized[0]  # "Blacks"
                 elif plural_lowercase:
                     # For multi-word terms, use title case; for single-word, capitalize first letter
@@ -870,29 +886,25 @@ def get_indexed_terms():
                 with open(identity_file, 'r', encoding='utf-8') as f:
                     identity_data = json.load(f)
                 
-                # Build surname -> identities mapping
-                for identity, data in identity_data.get('identities', {}).items():
-                    identity_lower = identity.lower()
-                    families = data.get('families', [])
-                    individuals = data.get('individuals', [])
-                    names = families + individuals
-                    
-                    # Build identity -> surnames mapping
-                    if identity_lower not in identity_to_surnames:
-                        identity_to_surnames[identity_lower] = []
-                    
-                    for name in names:
-                        name_lower = name.lower()
-                        # Build surname -> identities mapping
-                        if name_lower not in surname_to_identities:
-                            surname_to_identities[name_lower] = []
-                        if identity_lower not in surname_to_identities[name_lower]:
-                            surname_to_identities[name_lower].append(identity_lower)
+                # Build surname -> identities mapping from surname_to_identity
+                # Structure: {"parsons": ["black"], "mcguire": ["black", "irish"], ...}
+                surname_to_identity_data = identity_data.get('surname_to_identity', {})
+                for surname, identities_list in surname_to_identity_data.items():
+                    surname_lower = surname.lower()
+                    # Build surname -> identities mapping
+                    if surname_lower not in surname_to_identities:
+                        surname_to_identities[surname_lower] = []
+                    for identity in identities_list:
+                        identity_lower = identity.lower()
+                        if identity_lower not in surname_to_identities[surname_lower]:
+                            surname_to_identities[surname_lower].append(identity_lower)
                         
                         # Build identity -> surnames mapping (capitalize for display)
-                        name_display = name.capitalize() if name else name
-                        if name_display not in identity_to_surnames[identity_lower]:
-                            identity_to_surnames[identity_lower].append(name_display)
+                        if identity_lower not in identity_to_surnames:
+                            identity_to_surnames[identity_lower] = []
+                        surname_display = surname.capitalize() if surname else surname
+                        if surname_display not in identity_to_surnames[identity_lower]:
+                            identity_to_surnames[identity_lower].append(surname_display)
             except Exception as e:
                 print(f"[WARN] Failed to load identity metadata: {e}")
         
