@@ -71,7 +71,7 @@ TERM_GROUPS = {
     'jewish': ['jew', 'jews', 'jewish', 'jewless', 'jewry'],  # General (includes all Jewish subgroups)
     'sephardi': ['sephardi', 'sephardim', 'sephardic'],  # Specific: Spain/Portugal diaspora
     'ashkenazi': ['ashkenazi', 'ashkenazim', 'ashkenazic'],  # Specific: Poland/Germany
-    'court jew': ['court jew', 'court jews'],  # Specific: political elite
+    'court jew': ['court jew', 'court jews', 'court jewish'],  # Specific: political elite
     
     # Other religious/ethnic groups
     'muslim': ['muslim', 'muslims', 'islam', 'islamic', 'sunni', 'shia', 'shiite'],

@@ -661,6 +661,12 @@ def get_indexed_terms():
                 # Also map uppercase and capitalized versions
                 term_normalization_map[variant.upper()] = main_term
                 term_normalization_map[variant.capitalize()] = main_term
+                # Also map Title Case for multi-word terms
+                if ' ' in variant:
+                    term_normalization_map[variant.title()] = main_term
+                # Map all-caps single words (e.g., "JEWLESS" -> "jewish")
+                if ' ' not in variant:
+                    term_normalization_map[variant.upper()] = main_term
         
         # Normalize terms: use TERM_GROUPS main term if available, otherwise keep original
         # First pass: collect all variants for each normalized term
