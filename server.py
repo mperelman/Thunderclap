@@ -882,11 +882,21 @@ def get_indexed_terms():
         surname_to_identities = {}  # "parsons" -> ["black"]
         identity_to_surnames = {}   # "black" -> ["parsons", "mcguire", ...]
         
-        identity_file = os.path.join('data', 'identity_detection_v3.json')
+        from lib.config import DATA_DIR
+        identity_file = os.path.join(DATA_DIR, 'identity_detection_v3.json')
+        
+        # Fallback to local data directory if DATA_DIR doesn't work (e.g. on some deployments)
+        if not os.path.exists(identity_file):
+            local_identity_file = os.path.join('data', 'identity_detection_v3.json')
+            if os.path.exists(local_identity_file):
+                identity_file = local_identity_file
+        
         if os.path.exists(identity_file):
             try:
                 with open(identity_file, 'r', encoding='utf-8') as f:
                     identity_data = json.load(f)
+                
+                print(f"[INFO] Loaded identity data from {identity_file}")
                 
                 # Build surname -> identities mapping from surname_to_identity
                 # Structure: {"parsons": ["black"], "mcguire": ["black", "irish"], ...}
