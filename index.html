@@ -1421,6 +1421,22 @@
                     }
                     console.log(`[HYPERLINK] ✅ Loaded ${indexedTerms.length} indexed terms for hyperlinking`);
                     console.log('[HYPERLINK] Sample terms:', indexedTerms.slice(0, 10));
+                    console.log(`[IDENTITY] Loaded ${Object.keys(identityMetadata).length} terms with identity metadata`);
+                    // Check for Parsons
+                    if (identityMetadata['Parsons']) {
+                        console.log('[IDENTITY] Parsons metadata:', identityMetadata['Parsons']);
+                    } else {
+                        console.log('[IDENTITY] Parsons NOT in identity metadata');
+                        console.log('[IDENTITY] Sample metadata keys:', Object.keys(identityMetadata).slice(0, 10));
+                    }
+                    // Check for Black/Blacks
+                    const blackTerms = Object.keys(identityMetadata).filter(t => t.toLowerCase().includes('black'));
+                    if (blackTerms.length > 0) {
+                        console.log('[IDENTITY] Black identity terms:', blackTerms);
+                        blackTerms.forEach(term => {
+                            console.log(`[IDENTITY] ${term} metadata:`, identityMetadata[term]);
+                        });
+                    }
                     return Promise.resolve();
                 } else {
                     const errorText = await response.text().catch(() => '');
@@ -1442,6 +1458,7 @@
             // First check identity metadata (from server)
             const metadata = identityMetadata[term];
             if (metadata) {
+                console.log(`[TAGS] Found metadata for "${term}":`, metadata);
                 const tags = [];
                 // If term is a surname, show its identities
                 if (metadata.identities && metadata.identities.length > 0) {
