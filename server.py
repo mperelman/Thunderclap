@@ -926,6 +926,15 @@ def get_indexed_terms():
             if metadata:
                 identity_metadata[term] = metadata
         
+        # Debug: Log some metadata examples
+        if identity_metadata:
+            sample_terms = [t for t in list(identity_metadata.keys())[:5] if identity_metadata[t].get('identities')]
+            if sample_terms:
+                print(f"[DEBUG] Sample terms with identity metadata: {sample_terms}")
+            sample_identities = [t for t in list(identity_metadata.keys())[:5] if identity_metadata[t].get('related_surnames')]
+            if sample_identities:
+                print(f"[DEBUG] Sample identity terms with related surnames: {sample_identities}")
+        
         if filtered_terms:
             return {
                 "terms": filtered_terms,
