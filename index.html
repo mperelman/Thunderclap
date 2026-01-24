@@ -1470,9 +1470,12 @@
             const seen = new Set();
 
             // Check if query matches an identity term - if so, also show related surnames
+            // Need to check both the exact term and its variants (e.g., "black" matches "Blacks")
             let relatedSurnames = [];
             for (const [term, metadata] of Object.entries(identityMetadata)) {
-                if (term.toLowerCase() === q && metadata.related_surnames) {
+                const termLower = term.toLowerCase();
+                // Check if query matches the term or if it's a variant (e.g., "black" matches "Blacks", "Blacks" matches "black")
+                if ((termLower === q || termLower.startsWith(q) || q.startsWith(termLower)) && metadata.related_surnames) {
                     relatedSurnames = metadata.related_surnames;
                     break;
                 }
