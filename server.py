@@ -641,13 +641,9 @@ def get_indexed_terms():
                 # Multi-word or lowercase - keep as is
                 normalized_terms_pre[normalized] = normalized_terms_pre.get(normalized, []) + [term]
         
-        # Filter out offensive/odd terms (but NOT terms that are in TERM_GROUPS - they'll be merged)
-        # "jewless" is in TERM_GROUPS and will merge with "jewish", so don't filter it here
-        OFFENSIVE_TERMS = set()  # Removed 'jewless' - it's in TERM_GROUPS and will merge with 'jewish'
+        # No offensive terms to filter - terms in TERM_GROUPS (like "jewless") will merge automatically
         filtered_terms_pre = {}
         for normalized, variants in normalized_terms_pre.items():
-            if normalized.lower() in OFFENSIVE_TERMS:
-                continue  # Skip offensive terms
             # Filter out generic phrases like "National Women" (should just be "Women")
             if normalized.lower() in ['national women', 'national woman']:
                 continue
