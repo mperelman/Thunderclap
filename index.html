@@ -1465,6 +1465,11 @@
                     // Capitalize each identity and add as separate tag
                     const identityTags = metadata.identities.map(id => id.charAt(0).toUpperCase() + id.slice(1));
                     tags.push(...identityTags);
+                    
+                    // If likely fusion of unrelated families, add warning
+                    if (metadata._likely_fusion) {
+                        tags.push('⚠️ Multiple families?');
+                    }
                 }
                 // If term is an identity, show "Identity" tag
                 if (metadata.related_surnames && metadata.related_surnames.length > 0) {

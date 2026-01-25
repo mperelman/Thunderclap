@@ -1004,7 +1004,31 @@ def get_indexed_terms():
             
             # If term is a surname, add its identities
             if term_lower in surname_to_identities:
-                metadata['identities'] = surname_to_identities[term_lower]
+                identities = surname_to_identities[term_lower]
+                metadata['identities'] = identities
+                
+                # Detect if this surname likely represents multiple unrelated families
+                # by checking for contradictory identity combinations
+                if len(identities) > 5:  # High identity count suggests fusion
+                    # Check for contradictory religious groups
+                    major_religions = {'jewish', 'ashkenazi', 'sephardi', 'muslim', 'islam', 'hindu', 'christian', 'catholic', 'protestant', 'puritan', 'quaker', 'huguenot'}
+                    found_religions = {id.lower() for id in identities if id.lower() in major_religions}
+                    
+                    # Contradictory combinations that suggest different families:
+                    # - Jewish + Hindu (e.g., Ashkenazi + Brahmin if Hindu)
+                    # - Jewish + Muslim
+                    # - Hindu + Muslim
+                    # - Multiple Jewish subgroups from different regions (Ashkenazi + Sephardi could be same family, but rare)
+                    has_jewish = any('jew' in id.lower() or id.lower() in {'ashkenazi', 'sephardi'} for id in identities)
+                    has_hindu = any(id.lower() in {'hindu', 'brahmin', 'bania'} for id in identities)
+                    has_muslim = any('muslim' in id.lower() or id.lower() in {'islam', 'sunni', 'shia'} for id in identities)
+                    
+                    # If we have multiple major religions, likely fusion
+                    religion_count = sum([has_jewish, has_hindu, has_muslim])
+                    if religion_count >= 2:
+                        metadata['_likely_fusion'] = True
+                        metadata['_fusion_reason'] = f"Multiple major religions detected ({religion_count}): {', '.join(found_religions)}"
+                
                 metadata_count += 1
             
             # If term is an identity, add related surnames (filter to only surnames in index, limit to 20 for autofill)
