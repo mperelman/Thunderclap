@@ -1014,13 +1014,13 @@ def get_indexed_terms():
                 # Filter to only surnames that actually exist in filtered_terms (indexed)
                 all_related = identity_to_surnames[identity_key]
                 filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
-                metadata['related_surnames'] = filtered_related[:20]  # Increased limit and filtered
+                metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
             elif term_lower in identity_to_surnames:
                 # Fallback: check exact match
                 all_related = identity_to_surnames[term_lower]
                 filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
-                metadata['related_surnames'] = filtered_related[:20]  # Increased limit and filtered
+                metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
             
             if metadata:
