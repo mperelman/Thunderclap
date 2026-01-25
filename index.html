@@ -1471,7 +1471,8 @@
                     tags.push('Identity');
                 }
                 if (tags.length > 0) {
-                    return tags.join(', ');
+                    // Use " | " separator to show identities are separate, not fused
+                    return tags.join(' | ');
                 }
             }
             // Fallback to SAMPLE_TAGS (hardcoded)
