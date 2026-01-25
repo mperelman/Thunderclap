@@ -777,12 +777,24 @@ def get_indexed_terms():
                 # BUT: For multi-word identity terms like "court jew", prefer singular form (not "court jews")
                 # Check if this is a multi-word identity term that should use singular
                 is_multi_word_identity = is_identity_term and ' ' in normalized
+                
+                # Filter out all-caps variants for identity terms (e.g., "JEWLESS" -> prefer "Jews" or "Jewish")
+                # All-caps single words are likely indexing artifacts, not proper display terms
+                filtered_variants = unique_variants
+                if is_identity_term:
+                    # Remove all-caps single-word variants (they're indexing artifacts)
+                    filtered_variants = [v for v in unique_variants if not (v.isupper() and ' ' not in v)]
+                    if not filtered_variants:
+                        filtered_variants = unique_variants  # Fallback if all were filtered
+                
                 if is_multi_word_identity:
                     # For multi-word identity terms, prefer singular capitalized form
-                    if singular_capitalized:
-                        normalized_terms[normalized] = singular_capitalized[0]  # "Court Jew" not "Court Jews"
-                    elif singular_lowercase:
-                        normalized_terms[normalized] = singular_lowercase[0].title()  # "court jew" -> "Court Jew"
+                    singular_capitalized_filtered = [v for v in filtered_variants if not v.lower().endswith('s') and v[0].isupper() and not v.isupper() and '_' not in v]
+                    singular_lowercase_filtered = [v for v in filtered_variants if not v.lower().endswith('s') and v.islower() and '_' not in v]
+                    if singular_capitalized_filtered:
+                        normalized_terms[normalized] = singular_capitalized_filtered[0]  # "Court Jew" not "Court Jews"
+                    elif singular_lowercase_filtered:
+                        normalized_terms[normalized] = singular_lowercase_filtered[0].title()  # "court jew" -> "Court Jew"
                     elif plural_capitalized:
                         normalized_terms[normalized] = plural_capitalized[0]  # Fallback to plural
                     elif plural_lowercase:
