@@ -25,7 +25,8 @@ temp/
 *.tmp
 
 # Data files (generated)
-data/
+# Ignore most data files, but allow identity_detection_v3.json
+data/*
 !data/identity_detection_v3.json
 *.json
 !data/identity_detection_v3.json
