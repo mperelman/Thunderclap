@@ -26,8 +26,11 @@ temp/
 
 # Data files (generated)
 data/
+!data/identity_detection_v3.json
 *.json
+!data/identity_detection_v3.json
 !.gitkeep
+!data/identity_detection_v3.json
 
 # Vector database
 vectordb/
