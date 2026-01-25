@@ -1493,9 +1493,27 @@
             // Need to check both the exact term and its variants (e.g., "black" matches "Blacks")
             let relatedSurnames = [];
             for (const [term, metadata] of Object.entries(identityMetadata)) {
+                if (!metadata.related_surnames) continue;
                 const termLower = term.toLowerCase();
-                // Check if query matches the term or if it's a variant (e.g., "black" matches "Blacks", "Blacks" matches "black")
-                if ((termLower === q || termLower.startsWith(q) || q.startsWith(termLower)) && metadata.related_surnames) {
+                // Exact match
+                if (termLower === q) {
+                    relatedSurnames = metadata.related_surnames;
+                    break;
+                }
+                // Prefix match (query is prefix of term, e.g., "black" -> "blacks")
+                if (termLower.startsWith(q)) {
+                    relatedSurnames = metadata.related_surnames;
+                    break;
+                }
+                // Term is prefix of query (e.g., "blacks" -> "black")
+                if (q.startsWith(termLower)) {
+                    relatedSurnames = metadata.related_surnames;
+                    break;
+                }
+                // Check if they're singular/plural variants (e.g., "black" vs "blacks")
+                const qBase = q.endsWith('s') ? q.slice(0, -1) : q;
+                const termBase = termLower.endsWith('s') ? termLower.slice(0, -1) : termLower;
+                if (qBase === termBase && qBase.length > 2) {
                     relatedSurnames = metadata.related_surnames;
                     break;
                 }
