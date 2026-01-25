@@ -595,11 +595,12 @@ def get_indexed_terms():
                 if os.path.exists(rel_data_filtered):
                     filtered_file = rel_data_filtered
         
-        if os.path.exists(filtered_file):
+        if filtered_file and os.path.exists(filtered_file):
             with open(filtered_file, 'r', encoding='utf-8') as f:
                 terms = json.load(f)
             print(f"[TERMS] Loaded {len(terms)} terms from {filtered_file}")
         else:
+            print(f"[TERMS] No filtered_terms.json found, checking paths: DATA_DIR={DATA_DIR}, exists={os.path.exists(os.path.join(DATA_DIR, 'filtered_terms.json'))}")
             # Load from indices
             if os.path.exists(INDICES_FILE):
                 with open(INDICES_FILE, 'r', encoding='utf-8') as f:
