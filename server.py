@@ -890,13 +890,24 @@ def get_indexed_terms():
             local_identity_file = os.path.join('data', 'identity_detection_v3.json')
             if os.path.exists(local_identity_file):
                 identity_file = local_identity_file
+            else:
+                # Try relative to current working directory
+                cwd_identity_file = os.path.join(os.getcwd(), 'data', 'identity_detection_v3.json')
+                if os.path.exists(cwd_identity_file):
+                    identity_file = cwd_identity_file
+        
+        print(f"[IDENTITY] Looking for identity file at: {identity_file}")
+        print(f"[IDENTITY] File exists: {os.path.exists(identity_file)}")
+        print(f"[IDENTITY] DATA_DIR: {DATA_DIR}")
+        print(f"[IDENTITY] CWD: {os.getcwd()}")
         
         if os.path.exists(identity_file):
             try:
                 with open(identity_file, 'r', encoding='utf-8') as f:
                     identity_data = json.load(f)
                 
-                print(f"[INFO] Loaded identity data from {identity_file}")
+                print(f"[INFO] ✅ Loaded identity data from {identity_file}")
+                print(f"[INFO] File size: {os.path.getsize(identity_file)} bytes")
                 
                 # Build surname -> identities mapping from surname_to_identity
                 # Structure: {"parsons": ["black"], "mcguire": ["black", "irish"], ...}
