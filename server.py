@@ -990,6 +990,13 @@ def get_indexed_terms():
             for variant in variants:
                 identity_normalization_map[variant.lower()] = main_term
         
+        # Debug: Check if "blacks" normalizes correctly
+        if 'blacks' in identity_normalization_map:
+            print(f"[IDENTITY] 'blacks' normalizes to: {identity_normalization_map['blacks']}")
+        if 'black' in identity_to_surnames:
+            print(f"[IDENTITY] 'black' has {len(identity_to_surnames['black'])} related surnames")
+            print(f"[IDENTITY] Sample: {identity_to_surnames['black'][:5]}")
+        
         metadata_count = 0
         for term in filtered_terms:
             term_lower = term.lower()
