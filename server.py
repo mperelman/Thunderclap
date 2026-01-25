@@ -596,21 +596,30 @@ def get_indexed_terms():
                     filtered_file = rel_data_filtered
         
         if filtered_file and os.path.exists(filtered_file):
-            with open(filtered_file, 'r', encoding='utf-8') as f:
-                terms = json.load(f)
-            print(f"[TERMS] Loaded {len(terms)} terms from {filtered_file}")
-        else:
-            print(f"[TERMS] No filtered_terms.json found, checking paths: DATA_DIR={DATA_DIR}, exists={os.path.exists(os.path.join(DATA_DIR, 'filtered_terms.json'))}")
+            try:
+                with open(filtered_file, 'r', encoding='utf-8') as f:
+                    terms = json.load(f)
+                print(f"[TERMS] Loaded {len(terms)} terms from {filtered_file}")
+            except Exception as e:
+                print(f"[TERMS] Error loading {filtered_file}: {e}")
+                filtered_file = None  # Fall through to indices loading
+        
+        if not filtered_file or not terms:
+            print(f"[TERMS] No filtered_terms.json found, loading from indices. DATA_DIR={DATA_DIR}, filtered_file={filtered_file}")
             # Load from indices
             if os.path.exists(INDICES_FILE):
-                with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                terms = list(data.get('term_to_chunks', {}).keys())
-                print(f"[TERMS] Loaded {len(terms)} terms from indices")
+                try:
+                    with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    terms = list(data.get('term_to_chunks', {}).keys())
+                    print(f"[TERMS] Loaded {len(terms)} terms from indices")
+                except Exception as e:
+                    print(f"[TERMS] Error loading indices: {e}")
+                    terms = []
             else:
                 # No index file - use empty list
                 terms = []
-                print(f"[TERMS] No index file found - using empty terms list")
+                print(f"[TERMS] No index file found at {INDICES_FILE} - using empty terms list")
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
