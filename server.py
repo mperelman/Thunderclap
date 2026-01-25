@@ -579,11 +579,21 @@ def get_indexed_terms():
     try:
         # Try to load pre-filtered terms first (LLM-filtered list)
         # Prefer data/filtered_terms.json (uploaded via API) over lib/filtered_terms.json (from git)
-        filtered_file = os.path.join(DATA_DIR, 'filtered_terms.json')
-        if not os.path.exists(filtered_file):
-            filtered_file = os.path.join('lib', 'filtered_terms.json')
-            if not os.path.exists(filtered_file):
-                filtered_file = 'data/filtered_terms.json'
+        filtered_file = None
+        # Check DATA_DIR first (absolute path)
+        data_filtered = os.path.join(DATA_DIR, 'filtered_terms.json')
+        if os.path.exists(data_filtered):
+            filtered_file = data_filtered
+        else:
+            # Check lib/ directory (relative to current working directory)
+            lib_filtered = os.path.join('lib', 'filtered_terms.json')
+            if os.path.exists(lib_filtered):
+                filtered_file = lib_filtered
+            else:
+                # Fallback to relative data/ path
+                rel_data_filtered = 'data/filtered_terms.json'
+                if os.path.exists(rel_data_filtered):
+                    filtered_file = rel_data_filtered
         
         if os.path.exists(filtered_file):
             with open(filtered_file, 'r', encoding='utf-8') as f:
