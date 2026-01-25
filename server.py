@@ -578,9 +578,12 @@ def get_indexed_terms():
     terms = []
     try:
         # Try to load pre-filtered terms first (LLM-filtered list)
-        filtered_file = 'lib/filtered_terms.json'
+        # Prefer data/filtered_terms.json (uploaded via API) over lib/filtered_terms.json (from git)
+        filtered_file = os.path.join(DATA_DIR, 'filtered_terms.json')
         if not os.path.exists(filtered_file):
-            filtered_file = 'data/filtered_terms.json'
+            filtered_file = os.path.join('lib', 'filtered_terms.json')
+            if not os.path.exists(filtered_file):
+                filtered_file = 'data/filtered_terms.json'
         
         if os.path.exists(filtered_file):
             with open(filtered_file, 'r', encoding='utf-8') as f:
