@@ -982,6 +982,14 @@ def get_indexed_terms():
             print(f"[IDENTITY] Sample: '{sample_surname}' -> {surname_to_identities[sample_surname]}")
         
         # Add identity metadata to terms
+        # First, build a normalization map from TERM_GROUPS to check identity terms
+        from lib.index_builder import TERM_GROUPS
+        identity_normalization_map = {}
+        for main_term, variants in TERM_GROUPS.items():
+            identity_normalization_map[main_term] = main_term
+            for variant in variants:
+                identity_normalization_map[variant.lower()] = main_term
+        
         metadata_count = 0
         for term in filtered_terms:
             term_lower = term.lower()
@@ -993,7 +1001,13 @@ def get_indexed_terms():
                 metadata_count += 1
             
             # If term is an identity, add related surnames (limit to top 10 for autofill)
-            if term_lower in identity_to_surnames:
+            # Check both the exact term and its normalized form (e.g., "blacks" -> "black")
+            identity_key = identity_normalization_map.get(term_lower, term_lower)
+            if identity_key in identity_to_surnames:
+                metadata['related_surnames'] = identity_to_surnames[identity_key][:10]
+                metadata_count += 1
+            elif term_lower in identity_to_surnames:
+                # Fallback: check exact match
                 metadata['related_surnames'] = identity_to_surnames[term_lower][:10]
                 metadata_count += 1
             

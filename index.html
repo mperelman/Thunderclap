@@ -1460,9 +1460,11 @@
             if (metadata) {
                 console.log(`[TAGS] Found metadata for "${term}":`, metadata);
                 const tags = [];
-                // If term is a surname, show its identities
+                // If term is a surname, show its identities (separate tags, not fused)
                 if (metadata.identities && metadata.identities.length > 0) {
-                    tags.push(...metadata.identities.map(id => id.charAt(0).toUpperCase() + id.slice(1)));
+                    // Capitalize each identity and add as separate tag
+                    const identityTags = metadata.identities.map(id => id.charAt(0).toUpperCase() + id.slice(1));
+                    tags.push(...identityTags);
                 }
                 // If term is an identity, show "Identity" tag
                 if (metadata.related_surnames && metadata.related_surnames.length > 0) {
