@@ -862,28 +862,40 @@ def get_indexed_terms():
                 if not has_longer_variant:
                     continue  # Skip standalone "Central Bank" or "National Bank"
             
-            # CRITICAL: Skip terms with 0 chunks - they shouldn't appear in autofill
-            # Check all variants of the normalized term to see if any have chunks
+            # CRITICAL: Skip terms with 0 chunks OR chunks that don't exist in chunks dict
+            # Check all variants of the normalized term to see if any have valid chunks
             has_chunks = False
+            chunks_dict = index_data.get('chunks', {}) if 'chunks' in index_data else {}
+            
             # Check normalized key first
-            if normalized_key in term_to_chunks_for_filter and len(term_to_chunks_for_filter[normalized_key]) > 0:
-                has_chunks = True
+            if normalized_key in term_to_chunks_for_filter:
+                chunk_ids = term_to_chunks_for_filter[normalized_key]
+                # Verify chunks actually exist and have content
+                valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
+                if len(valid_chunks) > 0:
+                    has_chunks = True
             else:
                 # Check all original variants (before normalization)
                 all_variants = term_variants.get(normalized_key, [normalized_key])
                 for variant in all_variants:
                     # Check original variant
-                    if variant in term_to_chunks_for_filter and len(term_to_chunks_for_filter[variant]) > 0:
-                        has_chunks = True
-                        break
+                    if variant in term_to_chunks_for_filter:
+                        chunk_ids = term_to_chunks_for_filter[variant]
+                        valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
+                        if len(valid_chunks) > 0:
+                            has_chunks = True
+                            break
                     # Also check normalized version of variant (underscore -> space)
                     variant_normalized = variant.replace('_', ' ').replace("'", "'").replace("'", "'")
-                    if variant_normalized != variant and variant_normalized in term_to_chunks_for_filter and len(term_to_chunks_for_filter[variant_normalized]) > 0:
-                        has_chunks = True
-                        break
+                    if variant_normalized != variant and variant_normalized in term_to_chunks_for_filter:
+                        chunk_ids = term_to_chunks_for_filter[variant_normalized]
+                        valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
+                        if len(valid_chunks) > 0:
+                            has_chunks = True
+                            break
             
             if not has_chunks:
-                continue  # Skip terms with no chunks
+                continue  # Skip terms with no valid chunks
             
             # Skip if too short (but allow 2-3 char proper nouns like "Li", "Wu")
             # Only skip if it's a single lowercase word (likely not a proper noun)
