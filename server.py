@@ -997,11 +997,21 @@ def debug_identity_status():
             if os.path.exists(cwd_identity_file):
                 identity_file = cwd_identity_file
     
+    # List files in data directory
+    data_files = []
+    if os.path.exists(DATA_DIR):
+        try:
+            data_files = os.listdir(DATA_DIR)
+        except:
+            pass
+    
     result = {
         "identity_file_path": identity_file,
         "file_exists": os.path.exists(identity_file),
         "data_dir": DATA_DIR,
         "cwd": os.getcwd(),
+        "data_dir_exists": os.path.exists(DATA_DIR),
+        "data_dir_files": sorted(data_files)[:20],  # First 20 files
     }
     
     if os.path.exists(identity_file):
