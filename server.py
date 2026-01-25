@@ -562,7 +562,7 @@ def get_indexed_terms():
     CRITICAL: Always filter generic terms here - this is the single point of filtering.
     Hyperlinking is based on what this endpoint returns, so filtering here is simpler than
     filtering at multiple stages during indexing."""
-    from lib.config import INDICES_FILE
+    from lib.config import INDICES_FILE, DATA_DIR
     from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
     
     def should_exclude_term(term):
