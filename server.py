@@ -1189,6 +1189,55 @@ async def upload_endnotes(file: UploadFile = File(...), content_encoding: Option
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
+@app.post("/admin/upload-identity")
+async def upload_identity(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
+    """Upload identity_detection_v3.json via HTTP."""
+    from lib.config import DATA_DIR
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    if file.filename not in ["identity_detection_v3.json"]:
+        raise HTTPException(status_code=400, detail="File must be named 'identity_detection_v3.json'")
+    
+    try:
+        # Read file content
+        content = await file.read()
+        
+        # Handle gzip compression if needed
+        if content_encoding == "gzip" or (file.filename and file.filename.endswith(".gz")):
+            import gzip
+            content = gzip.decompress(content)
+        
+        # Write to data directory
+        identity_path = os.path.join(DATA_DIR, "identity_detection_v3.json")
+        with open(identity_path, 'wb') as f:
+            f.write(content)
+        
+        file_size_mb = len(content) / (1024 * 1024)
+        print(f"[UPLOAD] Successfully uploaded identity file ({file_size_mb:.2f} MB)")
+        
+        # Verify it's valid JSON
+        import json
+        try:
+            with open(identity_path, 'r', encoding='utf-8') as f:
+                identity_data = json.load(f)
+            surname_count = len(identity_data.get('surname_to_identity', {}))
+            print(f"[UPLOAD] Identity file validated: {surname_count} surnames")
+        except json.JSONDecodeError as e:
+            print(f"[UPLOAD WARN] Identity file uploaded but JSON validation failed: {e}")
+        
+        return {
+            "status": "success",
+            "message": f"Identity file uploaded successfully ({file_size_mb:.2f} MB)",
+            "path": identity_path,
+            "size_bytes": len(content),
+            "surname_count": surname_count if 'surname_count' in locals() else None
+        }
+    except Exception as e:
+        print(f"[UPLOAD ERROR] Identity file upload failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 @app.post("/admin/upload-chunk-to-endnotes")
 async def upload_chunk_to_endnotes(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
     """Upload chunk_to_endnotes.json via HTTP."""
