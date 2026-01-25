@@ -582,30 +582,45 @@ def get_indexed_terms():
         filtered_file = None
         # Check DATA_DIR first (absolute path)
         data_filtered = os.path.join(DATA_DIR, 'filtered_terms.json')
+        print(f"[TERMS] Checking for filtered_terms.json: DATA_DIR={DATA_DIR}, path={data_filtered}, exists={os.path.exists(data_filtered)}")
         if os.path.exists(data_filtered):
             filtered_file = data_filtered
         else:
             # Check lib/ directory (relative to current working directory)
             lib_filtered = os.path.join('lib', 'filtered_terms.json')
+            print(f"[TERMS] Checking lib/: {lib_filtered}, exists={os.path.exists(lib_filtered)}")
             if os.path.exists(lib_filtered):
                 filtered_file = lib_filtered
             else:
                 # Fallback to relative data/ path
                 rel_data_filtered = 'data/filtered_terms.json'
+                print(f"[TERMS] Checking relative data/: {rel_data_filtered}, exists={os.path.exists(rel_data_filtered)}")
                 if os.path.exists(rel_data_filtered):
                     filtered_file = rel_data_filtered
         
         if filtered_file and os.path.exists(filtered_file):
             try:
+                print(f"[TERMS] Attempting to load from {filtered_file}")
                 with open(filtered_file, 'r', encoding='utf-8') as f:
                     terms = json.load(f)
-                print(f"[TERMS] Loaded {len(terms)} terms from {filtered_file}")
+                if not isinstance(terms, list):
+                    print(f"[TERMS] ERROR: {filtered_file} is not a list, got {type(terms)}")
+                    terms = []
+                else:
+                    print(f"[TERMS] Successfully loaded {len(terms)} terms from {filtered_file}")
+            except json.JSONDecodeError as e:
+                print(f"[TERMS] JSON decode error loading {filtered_file}: {e}")
+                filtered_file = None  # Fall through to indices loading
+                terms = []
             except Exception as e:
                 print(f"[TERMS] Error loading {filtered_file}: {e}")
+                import traceback
+                traceback.print_exc()
                 filtered_file = None  # Fall through to indices loading
+                terms = []
         
         if not filtered_file or not terms:
-            print(f"[TERMS] No filtered_terms.json found, loading from indices. DATA_DIR={DATA_DIR}, filtered_file={filtered_file}")
+            print(f"[TERMS] No filtered_terms.json loaded, loading from indices. INDICES_FILE={INDICES_FILE}, exists={os.path.exists(INDICES_FILE)}")
             # Load from indices
             if os.path.exists(INDICES_FILE):
                 try:
@@ -615,11 +630,15 @@ def get_indexed_terms():
                     print(f"[TERMS] Loaded {len(terms)} terms from indices")
                 except Exception as e:
                     print(f"[TERMS] Error loading indices: {e}")
+                    import traceback
+                    traceback.print_exc()
                     terms = []
             else:
                 # No index file - use empty list
                 terms = []
                 print(f"[TERMS] No index file found at {INDICES_FILE} - using empty terms list")
+        
+        print(f"[TERMS] Final terms count before processing: {len(terms)}")
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
