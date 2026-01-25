@@ -966,7 +966,9 @@ def get_indexed_terms():
         return {"terms": [], "identity_metadata": {}}
     except Exception as e:
         print(f"[ERROR] Failed to load indexed terms: {e}")
-        return {"terms": []}
+        import traceback
+        traceback.print_exc()
+        return {"terms": [], "identity_metadata": {}}
 
 @app.post("/admin/upload-database")
 async def upload_database(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
