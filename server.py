@@ -919,8 +919,17 @@ def get_indexed_terms():
                             identity_to_surnames[identity_lower].append(surname_display)
             except Exception as e:
                 print(f"[WARN] Failed to load identity metadata: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Debug: Log what we loaded
+        print(f"[IDENTITY] Loaded {len(surname_to_identities)} surnames, {len(identity_to_surnames)} identities")
+        if surname_to_identities:
+            sample_surname = list(surname_to_identities.keys())[0]
+            print(f"[IDENTITY] Sample: '{sample_surname}' -> {surname_to_identities[sample_surname]}")
         
         # Add identity metadata to terms
+        metadata_count = 0
         for term in filtered_terms:
             term_lower = term.lower()
             metadata = {}
@@ -928,13 +937,17 @@ def get_indexed_terms():
             # If term is a surname, add its identities
             if term_lower in surname_to_identities:
                 metadata['identities'] = surname_to_identities[term_lower]
+                metadata_count += 1
             
             # If term is an identity, add related surnames (limit to top 10 for autofill)
             if term_lower in identity_to_surnames:
                 metadata['related_surnames'] = identity_to_surnames[term_lower][:10]
+                metadata_count += 1
             
             if metadata:
                 identity_metadata[term] = metadata
+        
+        print(f"[IDENTITY] Attached metadata to {metadata_count} terms, {len(identity_metadata)} total entries")
         
         # Debug: Log some metadata examples
         if identity_metadata:
