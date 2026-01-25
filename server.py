@@ -1238,6 +1238,45 @@ async def upload_identity(file: UploadFile = File(...), content_encoding: Option
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
+@app.post("/admin/upload-filtered-terms")
+async def upload_filtered_terms(file: UploadFile = File(...)):
+    """Upload filtered_terms.json via HTTP."""
+    from lib.config import DATA_DIR
+    import os
+    
+    os.makedirs(DATA_DIR, exist_ok=True)
+    
+    if file.filename not in ["filtered_terms.json"]:
+        raise HTTPException(status_code=400, detail="File must be named 'filtered_terms.json'")
+    
+    try:
+        content = await file.read()
+        
+        # Validate it's a JSON array
+        import json
+        terms = json.loads(content)
+        if not isinstance(terms, list):
+            raise ValueError("filtered_terms.json must be a JSON array")
+        
+        # Write to data directory
+        filtered_terms_path = os.path.join(DATA_DIR, "filtered_terms.json")
+        with open(filtered_terms_path, 'wb') as f:
+            f.write(content)
+        
+        print(f"[UPLOAD] Successfully uploaded filtered_terms.json with {len(terms)} terms")
+        
+        return {
+            "status": "success",
+            "message": f"Filtered terms uploaded successfully ({len(terms)} terms)",
+            "path": filtered_terms_path,
+            "term_count": len(terms)
+        }
+    except Exception as e:
+        print(f"[UPLOAD ERROR] Filtered terms upload failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 @app.post("/admin/upload-chunk-to-endnotes")
 async def upload_chunk_to_endnotes(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
     """Upload chunk_to_endnotes.json via HTTP."""
