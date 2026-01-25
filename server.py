@@ -1258,17 +1258,24 @@ async def upload_filtered_terms(file: UploadFile = File(...)):
         if not isinstance(terms, list):
             raise ValueError("filtered_terms.json must be a JSON array")
         
-        # Write to data directory
-        filtered_terms_path = os.path.join(DATA_DIR, "filtered_terms.json")
-        with open(filtered_terms_path, 'wb') as f:
+        # Write to lib directory (server prefers lib/filtered_terms.json over data/filtered_terms.json)
+        from lib.config import LIB_DIR
+        lib_filtered_terms_path = os.path.join(LIB_DIR, "filtered_terms.json")
+        with open(lib_filtered_terms_path, 'wb') as f:
             f.write(content)
         
-        print(f"[UPLOAD] Successfully uploaded filtered_terms.json with {len(terms)} terms")
+        # Also write to data directory as backup
+        data_filtered_terms_path = os.path.join(DATA_DIR, "filtered_terms.json")
+        with open(data_filtered_terms_path, 'wb') as f:
+            f.write(content)
+        
+        print(f"[UPLOAD] Successfully uploaded filtered_terms.json with {len(terms)} terms (to both lib/ and data/)")
         
         return {
             "status": "success",
             "message": f"Filtered terms uploaded successfully ({len(terms)} terms)",
-            "path": filtered_terms_path,
+            "path": lib_filtered_terms_path,
+            "backup_path": data_filtered_terms_path,
             "term_count": len(terms)
         }
     except Exception as e:
