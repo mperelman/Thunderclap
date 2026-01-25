@@ -981,6 +981,56 @@ def get_indexed_terms():
         traceback.print_exc()
         return {"terms": [], "identity_metadata": {}}
 
+@app.get("/debug/identity-status")
+def debug_identity_status():
+    """Debug endpoint to check identity metadata loading status."""
+    from lib.config import DATA_DIR
+    import os
+    
+    identity_file = os.path.join(DATA_DIR, 'identity_detection_v3.json')
+    if not os.path.exists(identity_file):
+        local_identity_file = os.path.join('data', 'identity_detection_v3.json')
+        if os.path.exists(local_identity_file):
+            identity_file = local_identity_file
+        else:
+            cwd_identity_file = os.path.join(os.getcwd(), 'data', 'identity_detection_v3.json')
+            if os.path.exists(cwd_identity_file):
+                identity_file = cwd_identity_file
+    
+    result = {
+        "identity_file_path": identity_file,
+        "file_exists": os.path.exists(identity_file),
+        "data_dir": DATA_DIR,
+        "cwd": os.getcwd(),
+    }
+    
+    if os.path.exists(identity_file):
+        try:
+            with open(identity_file, 'r', encoding='utf-8') as f:
+                identity_data = json.load(f)
+            result["file_size"] = os.path.getsize(identity_file)
+            result["has_surname_to_identity"] = 'surname_to_identity' in identity_data
+            result["surname_count"] = len(identity_data.get('surname_to_identity', {}))
+            result["parsons_in_file"] = 'parsons' in identity_data.get('surname_to_identity', {})
+            if 'parsons' in identity_data.get('surname_to_identity', {}):
+                result["parsons_identities"] = identity_data['surname_to_identity']['parsons']
+        except Exception as e:
+            result["error"] = str(e)
+            import traceback
+            result["traceback"] = traceback.format_exc()
+    
+    # Also check what get_indexed_terms returns
+    try:
+        terms_result = get_indexed_terms()
+        result["terms_count"] = len(terms_result.get('terms', []))
+        result["metadata_count"] = len(terms_result.get('identity_metadata', {}))
+        result["parsons_in_metadata"] = 'Parsons' in terms_result.get('identity_metadata', {})
+        result["parsons_in_terms"] = 'Parsons' in terms_result.get('terms', [])
+    except Exception as e:
+        result["terms_error"] = str(e)
+    
+    return result
+
 @app.post("/admin/upload-database")
 async def upload_database(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
     """Upload ChromaDB database file (chroma.sqlite3) via HTTP."""
