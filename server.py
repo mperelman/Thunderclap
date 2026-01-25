@@ -1007,15 +1007,20 @@ def get_indexed_terms():
                 metadata['identities'] = surname_to_identities[term_lower]
                 metadata_count += 1
             
-            # If term is an identity, add related surnames (limit to top 10 for autofill)
+            # If term is an identity, add related surnames (filter to only surnames in index, limit to 20 for autofill)
             # Check both the exact term and its normalized form (e.g., "blacks" -> "black")
             identity_key = identity_normalization_map.get(term_lower, term_lower)
             if identity_key in identity_to_surnames:
-                metadata['related_surnames'] = identity_to_surnames[identity_key][:10]
+                # Filter to only surnames that actually exist in filtered_terms (indexed)
+                all_related = identity_to_surnames[identity_key]
+                filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
+                metadata['related_surnames'] = filtered_related[:20]  # Increased limit and filtered
                 metadata_count += 1
             elif term_lower in identity_to_surnames:
                 # Fallback: check exact match
-                metadata['related_surnames'] = identity_to_surnames[term_lower][:10]
+                all_related = identity_to_surnames[term_lower]
+                filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
+                metadata['related_surnames'] = filtered_related[:20]  # Increased limit and filtered
                 metadata_count += 1
             
             if metadata:
