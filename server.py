@@ -1134,7 +1134,11 @@ def get_indexed_terms():
                 
                 # DYNAMIC DISAMBIGUATION: Use LLM cache to find which identities co-occur in same chunks
                 # This groups identities that appear together (same family) vs separately (different families)
-                identity_groups = _disambiguate_surname_dynamically(term_lower, identities)
+                try:
+                    identity_groups = _disambiguate_surname_dynamically(term_lower, identities)
+                except Exception as e:
+                    print(f"[WARN] Disambiguation failed for {term_lower}: {e}")
+                    identity_groups = []
                 
                 if identity_groups and len(identity_groups) > 1:
                     # Multiple groups detected - create disambiguated entries
