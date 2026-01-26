@@ -640,6 +640,9 @@ def get_indexed_terms():
                 print(f"[TERMS] No index file found at {INDICES_FILE} - using empty terms list")
         
         print(f"[TERMS] Final terms count before processing: {len(terms)}")
+        if len(terms) == 0:
+            print(f"[ERROR] No terms loaded! Check filtered_terms.json and indices.json")
+            return {"terms": [], "identity_metadata": {}}
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
@@ -842,6 +845,7 @@ def get_indexed_terms():
         # Now filter the normalized terms
         # CRITICAL: Only include terms that have chunks associated with them
         # Load term_to_chunks to check chunk counts (reuse data if already loaded)
+        print(f"[DEBUG] About to filter {len(normalized_terms)} normalized terms")
         term_to_chunks_for_filter = {}
         index_data = {}  # Initialize to avoid NameError
         if os.path.exists(INDICES_FILE):
