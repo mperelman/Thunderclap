@@ -48,6 +48,7 @@ class LLMIdentityDetector:
                   'hausa', 'yoruba', 'igbo', 'scottish', 'irish', 'welsh'],
         'racial': ['black', 'white'],
         'gender': ['female', 'male'],
+        'lgbtq': ['gay', 'lesbian', 'bisexual', 'transgender', 'queer', 'lgbt', 'lgbtq'],
         'geographic': ['american', 'british', 'french', 'german', 'nigerian', 'lebanese_diaspora']
     }
     
