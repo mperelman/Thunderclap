@@ -877,6 +877,11 @@ def get_indexed_terms():
             if len(term_to_chunks_for_filter) == 0:
                 has_chunks = True  # Assume terms from filtered_terms.json are valid
             else:
+                chunks_dict = index_data.get('chunks', {}) if 'chunks' in index_data else {}
+                has_chunks_dict = len(chunks_dict) > 0  # Only validate chunk content if chunks dict is available
+                
+                # Check normalized key first
+                if normalized_key in term_to_chunks_for_filter:
                     chunk_ids = term_to_chunks_for_filter[normalized_key]
                     if len(chunk_ids) > 0:
                         if has_chunks_dict:
