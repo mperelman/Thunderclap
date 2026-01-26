@@ -965,6 +965,92 @@ def get_indexed_terms():
         identity_to_surnames = {}   # "black" -> ["parsons", "mcguire", ...]
         
         from lib.config import DATA_DIR
+        
+        # Helper function to dynamically disambiguate surnames using LLM cache
+        def _disambiguate_surname_dynamically(surname_lower: str, all_identities: list) -> list:
+            """
+            Dynamically group identities for a surname based on which ones co-occur in the same chunks.
+            Returns list of (group_name, [identities]) tuples.
+            """
+            try:
+                # Load LLM cache to see chunk-level identity associations
+                llm_cache_file = os.path.join(DATA_DIR, 'llm_identity_cache.json')
+                if not os.path.exists(llm_cache_file):
+                    llm_cache_file = os.path.join('data', 'llm_identity_cache.json')
+                if not os.path.exists(llm_cache_file):
+                    return []  # Can't disambiguate without cache
+                
+                with open(llm_cache_file, 'r', encoding='utf-8') as f:
+                    llm_cache = json.load(f)
+                
+                # For each chunk, find which identities were detected for this surname
+                # Structure: chunk_hash -> identities -> {identity: [surnames]}
+                surname_identity_cooccurrence = {}  # {identity: set of chunk_hashes where surname appears with this identity}
+                
+                for chunk_hash, chunk_data in llm_cache.items():
+                    if chunk_data.get('prompt_version') != 'v2':
+                        continue
+                    identities_dict = chunk_data.get('identities', {})
+                    if not identities_dict:
+                        continue
+                    
+                    # Check if this surname appears in this chunk with any identity
+                    for identity, surnames in identities_dict.items():
+                        if surname_lower in [s.lower() for s in surnames]:
+                            if identity not in surname_identity_cooccurrence:
+                                surname_identity_cooccurrence[identity] = set()
+                            surname_identity_cooccurrence[identity].add(chunk_hash)
+                
+                if not surname_identity_cooccurrence:
+                    return []  # No chunk-level data found
+                
+                # Group identities that co-occur in the same chunks (same family)
+                # Use set intersection to find identities that appear together
+                identity_groups = []
+                processed_identities = set()
+                
+                for identity, chunk_set in surname_identity_cooccurrence.items():
+                    if identity.lower() not in [id.lower() for id in all_identities]:
+                        continue  # Skip identities not in the main list
+                    if identity.lower() in processed_identities:
+                        continue
+                    
+                    # Find all identities that co-occur with this one (overlap in chunks)
+                    cooccurring = [identity]
+                    processed_identities.add(identity.lower())
+                    
+                    for other_identity, other_chunk_set in surname_identity_cooccurrence.items():
+                        if other_identity.lower() in processed_identities:
+                            continue
+                        if other_identity.lower() not in [id.lower() for id in all_identities]:
+                            continue
+                        
+                        # If they share chunks, they're the same family
+                        overlap = chunk_set & other_chunk_set
+                        if len(overlap) > 0:
+                            cooccurring.append(other_identity)
+                            processed_identities.add(other_identity.lower())
+                    
+                    # Create group name from primary identity
+                    primary_identity = cooccurring[0].lower()
+                    # Use a descriptive name (e.g., "protestant" for protestant-related identities)
+                    group_name = primary_identity
+                    if len(cooccurring) > 1:
+                        # If multiple identities, use the most specific one
+                        major_identities = [id for id in cooccurring if id.lower() in {'jewish', 'ashkenazi', 'sephardi', 'muslim', 'protestant', 'catholic', 'black', 'white', 'hindu'}]
+                        if major_identities:
+                            group_name = major_identities[0].lower()
+                    
+                    identity_groups.append((group_name, cooccurring))
+                
+                return identity_groups
+                
+            except Exception as e:
+                print(f"[WARN] Failed to disambiguate {surname_lower}: {e}")
+                import traceback
+                traceback.print_exc()
+                return []
+        
         identity_file = os.path.join(DATA_DIR, 'identity_detection_v3.json')
         
         # Fallback to local data directory if DATA_DIR doesn't work (e.g. on some deployments)
