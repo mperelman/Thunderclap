@@ -138,9 +138,13 @@ Race: black, white (only if explicit)
 
 Gender: female, male (only if explicit, include titles: queen, princess)
 
+LGBTQ+: gay, lesbian, bisexual, transgender, queer (only if explicitly stated or clearly implied in context)
+
 Status: converted, royal, aristocrat
 
 Geography: Where born/operated (american, british, russian, nigerian, saudi, etc.)
+
+CRITICAL: Do NOT assign historical/civilizational identities (e.g., "aztec", "maya", "inca", "olmec") to modern individuals unless they explicitly identify with that heritage. These are pre-colonial civilizations, not modern ethnic identities. Use modern terms like "mexican", "hispanic", "latino", "mestizo" instead.
 
 IMPORTANT: Return SPECIFIC terms (sunni NOT muslim, maronite NOT christian, hausa NOT african).
 The system will automatically group them for general searches.
