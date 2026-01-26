@@ -138,7 +138,7 @@ Race: black, white (only if explicit)
 
 Gender: female, male (only if explicit, include titles: queen, princess)
 
-LGBTQ+: gay, lesbian, bisexual, transgender, queer (only if explicitly stated or clearly implied in context)
+LGBTQ+: gay, lesbian, bisexual, transgender, queer
 
 Status: converted, royal, aristocrat
 
