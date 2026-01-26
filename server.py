@@ -1045,29 +1045,59 @@ def get_indexed_terms():
             # If term is a surname, add its identities
             if term_lower in surname_to_identities:
                 identities = surname_to_identities[term_lower]
-                metadata['identities'] = identities
                 
                 # Detect if this surname likely represents multiple unrelated families
                 # by checking for contradictory identity combinations
-                if len(identities) > 5:  # High identity count suggests fusion
-                    # Check for contradictory religious groups
-                    major_religions = {'jewish', 'ashkenazi', 'sephardi', 'muslim', 'islam', 'hindu', 'christian', 'catholic', 'protestant', 'puritan', 'quaker', 'huguenot'}
-                    found_religions = {id.lower() for id in identities if id.lower() in major_religions}
+                major_religions = {'jewish', 'ashkenazi', 'sephardi', 'muslim', 'islam', 'hindu', 'christian', 'catholic', 'protestant', 'puritan', 'quaker', 'huguenot'}
+                found_religions = {id.lower() for id in identities if id.lower() in major_religions}
+                
+                # Contradictory combinations that suggest different families:
+                has_jewish = any('jew' in id.lower() or id.lower() in {'ashkenazi', 'sephardi'} for id in identities)
+                has_hindu = any(id.lower() in {'hindu', 'brahmin', 'bania'} for id in identities)
+                has_muslim = any('muslim' in id.lower() or id.lower() in {'islam', 'sunni', 'shia'} for id in identities)
+                has_black = any(id.lower() == 'black' for id in identities)
+                has_white = any(id.lower() == 'white' for id in identities)
+                
+                # Check for contradictory combinations
+                religion_count = sum([has_jewish, has_hindu, has_muslim])
+                racial_conflict = has_black and has_white  # Black and White are contradictory
+                has_conflicting_identities = religion_count >= 2 or racial_conflict or len(identities) > 5
+                
+                if has_conflicting_identities:
+                    # Create disambiguated variants for each major identity group
+                    # Group identities by major category
+                    identity_groups = []
                     
-                    # Contradictory combinations that suggest different families:
-                    # - Jewish + Hindu (e.g., Ashkenazi + Brahmin if Hindu)
-                    # - Jewish + Muslim
-                    # - Hindu + Muslim
-                    # - Multiple Jewish subgroups from different regions (Ashkenazi + Sephardi could be same family, but rare)
-                    has_jewish = any('jew' in id.lower() or id.lower() in {'ashkenazi', 'sephardi'} for id in identities)
-                    has_hindu = any(id.lower() in {'hindu', 'brahmin', 'bania'} for id in identities)
-                    has_muslim = any('muslim' in id.lower() or id.lower() in {'islam', 'sunni', 'shia'} for id in identities)
+                    # Jewish group
+                    if has_jewish:
+                        jewish_ids = [id for id in identities if 'jew' in id.lower() or id.lower() in {'ashkenazi', 'sephardi'}]
+                        identity_groups.append(('jewish', jewish_ids))
                     
-                    # If we have multiple major religions, likely fusion
-                    religion_count = sum([has_jewish, has_hindu, has_muslim])
-                    if religion_count >= 2:
+                    # Black group
+                    if has_black:
+                        black_ids = [id for id in identities if id.lower() == 'black' or (id.lower() in identities and id.lower() not in major_religions)]
+                        # Include non-religious identities that commonly appear with Black
+                        black_ids.extend([id for id in identities if id.lower() in {'american', 'baptist', 'british'} and id not in black_ids])
+                        identity_groups.append(('black', black_ids))
+                    
+                    # White/other groups
+                    if has_white or (not has_jewish and not has_black):
+                        other_ids = [id for id in identities if id not in [j for _, j in identity_groups for j in j] and id.lower() != 'black']
+                        if other_ids:
+                            identity_groups.append(('other', other_ids))
+                    
+                    # If we can't group, just use all identities
+                    if not identity_groups:
+                        metadata['identities'] = identities
+                    else:
+                        # Store disambiguated groups
+                        metadata['identities'] = identities  # Keep original for backward compatibility
+                        metadata['_disambiguated_groups'] = identity_groups
                         metadata['_likely_fusion'] = True
-                        metadata['_fusion_reason'] = f"Multiple major religions detected ({religion_count}): {', '.join(found_religions)}"
+                        metadata['_fusion_reason'] = f"Multiple identity groups detected: {', '.join([g[0] for g in identity_groups])}"
+                else:
+                    # No conflict - use identities as-is
+                    metadata['identities'] = identities
                 
                 metadata_count += 1
             
@@ -1089,6 +1119,30 @@ def get_indexed_terms():
             
             if metadata:
                 identity_metadata[term] = metadata
+                
+                # If this surname has disambiguated groups, create separate autofill entries
+                # Store them for later addition after we've processed all base terms
+                if metadata.get('_disambiguated_groups'):
+                    for group_name, group_identities in metadata['_disambiguated_groups']:
+                        # Create disambiguated term: "King (Jewish)" or "King (Black)"
+                        disambiguated_term = f"{term} ({group_name.capitalize()})"
+                        
+                        # Create metadata for disambiguated term
+                        disambiguated_metadata = {
+                            'identities': group_identities,
+                            '_is_disambiguated': True,
+                            '_base_term': term,
+                            '_group_name': group_name
+                        }
+                        pending_disambiguated.append((disambiguated_term, disambiguated_metadata))
+        
+        # Add disambiguated entries to filtered_terms and identity_metadata
+        for disambiguated_term, disambiguated_metadata in pending_disambiguated:
+            # Only add if it's not already in filtered_terms (avoid duplicates)
+            if disambiguated_term not in filtered_terms and disambiguated_term.lower() not in [t.lower() for t in filtered_terms]:
+                filtered_terms.append(disambiguated_term)
+                identity_metadata[disambiguated_term] = disambiguated_metadata
+                print(f"[DISAMBIGUATE] Added disambiguated term: {disambiguated_term} (base: {disambiguated_metadata['_base_term']}, group: {disambiguated_metadata['_group_name']})")
         
         print(f"[IDENTITY] Attached metadata to {metadata_count} terms, {len(identity_metadata)} total entries")
         
