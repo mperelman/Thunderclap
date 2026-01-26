@@ -164,6 +164,10 @@ EXAMPLES:
 - "converted Jewish Hambro married Anglican Smyth" → {"hambro": ["jewish", "converted", "christian"], "smyth": ["anglican"]}
 - "Martin Chavez descended from Sephardi, mother of Basque descent, identified as Hispanic" → {"chavez": ["sephardi", "basque", "hispanic", "latino"]}
 - "Greek Orthodox Sursock" in Lebanese context → {"sursock": ["greek_orthodox", "lebanese"]}
+- "Drexel, Singer, and Barney entered lavender marriages with other homosexual heirs" → {"drexel": ["gay"], "singer": ["gay"], "barney": ["gay"]}
+- "Boothby maintained a publicly heterosexual identity, navigating gay social circles" → {"boothby": ["gay"]}
+- "Miriam Rothschild...openly bisexual woman" → {"rothschild": ["bisexual"]}
+- "Jenrette concealed his long-term relationship with William Thompson amidst a culture of homophobia" → {"jenrette": ["gay"]}
 
 ---
 
