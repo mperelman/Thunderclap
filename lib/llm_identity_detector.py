@@ -31,7 +31,7 @@ class LLMIdentityDetector:
     """Detects banking family identities using LLM classification with intelligent caching."""
     
     # Prompt version - increment to invalidate cache when improving prompts
-    PROMPT_VERSION = "v2"  # Fixed broken candidate extraction
+    PROMPT_VERSION = "v3"  # Added LGBTQ contextual connection examples
     
     # Batch size for API calls (balance latency vs cost)
     BATCH_SIZE = 20
