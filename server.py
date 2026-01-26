@@ -1206,6 +1206,13 @@ def get_indexed_terms():
             if sample_identities:
                 print(f"[DEBUG] Sample identity terms with related surnames: {sample_identities}")
         
+        print(f"[TERMS] Final filtered_terms count: {len(filtered_terms)}")
+        if len(filtered_terms) == 0:
+            print(f"[ERROR] No terms after filtering! Check chunk validation and filtering logic.")
+            print(f"[DEBUG] Terms before filtering: {len(terms) if 'terms' in locals() else 'N/A'}")
+            print(f"[DEBUG] Normalized terms count: {len(normalized_terms_pre) if 'normalized_terms_pre' in locals() else 'N/A'}")
+            print(f"[DEBUG] Term variants count: {len(term_variants) if 'term_variants' in locals() else 'N/A'}")
+        
         if filtered_terms:
             return {
                 "terms": filtered_terms,
