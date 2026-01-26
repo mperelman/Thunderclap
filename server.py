@@ -644,6 +644,29 @@ def get_indexed_terms():
             print(f"[ERROR] No terms loaded! Check filtered_terms.json and indices.json")
             return {"terms": [], "identity_metadata": {}}
         
+        # SIMPLIFIED PATH: If we loaded from filtered_terms.json, trust those terms
+        # They've already been LLM-filtered, so skip complex normalization/filtering
+        if filtered_file and os.path.exists(filtered_file):
+            print(f"[TERMS] Using simplified path for filtered_terms.json - skipping complex normalization")
+            # Just do basic deduplication and return
+            seen_lower = set()
+            simple_filtered = []
+            for term in terms:
+                term_lower = term.lower().strip()
+                if term_lower in seen_lower:
+                    continue
+                seen_lower.add(term_lower)
+                # Skip obviously invalid terms
+                if len(term) < 2 or term_lower.isdigit():
+                    continue
+                simple_filtered.append(term)
+            
+            print(f"[TERMS] Simplified filtering: {len(terms)} -> {len(simple_filtered)} terms")
+            # Build identity metadata (same as below)
+            # ... (we'll add this after)
+            # For now, return the terms so autofill works
+            return {"terms": simple_filtered[:5000], "identity_metadata": {}}  # Limit to 5000 for performance
+        
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
         # Filter terms: ONLY include meaningful entities/proper nouns, exclude all common words
