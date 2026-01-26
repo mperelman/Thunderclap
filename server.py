@@ -871,50 +871,51 @@ def get_indexed_terms():
             # CRITICAL: Skip terms with 0 chunks OR chunks that don't exist in chunks dict
             # Check all variants of the normalized term to see if any have valid chunks
             has_chunks = False
-            chunks_dict = index_data.get('chunks', {}) if 'chunks' in index_data else {}
-            has_chunks_dict = len(chunks_dict) > 0  # Only validate chunk content if chunks dict is available
             
-            # Check normalized key first
-            if normalized_key in term_to_chunks_for_filter:
-                chunk_ids = term_to_chunks_for_filter[normalized_key]
-                if len(chunk_ids) > 0:
-                    if has_chunks_dict:
-                        # Strict validation: verify chunks actually exist and have content
-                        valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
-                        if len(valid_chunks) > 0:
-                            has_chunks = True
-                    else:
-                        # Fallback: just check if chunk IDs exist (old behavior)
-                        has_chunks = True
+            # If we don't have term_to_chunks data (e.g., using filtered_terms.json), skip chunk validation
+            # This allows terms from filtered_terms.json to pass through
+            if len(term_to_chunks_for_filter) == 0:
+                has_chunks = True  # Assume terms from filtered_terms.json are valid
             else:
-                # Check all original variants (before normalization)
-                all_variants = term_variants.get(normalized_key, [normalized_key])
-                for variant in all_variants:
-                    # Check original variant
-                    if variant in term_to_chunks_for_filter:
-                        chunk_ids = term_to_chunks_for_filter[variant]
-                        if len(chunk_ids) > 0:
-                            if has_chunks_dict:
-                                valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
-                                if len(valid_chunks) > 0:
+                    chunk_ids = term_to_chunks_for_filter[normalized_key]
+                    if len(chunk_ids) > 0:
+                        if has_chunks_dict:
+                            # Strict validation: verify chunks actually exist and have content
+                            valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
+                            if len(valid_chunks) > 0:
+                                has_chunks = True
+                        else:
+                            # Fallback: just check if chunk IDs exist (old behavior)
+                            has_chunks = True
+                else:
+                    # Check all original variants (before normalization)
+                    all_variants = term_variants.get(normalized_key, [normalized_key])
+                    for variant in all_variants:
+                        # Check original variant
+                        if variant in term_to_chunks_for_filter:
+                            chunk_ids = term_to_chunks_for_filter[variant]
+                            if len(chunk_ids) > 0:
+                                if has_chunks_dict:
+                                    valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
+                                    if len(valid_chunks) > 0:
+                                        has_chunks = True
+                                        break
+                                else:
                                     has_chunks = True
                                     break
-                            else:
-                                has_chunks = True
-                                break
-                    # Also check normalized version of variant (underscore -> space)
-                    variant_normalized = variant.replace('_', ' ').replace("'", "'").replace("'", "'")
-                    if variant_normalized != variant and variant_normalized in term_to_chunks_for_filter:
-                        chunk_ids = term_to_chunks_for_filter[variant_normalized]
-                        if len(chunk_ids) > 0:
-                            if has_chunks_dict:
-                                valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
-                                if len(valid_chunks) > 0:
+                        # Also check normalized version of variant (underscore -> space)
+                        variant_normalized = variant.replace('_', ' ').replace("'", "'").replace("'", "'")
+                        if variant_normalized != variant and variant_normalized in term_to_chunks_for_filter:
+                            chunk_ids = term_to_chunks_for_filter[variant_normalized]
+                            if len(chunk_ids) > 0:
+                                if has_chunks_dict:
+                                    valid_chunks = [cid for cid in chunk_ids if cid in chunks_dict and len(chunks_dict.get(cid, '').strip()) > 0]
+                                    if len(valid_chunks) > 0:
+                                        has_chunks = True
+                                        break
+                                else:
                                     has_chunks = True
                                     break
-                            else:
-                                has_chunks = True
-                                break
             
             if not has_chunks:
                 continue  # Skip terms with no valid chunks
