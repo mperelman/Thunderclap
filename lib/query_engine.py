@@ -3334,6 +3334,14 @@ Answer:"""
         if not q:
             return None
 
+        # Handle disambiguated terms like "King (Jewish)" -> extract base term "King"
+        import re
+        disambiguated_match = re.match(r'^(.+?)\s*\([^)]+\)$', q)
+        if disambiguated_match:
+            q = disambiguated_match.group(1).strip()
+            # Store the identity group for filtering later
+            # For now, just use the base term - identity filtering can be added later if needed
+
         lower_map = {}
         for term in self.term_to_chunks.keys():
             lower_map.setdefault(term.lower(), term)
