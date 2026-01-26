@@ -1046,57 +1046,18 @@ def get_indexed_terms():
             if term_lower in surname_to_identities:
                 identities = surname_to_identities[term_lower]
                 
-                # Detect if this surname likely represents multiple unrelated families
-                # by checking for contradictory identity combinations
-                major_religions = {'jewish', 'ashkenazi', 'sephardi', 'muslim', 'islam', 'hindu', 'christian', 'catholic', 'protestant', 'puritan', 'quaker', 'huguenot'}
-                found_religions = {id.lower() for id in identities if id.lower() in major_religions}
+                # DYNAMIC DISAMBIGUATION: Use LLM cache to find which identities co-occur in same chunks
+                # This groups identities that appear together (same family) vs separately (different families)
+                identity_groups = _disambiguate_surname_dynamically(term_lower, identities)
                 
-                # Contradictory combinations that suggest different families:
-                has_jewish = any('jew' in id.lower() or id.lower() in {'ashkenazi', 'sephardi'} for id in identities)
-                has_hindu = any(id.lower() in {'hindu', 'brahmin', 'bania'} for id in identities)
-                has_muslim = any('muslim' in id.lower() or id.lower() in {'islam', 'sunni', 'shia'} for id in identities)
-                has_black = any(id.lower() == 'black' for id in identities)
-                has_white = any(id.lower() == 'white' for id in identities)
-                
-                # Check for contradictory combinations
-                religion_count = sum([has_jewish, has_hindu, has_muslim])
-                racial_conflict = has_black and has_white  # Black and White are contradictory
-                has_conflicting_identities = religion_count >= 2 or racial_conflict or len(identities) > 5
-                
-                if has_conflicting_identities:
-                    # Create disambiguated variants for each major identity group
-                    # Group identities by major category
-                    identity_groups = []
-                    
-                    # Jewish group
-                    if has_jewish:
-                        jewish_ids = [id for id in identities if 'jew' in id.lower() or id.lower() in {'ashkenazi', 'sephardi'}]
-                        identity_groups.append(('jewish', jewish_ids))
-                    
-                    # Black group
-                    if has_black:
-                        black_ids = [id for id in identities if id.lower() == 'black' or (id.lower() in identities and id.lower() not in major_religions)]
-                        # Include non-religious identities that commonly appear with Black
-                        black_ids.extend([id for id in identities if id.lower() in {'american', 'baptist', 'british'} and id not in black_ids])
-                        identity_groups.append(('black', black_ids))
-                    
-                    # White/other groups
-                    if has_white or (not has_jewish and not has_black):
-                        other_ids = [id for id in identities if id not in [j for _, j in identity_groups for j in j] and id.lower() != 'black']
-                        if other_ids:
-                            identity_groups.append(('other', other_ids))
-                    
-                    # If we can't group, just use all identities
-                    if not identity_groups:
-                        metadata['identities'] = identities
-                    else:
-                        # Store disambiguated groups
-                        metadata['identities'] = identities  # Keep original for backward compatibility
-                        metadata['_disambiguated_groups'] = identity_groups
-                        metadata['_likely_fusion'] = True
-                        metadata['_fusion_reason'] = f"Multiple identity groups detected: {', '.join([g[0] for g in identity_groups])}"
+                if identity_groups and len(identity_groups) > 1:
+                    # Multiple groups detected - create disambiguated entries
+                    metadata['identities'] = identities  # Keep original for backward compatibility
+                    metadata['_disambiguated_groups'] = identity_groups
+                    metadata['_likely_fusion'] = True
+                    metadata['_fusion_reason'] = f"Multiple identity groups detected: {', '.join([g[0] for g in identity_groups])}"
                 else:
-                    # No conflict - use identities as-is
+                    # Single group or no grouping - use identities as-is
                     metadata['identities'] = identities
                 
                 metadata_count += 1
