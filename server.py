@@ -847,6 +847,11 @@ def get_indexed_terms():
         # CRITICAL: Only include terms that have chunks associated with them
         # Load term_to_chunks to check chunk counts (reuse data if already loaded)
         print(f"[DEBUG] About to filter {len(normalized_terms)} normalized terms")
+        if len(normalized_terms) == 0:
+            print(f"[ERROR] normalized_terms is empty after normalization! Using original terms as fallback.")
+            # Fallback: use original terms if normalization removed everything
+            normalized_terms = {term: term for term in terms[:1000]}  # Limit to first 1000 to avoid issues
+            print(f"[DEBUG] Fallback: using {len(normalized_terms)} original terms")
         term_to_chunks_for_filter = {}
         index_data = {}  # Initialize to avoid NameError
         if os.path.exists(INDICES_FILE):
