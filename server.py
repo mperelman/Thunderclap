@@ -1226,6 +1226,11 @@ def get_indexed_terms():
             print(f"[DEBUG] Terms before filtering: {len(terms) if 'terms' in locals() else 'N/A'}")
             print(f"[DEBUG] Normalized terms count: {len(normalized_terms_pre) if 'normalized_terms_pre' in locals() else 'N/A'}")
             print(f"[DEBUG] Term variants count: {len(term_variants) if 'term_variants' in locals() else 'N/A'}")
+            print(f"[DEBUG] term_to_chunks_for_filter size: {len(term_to_chunks_for_filter)}")
+            if 'normalized_terms' in locals() and len(normalized_terms) > 0:
+                print(f"[DEBUG] Sample normalized_terms keys: {list(normalized_terms.keys())[:10]}")
+            else:
+                print(f"[DEBUG] normalized_terms is empty or not defined")
         
         if filtered_terms:
             return {
