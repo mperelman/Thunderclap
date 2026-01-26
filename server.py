@@ -856,7 +856,14 @@ def get_indexed_terms():
         
         filtered_terms = []
         seen_lower = set()  # Track lowercase to avoid duplicates
+        print(f"[DEBUG] Processing {len(normalized_terms)} normalized terms")
+        terms_processed = 0
+        terms_skipped_no_chunks = 0
+        terms_skipped_other = 0
         for normalized_key, display_term in normalized_terms.items():
+            terms_processed += 1
+            if terms_processed <= 5:
+                print(f"[DEBUG] Processing term {terms_processed}: '{display_term}' (key: '{normalized_key}')")
             # CRITICAL: Skip generic phrases that should only appear as part of longer firm names
             # "Central Bank" and "National Bank" should not be hyperlinked standalone
             if normalized_key.lower() in ['central bank', 'national bank']:
@@ -925,6 +932,9 @@ def get_indexed_terms():
                                     break
             
             if not has_chunks:
+                terms_skipped_no_chunks += 1
+                if terms_skipped_no_chunks <= 5:
+                    print(f"[DEBUG] Skipping '{display_term}' - no chunks")
                 continue  # Skip terms with no valid chunks
             
             # Skip if too short (but allow 2-3 char proper nouns like "Li", "Wu")
@@ -971,6 +981,12 @@ def get_indexed_terms():
                 # Double-check it's not a common word we missed
                 if not term_lower.endswith(('ing', 'ed', 'ly', 'er', 'est')):
                     filtered_terms.append(display_term)
+            else:
+                terms_skipped_other += 1
+                if terms_skipped_other <= 5:
+                    print(f"[DEBUG] Skipping '{display_term}' - doesn't match entity criteria")
+        
+        print(f"[DEBUG] Terms processed: {terms_processed}, skipped (no chunks): {terms_skipped_no_chunks}, skipped (other): {terms_skipped_other}, added: {len(filtered_terms)}")
 
         # Build identity cross-references for autofill
         # Load identity detection results to map surnames <-> identities
