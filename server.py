@@ -877,6 +877,7 @@ def get_indexed_terms():
             # This allows terms from filtered_terms.json to pass through
             if len(term_to_chunks_for_filter) == 0:
                 has_chunks = True  # Assume terms from filtered_terms.json are valid
+                print(f"[DEBUG] Skipping chunk validation for '{display_term}' - no term_to_chunks data")
             else:
                 chunks_dict = index_data.get('chunks', {}) if 'chunks' in index_data else {}
                 has_chunks_dict = len(chunks_dict) > 0  # Only validate chunk content if chunks dict is available
