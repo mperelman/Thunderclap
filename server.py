@@ -716,6 +716,7 @@ def get_indexed_terms():
         
         # Normalize terms: use TERM_GROUPS main term if available, otherwise keep original
         # First pass: collect all variants for each normalized term
+        print(f"[DEBUG] filtered_terms_pre has {len(filtered_terms_pre)} entries")
         term_variants = {}  # normalized -> list of all variants
         for normalized, variants in filtered_terms_pre.items():
             term_lower = normalized.lower().strip()
