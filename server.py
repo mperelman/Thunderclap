@@ -1,6 +1,7 @@
 """
 Thunderclap AI - Web API Server
 Run this file to start the server: python server.py
+Deployment trigger: 2026-01-25
 """
 import sys
 import os
