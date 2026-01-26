@@ -662,10 +662,62 @@ def get_indexed_terms():
                 simple_filtered.append(term)
             
             print(f"[TERMS] Simplified filtering: {len(terms)} -> {len(simple_filtered)} terms")
-            # Build identity metadata (same as below)
-            # ... (we'll add this after)
-            # For now, return the terms so autofill works
-            return {"terms": simple_filtered[:5000], "identity_metadata": {}}  # Limit to 5000 for performance
+            
+            # Still build identity metadata for cross-referencing
+            identity_metadata = {}
+            surname_to_identities = {}
+            identity_to_surnames = {}
+            
+            from lib.config import DATA_DIR
+            identity_file = os.path.join(DATA_DIR, 'identity_detection_v3.json')
+            if not os.path.exists(identity_file):
+                identity_file = os.path.join('data', 'identity_detection_v3.json')
+            if not os.path.exists(identity_file):
+                identity_file = os.path.join(os.getcwd(), 'data', 'identity_detection_v3.json')
+            
+            if os.path.exists(identity_file):
+                try:
+                    with open(identity_file, 'r', encoding='utf-8') as f:
+                        identity_data = json.load(f)
+                    surname_to_identity_data = identity_data.get('surname_to_identity', {})
+                    for surname, identities_list in surname_to_identity_data.items():
+                        surname_lower = surname.lower()
+                        surname_to_identities[surname_lower] = [id.lower() for id in identities_list]
+                        for identity in identities_list:
+                            identity_lower = identity.lower()
+                            if identity_lower not in identity_to_surnames:
+                                identity_to_surnames[identity_lower] = []
+                            if surname.capitalize() not in identity_to_surnames[identity_lower]:
+                                identity_to_surnames[identity_lower].append(surname.capitalize())
+                except Exception as e:
+                    print(f"[WARN] Failed to load identity metadata: {e}")
+            
+            # Attach identity metadata to terms
+            from lib.index_builder import TERM_GROUPS
+            identity_normalization_map = {}
+            for main_term, variants in TERM_GROUPS.items():
+                identity_normalization_map[main_term] = main_term
+                for variant in variants:
+                    identity_normalization_map[variant.lower()] = main_term
+            
+            for term in simple_filtered:
+                term_lower = term.lower()
+                metadata = {}
+                if term_lower in surname_to_identities:
+                    metadata['identities'] = surname_to_identities[term_lower]
+                identity_key = identity_normalization_map.get(term_lower, term_lower)
+                if identity_key in identity_to_surnames:
+                    all_related = identity_to_surnames[identity_key]
+                    filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
+                    metadata['related_surnames'] = filtered_related[:30]
+                elif term_lower in identity_to_surnames:
+                    all_related = identity_to_surnames[term_lower]
+                    filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
+                    metadata['related_surnames'] = filtered_related[:30]
+                if metadata:
+                    identity_metadata[term] = metadata
+            
+            return {"terms": simple_filtered[:5000], "identity_metadata": identity_metadata}  # Limit to 5000 for performance
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
