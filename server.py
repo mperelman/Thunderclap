@@ -842,10 +842,16 @@ def get_indexed_terms():
         # CRITICAL: Only include terms that have chunks associated with them
         # Load term_to_chunks to check chunk counts (reuse data if already loaded)
         term_to_chunks_for_filter = {}
+        index_data = {}  # Initialize to avoid NameError
         if os.path.exists(INDICES_FILE):
-            with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-                index_data = json.load(f)
-                term_to_chunks_for_filter = index_data.get('term_to_chunks', {})
+            try:
+                with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                    index_data = json.load(f)
+                    term_to_chunks_for_filter = index_data.get('term_to_chunks', {})
+            except Exception as e:
+                print(f"[WARN] Failed to load indices for chunk validation: {e}")
+                index_data = {}
+                term_to_chunks_for_filter = {}
         
         filtered_terms = []
         seen_lower = set()  # Track lowercase to avoid duplicates
