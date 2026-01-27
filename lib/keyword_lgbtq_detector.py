@@ -148,38 +148,6 @@ class KeywordLGBTQDetector:
         return result
 
 
-def augment_llm_results_with_keywords(llm_results: Dict, chunks: List[str]) -> Dict:
-    """
-    Augment LLM identity detection results with keyword-based LGBTQ+ detection.
-    
-    Args:
-        llm_results: Results from LLM detection (format from _aggregate_results)
-        chunks: List of all text chunks
-        
-    Returns:
-        Augmented results with keyword-based LGBTQ+ identities added
-    """
-    detector = KeywordLGBTQDetector()
-    keyword_results = detector.detect_from_chunks(chunks)
-    
-    # Merge keyword results into LLM results
-    for identity, surnames in keyword_results.items():
-        if identity not in llm_results['identities']:
-            llm_results['identities'][identity] = {
-                'families': surnames,
-                'counts': {s: 1 for s in surnames},
-                'type': 'keyword_detected'
-            }
-        else:
-            # Merge: add keyword-detected surnames that aren't already in LLM results
-            existing_surnames = set(llm_results['identities'][identity]['families'])
-            new_surnames = [s for s in surnames if s.lower() not in existing_surnames]
-            
-            if new_surnames:
-                llm_results['identities'][identity]['families'].extend(new_surnames)
-                for surname in new_surnames:
-                    llm_results['identities'][identity]['counts'][surname] = 1
-                # Mark as mixed detection
-                llm_results['identities'][identity]['type'] = 'llm_and_keyword_detected'
-    
-    return llm_results
+# NOTE: The augment_llm_results_with_keywords function has been removed.
+# Keyword detection is now integrated directly into llm_identity_detector.py
+# and scripts/run_identity_detection.py to handle full names properly.
