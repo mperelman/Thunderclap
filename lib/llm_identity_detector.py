@@ -391,10 +391,40 @@ ANSWER (JSON format, one entry per chunk):
             }
         
         # Augment with keyword-based LGBTQ+ detection if chunks provided
+        # NOTE: Keyword detection returns FULL NAMES, not surnames. We extract surnames
+        # but only add if not already in LLM results (to avoid tagging all people with that surname)
         if chunks:
             try:
-                from lib.keyword_lgbtq_detector import augment_llm_results_with_keywords
-                results = augment_llm_results_with_keywords(results, chunks)
+                from lib.keyword_lgbtq_detector import KeywordLGBTQDetector
+                keyword_detector = KeywordLGBTQDetector()
+                keyword_results = keyword_detector.detect_from_chunks(chunks)
+                
+                # Extract surnames from full names and merge (conservatively)
+                for identity, full_names in keyword_results.items():
+                    existing_surnames = set(results['identities'].get(identity, {}).get('families', []))
+                    
+                    for full_name in full_names:
+                        # Extract surname (last word of full name)
+                        name_parts = full_name.split()
+                        if len(name_parts) >= 2:
+                            surname = name_parts[-1].lower()
+                            
+                            # Only add if surname is NOT already in LLM results
+                            if surname not in existing_surnames:
+                                if identity not in results['identities']:
+                                    results['identities'][identity] = {
+                                        'families': [],
+                                        'counts': {},
+                                        'type': 'keyword_detected'
+                                    }
+                                
+                                results['identities'][identity]['families'].append(surname)
+                                results['identities'][identity]['counts'][surname] = 1
+                                
+                                # Mark as mixed if LLM also detected this identity
+                                if identity in results['identities'] and results['identities'][identity].get('type') != 'keyword_detected':
+                                    results['identities'][identity]['type'] = 'llm_and_keyword_detected'
+                
                 print(f"[AUGMENT] Added keyword-based LGBTQ+ detection to results")
             except Exception as e:
                 print(f"[WARN] Failed to augment with keyword detection: {e}")
