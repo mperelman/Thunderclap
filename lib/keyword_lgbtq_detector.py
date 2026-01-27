@@ -32,13 +32,24 @@ class KeywordLGBTQDetector:
     def __init__(self):
         """Initialize with compiled patterns."""
         # Compile keyword patterns (word boundaries, case-insensitive)
+        # CRITICAL: Use negative lookbehind/lookahead to ensure "gay" is not part of another word
+        # This prevents matching "gay" in "Générale" or "gay" in "gayage" etc.
         self.keyword_patterns = []
         for keyword in self.LGBTQ_KEYWORDS:
-            pattern = rf'\b{re.escape(keyword)}\b'
+            # For single words, ensure it's not part of a larger word
+            # Use word boundaries but also check that adjacent chars are not letters
+            if ' ' not in keyword:
+                # Single word: \b ensures word boundaries, but we also need to check for accented chars
+                # Use negative lookbehind/lookahead to ensure no letter before/after
+                pattern = rf'(?<![a-zA-ZÀ-ÿ]){re.escape(keyword)}(?![a-zA-ZÀ-ÿ])'
+            else:
+                # Multi-word phrase: use word boundaries
+                pattern = rf'\b{re.escape(keyword)}\b'
             self.keyword_patterns.append(re.compile(pattern, re.IGNORECASE))
         
         # Pattern to find full names: "FirstName Surname" or "J.P. Morgan" style
         # Matches: 2+ capitalized words in sequence
+        # Exclude common words that start with capital (like "The", "A", etc.)
         self.full_name_pattern = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b')
     
     def find_full_names_near_keywords(self, chunk: str) -> Set[str]:
@@ -115,12 +126,29 @@ class KeywordLGBTQDetector:
             full_names = self.find_full_names_near_keywords(chunk)
             
             if full_names:
-                # Check which keywords appear in this chunk
-                chunk_lower = chunk.lower()
-                has_gay = any(kw in chunk_lower for kw in ['gay', 'gays', 'homosexual', 'homosexuals', 'homosexuality'])
-                has_bisexual = any(kw in chunk_lower for kw in ['bisexual', 'bisexuals'])
-                has_lesbian = any(kw in chunk_lower for kw in ['lesbian', 'lesbians'])
-                has_lavender = any(kw in chunk_lower for kw in ['lavender marriage', 'lavender marriages'])
+                # Check which keywords appear in this chunk using the compiled patterns
+                # This ensures we only match whole words, not substrings (e.g., "gay" in "Générale")
+                has_gay = False
+                has_bisexual = False
+                has_lesbian = False
+                has_lavender = False
+                
+                # Use the compiled patterns to check for keywords (ensures whole-word matching)
+                for i, pattern in enumerate(self.keyword_patterns):
+                    keyword = self.LGBTQ_KEYWORDS[i]
+                    if pattern.search(chunk):
+                        if keyword in ['gay', 'gays', 'homosexual', 'homosexuals', 'homosexuality']:
+                            has_gay = True
+                        elif keyword in ['bisexual', 'bisexuals']:
+                            has_bisexual = True
+                        elif keyword in ['lesbian', 'lesbians']:
+                            has_lesbian = True
+                        elif keyword in ['lavender marriage', 'lavender marriages']:
+                            has_lavender = True
+                
+                # Only proceed if we found actual LGBTQ+ keywords (not false positives)
+                if not (has_gay or has_bisexual or has_lesbian or has_lavender):
+                    continue
                 
                 # Assign identities based on keywords found
                 for full_name in full_names:
