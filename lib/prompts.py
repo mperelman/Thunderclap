@@ -1036,7 +1036,9 @@ CRITICAL: AVOID ABRUPT TRANSITIONS AND COMPRESSED INFORMATION:
 CRITICAL: Address the question comprehensively using information explicitly stated in the documents above.
 - Cover ALL time periods present in the documents (don't skip centuries)
 - Include ALL major events/families/entities mentioned in the documents
-- Don't provide sparse summaries - extract and present the substantive content from the documents{batch_context}
+- Don't provide sparse summaries - extract and present the substantive content from the documents
+- MANDATORY: Your answer MUST explicitly mention the query subject (the person, family, institution, or topic being asked about) in the opening paragraph and throughout the answer. If the answer doesn't mention the subject, it is WRONG and must be rewritten.
+{batch_context}
 
 FINAL SELF-CHECK BEFORE SUBMITTING (MANDATORY):
 

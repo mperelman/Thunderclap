@@ -2434,6 +2434,27 @@ ENTITY INTRODUCTIONS (MANDATORY):
                         print(f"  [SPARSE] Answer has {para_count} paragraphs but average length is only {avg_para_len:.0f} chars - too sparse")
                         return True
             
+            # CRITICAL: Check if answer mentions the query subject
+            # Extract subject terms from the question
+            if hasattr(self, '_last_question'):
+                question = self._last_question
+                # Extract subject from "tell me about X" or "who is X" or just "X"
+                subject_match = re.search(r'(?:tell me about|who is|what is|explain|describe)\s+(.+?)(?:\?|$)', question.lower())
+                if subject_match:
+                    subject = subject_match.group(1).strip()
+                    # Check if answer mentions the subject (case-insensitive, word boundary)
+                    subject_words = subject.split()
+                    if subject_words:
+                        # Check if any subject word appears in the answer
+                        subject_mentioned = any(
+                            re.search(rf'\b{re.escape(word)}\b', text, re.IGNORECASE)
+                            for word in subject_words
+                            if len(word) > 2  # Skip short words like "a", "an", "the"
+                        )
+                        if not subject_mentioned:
+                            print(f"  [MISSING_SUBJECT] Answer doesn't mention query subject '{subject}' - needs grounding")
+                            return True
+            
             # CRITICAL: Check if answer is missing significant time periods from chunks
             # This catches cases where answer has minimum length but is missing information
             if chunks:
