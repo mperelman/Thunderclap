@@ -36,13 +36,37 @@ cache = json.load(open('data/llm_identity_cache.json', encoding='utf-8'))
 surname_to_identity = defaultdict(set)
 
 for chunk_hash, data in cache.items():
-    if data.get('prompt_version') == 'v2' and data.get('identities'):
+    # Check for v2 or v3 prompt versions
+    prompt_version = data.get('prompt_version', '')
+    if prompt_version in ['v2', 'v3'] and data.get('identities'):
         for identity, surnames in data.get('identities', {}).items():
             for surname in surnames:
                 surname_to_identity[surname.lower()].add(identity)
 
 print(f"  Extracted {len(surname_to_identity)} unique surnames from LLM")
 print(f"  Example surnames: {list(surname_to_identity.keys())[:10]}")
+print()
+
+# AUGMENT with keyword-based LGBTQ+ detection (non-LLM, uses regex patterns)
+print("  Augmenting with keyword-based LGBTQ+ detection...")
+try:
+    from lib.keyword_lgbtq_detector import KeywordLGBTQDetector
+    keyword_detector = KeywordLGBTQDetector()
+    keyword_results = keyword_detector.detect_from_chunks(all_chunks)
+    
+    # Merge keyword results into surname_to_identity
+    for identity, surnames in keyword_results.items():
+        for surname in surnames:
+            surname_to_identity[surname.lower()].add(identity)
+    
+    keyword_total = sum(len(surnames) for surnames in keyword_results.values())
+    print(f"  Added {keyword_total} keyword-based LGBTQ+ associations")
+except Exception as e:
+    print(f"  [WARN] Keyword detection failed: {e}")
+    import traceback
+    traceback.print_exc()
+
+print(f"  Total unique surnames after augmentation: {len(surname_to_identity)}")
 print()
 
 # Search for each surname across ALL chunks
