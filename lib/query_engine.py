@@ -402,6 +402,8 @@ class QueryEngine:
         import time
         from lib.config import QUERY_TIMEOUT_SECONDS
         query_start = time.time()
+        # Store question for subject checking
+        self._last_question = question
         
         # Store diagnostic info for this query
         self.query_diagnostics = {
