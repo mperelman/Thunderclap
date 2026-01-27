@@ -602,12 +602,12 @@ def get_indexed_terms():
         if filtered_file and os.path.exists(filtered_file):
             try:
                 print(f"[TERMS] Attempting to load from {filtered_file}")
-                with open(filtered_file, 'r', encoding='utf-8') as f:
-                    terms = json.load(f)
+            with open(filtered_file, 'r', encoding='utf-8') as f:
+                terms = json.load(f)
                 if not isinstance(terms, list):
                     print(f"[TERMS] ERROR: {filtered_file} is not a list, got {type(terms)}")
                     terms = []
-                else:
+        else:
                     print(f"[TERMS] Successfully loaded {len(terms)} terms from {filtered_file}")
             except json.JSONDecodeError as e:
                 print(f"[TERMS] JSON decode error loading {filtered_file}: {e}")
@@ -625,10 +625,10 @@ def get_indexed_terms():
             # Load from indices
             if os.path.exists(INDICES_FILE):
                 try:
-                    with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                    terms = list(data.get('term_to_chunks', {}).keys())
-                    print(f"[TERMS] Loaded {len(terms)} terms from indices")
+                with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                terms = list(data.get('term_to_chunks', {}).keys())
+                print(f"[TERMS] Loaded {len(terms)} terms from indices")
                 except Exception as e:
                     print(f"[TERMS] Error loading indices: {e}")
                     import traceback
@@ -1239,6 +1239,9 @@ def get_indexed_terms():
             print(f"[IDENTITY] Sample: {identity_to_surnames['black'][:5]}")
         
         metadata_count = 0
+        # Track which terms to exclude (identity-only terms that aren't surnames)
+        terms_to_exclude = set()
+        
         for term in filtered_terms:
             term_lower = term.lower()
             metadata = {}
@@ -1270,18 +1273,32 @@ def get_indexed_terms():
             # If term is an identity, add related surnames (filter to only surnames in index, limit to 20 for autofill)
             # Check both the exact term and its normalized form (e.g., "blacks" -> "black")
             identity_key = identity_normalization_map.get(term_lower, term_lower)
+            is_identity_term = False
             if identity_key in identity_to_surnames:
                 # Filter to only surnames that actually exist in filtered_terms (indexed)
                 all_related = identity_to_surnames[identity_key]
                 filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
                 metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
+                is_identity_term = True
             elif term_lower in identity_to_surnames:
                 # Fallback: check exact match
                 all_related = identity_to_surnames[term_lower]
                 filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
                 metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
+                is_identity_term = True
+            
+            # CRITICAL: Filter out identity-only terms from autofill (unless they're also surnames)
+            # Identity terms like "gay", "black", "jewish" should NOT appear in autofill unless they're surnames
+            # Check if this is an identity term but NOT a surname
+            if is_identity_term and not is_surname:
+                # This is an identity-only term (not a surname) - exclude it from autofill
+                # Mark for removal (don't remove during iteration)
+                terms_to_exclude.add(term)
+                print(f"[FILTER] Excluding identity-only term from autofill: {term} (not a surname, only an identity)")
+                # Don't add metadata for identity-only terms
+                continue
             
             if metadata:
                 identity_metadata[term] = metadata
@@ -1310,6 +1327,11 @@ def get_indexed_terms():
                 identity_metadata[disambiguated_term] = disambiguated_metadata
                 print(f"[DISAMBIGUATE] Added disambiguated term: {disambiguated_term} (base: {disambiguated_metadata['_base_term']}, group: {disambiguated_metadata['_group_name']})")
         
+        # Remove identity-only terms from filtered_terms (after iteration to avoid modification during iteration)
+        if terms_to_exclude:
+            filtered_terms = [t for t in filtered_terms if t not in terms_to_exclude]
+            print(f"[FILTER] Removed {len(terms_to_exclude)} identity-only terms from autofill: {sorted(terms_to_exclude)}")
+        
         print(f"[IDENTITY] Attached metadata to {metadata_count} terms, {len(identity_metadata)} total entries")
         
         # Debug: Log some metadata examples
@@ -1332,7 +1354,7 @@ def get_indexed_terms():
                 print(f"[DEBUG] Sample normalized_terms keys: {list(normalized_terms.keys())[:10]}")
             else:
                 print(f"[DEBUG] normalized_terms is empty or not defined")
-        
+
         if filtered_terms:
             return {
                 "terms": filtered_terms,
