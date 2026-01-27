@@ -2412,6 +2412,9 @@ ENTITY INTRODUCTIONS (MANDATORY):
                 "no information",
                 "no relevant information",
                 "provided documents do not contain",
+                "does not offer",
+                "does not offer details",
+                "does not contain",
                 "cannot be generated",
                 "not available"
             ]
@@ -2493,9 +2496,13 @@ ENTITY INTRODUCTIONS (MANDATORY):
             "not contain information",
             "no information regarding",
             "no information about",
+            "does not offer",
+            "does not offer details",
+            "does not offer information",
             "provided documents",
             "provided historical documents",
-            "provided text"
+            "provided text",
+            "provided historical context"
         ]
         return any(phrase in lower_text for phrase in no_info_phrases)
     
