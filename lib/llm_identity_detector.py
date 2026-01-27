@@ -355,10 +355,15 @@ ANSWER (JSON format, one entry per chunk):
         print(f"  API calls made: {total_api_calls}")
         
         # Aggregate results
-        return self._aggregate_results()
+        return self._aggregate_results(chunks)
     
-    def _aggregate_results(self) -> Dict:
-        """Aggregate cached results into final identity->families mapping."""
+    def _aggregate_results(self, chunks: Optional[List[str]] = None) -> Dict:
+        """
+        Aggregate cached results into final identity->families mapping.
+        
+        Args:
+            chunks: Optional list of all chunks for keyword-based augmentation
+        """
         aggregated = defaultdict(lambda: defaultdict(int))
         
         for chunk_hash, data in self.cache.items():
@@ -384,6 +389,15 @@ ANSWER (JSON format, one entry per chunk):
                 'counts': dict(sorted_families),
                 'type': 'llm_detected'
             }
+        
+        # Augment with keyword-based LGBTQ+ detection if chunks provided
+        if chunks:
+            try:
+                from lib.keyword_lgbtq_detector import augment_llm_results_with_keywords
+                results = augment_llm_results_with_keywords(results, chunks)
+                print(f"[AUGMENT] Added keyword-based LGBTQ+ detection to results")
+            except Exception as e:
+                print(f"[WARN] Failed to augment with keyword detection: {e}")
         
         return results
 

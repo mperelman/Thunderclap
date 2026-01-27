@@ -53,7 +53,7 @@ MAX_WORDS_PER_REQUEST = 150000  # Max words per request (~200K tokens / 1.3)
 
 # Answer review thresholds
 EARLY_STOP_GAP_THRESHOLD = 10  # Years gap threshold for detecting early stopping
-SPARSE_RESULTS_THRESHOLD = 10  # Below this, augment with endnotes
+SPARSE_RESULTS_THRESHOLD = 5  # Below this, augment with endnotes
 
 # Control/influence query parameters
 CONTROL_INFLUENCE_EARLY_CHUNK_LIMIT = 8  # Limit chunks BEFORE augmentation for control/influence queries
