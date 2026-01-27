@@ -1,19 +1,22 @@
 """
 Keyword-based LGBTQ+ identity detector.
 
-This supplements LLM detection by finding surnames near LGBTQ+ keywords
+This supplements LLM detection by finding FULL NAMES (first name + surname) near LGBTQ+ keywords
 (gay, homosexual, bisexual, lavender marriage, etc.) using regex patterns.
+
+CRITICAL: LGBTQ+ identity is NAME-BASED, not surname-based. Only specific individuals
+mentioned near LGBTQ+ keywords are tagged, not all people with that surname.
 
 This is non-LLM based and uses the same keyword approach that previously worked.
 """
 
 import re
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 from collections import defaultdict
 
 
 class KeywordLGBTQDetector:
-    """Find surnames near LGBTQ+ keywords using regex patterns."""
+    """Find full names (first name + surname) near LGBTQ+ keywords using regex patterns."""
     
     # LGBTQ+ keywords to search for
     LGBTQ_KEYWORDS = [
@@ -23,7 +26,7 @@ class KeywordLGBTQDetector:
         'lgbt', 'lgbtq', 'lgbtq+', 'queer', 'transgender', 'trans'
     ]
     
-    # Proximity window: look for surnames within this many words of LGBTQ+ keywords
+    # Proximity window: look for full names within this many words of LGBTQ+ keywords
     PROXIMITY_WORDS = 20
     
     def __init__(self):
@@ -34,21 +37,21 @@ class KeywordLGBTQDetector:
             pattern = rf'\b{re.escape(keyword)}\b'
             self.keyword_patterns.append(re.compile(pattern, re.IGNORECASE))
         
-        # Pattern to find capitalized words (potential surnames)
-        # Match: word starting with capital letter, 2+ chars, not at start of sentence
-        self.surname_pattern = re.compile(r'\b[A-Z][a-z]{1,}\b')
+        # Pattern to find full names: "FirstName Surname" or "J.P. Morgan" style
+        # Matches: 2+ capitalized words in sequence
+        self.full_name_pattern = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b')
     
-    def find_surnames_near_keywords(self, chunk: str) -> Set[str]:
+    def find_full_names_near_keywords(self, chunk: str) -> Set[str]:
         """
-        Find surnames that appear near LGBTQ+ keywords in a chunk.
+        Find full names (first name + surname) that appear near LGBTQ+ keywords in a chunk.
         
         Args:
             chunk: Text chunk to search
             
         Returns:
-            Set of surnames found near LGBTQ+ keywords
+            Set of full names found near LGBTQ+ keywords (e.g., {"John Smith", "J.P. Morgan"})
         """
-        surnames = set()
+        full_names = set()
         
         # Find all LGBTQ+ keyword positions
         keyword_positions = []
@@ -57,47 +60,40 @@ class KeywordLGBTQDetector:
                 keyword_positions.append((match.start(), match.end()))
         
         if not keyword_positions:
-            return surnames
+            return full_names
         
-        # Find all potential surnames in the chunk
-        # Split chunk into words with positions
-        words = []
-        for match in re.finditer(r'\b\w+\b', chunk):
-            word = match.group(0)
+        # Find all full names in the chunk (multi-word capitalized sequences)
+        name_matches = []
+        for match in self.full_name_pattern.finditer(chunk):
+            full_name = match.group(0)
             start, end = match.span()
-            words.append((word, start, end))
+            name_matches.append((full_name, start, end))
         
-        # For each keyword, find surnames within proximity
+        # For each keyword, find full names within proximity
         for kw_start, kw_end in keyword_positions:
-            # Look for surnames within PROXIMITY_WORDS before and after keyword
-            for word, word_start, word_end in words:
-                # Check if word is capitalized (potential surname)
-                if word and word[0].isupper() and len(word) > 1:
-                    # Check proximity (within PROXIMITY_WORDS words)
-                    # Calculate word distance
-                    word_idx = words.index((word, word_start, word_end))
-                    kw_word_idx = None
-                    for i, (w, s, e) in enumerate(words):
-                        if s <= kw_start < e:
-                            kw_word_idx = i
-                            break
-                    
-                    if kw_word_idx is not None:
-                        distance = abs(word_idx - kw_word_idx)
-                        if distance <= self.PROXIMITY_WORDS:
-                            # Additional filter: exclude common words that start with capital
-                            # (like "The", "A", "In", "On", etc.)
-                            common_words = {'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 
-                                          'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are',
-                                          'were', 'be', 'been', 'being', 'have', 'has', 'had',
-                                          'do', 'does', 'did', 'will', 'would', 'could', 'should',
-                                          'may', 'might', 'must', 'can', 'this', 'that', 'these',
-                                          'those', 'it', 'he', 'she', 'we', 'they', 'i', 'you'}
-                            
-                            if word.lower() not in common_words:
-                                surnames.add(word)
+            for full_name, name_start, name_end in name_matches:
+                # Check if name is within proximity window
+                # Calculate distance: if name ends before keyword, distance = keyword_start - name_end
+                # If name starts after keyword, distance = name_start - keyword_end
+                # If they overlap, distance = 0
+                if name_end <= kw_start:
+                    # Name appears before keyword
+                    # Count words between name_end and kw_start
+                    text_between = chunk[name_end:kw_start]
+                    word_count = len(re.findall(r'\b\w+\b', text_between))
+                    if word_count <= self.PROXIMITY_WORDS:
+                        full_names.add(full_name)
+                elif name_start >= kw_end:
+                    # Name appears after keyword
+                    text_between = chunk[kw_end:name_start]
+                    word_count = len(re.findall(r'\b\w+\b', text_between))
+                    if word_count <= self.PROXIMITY_WORDS:
+                        full_names.add(full_name)
+                else:
+                    # Name and keyword overlap or are adjacent
+                    full_names.add(full_name)
         
-        return surnames
+        return full_names
     
     def detect_from_chunks(self, chunks: List[str]) -> Dict[str, List[str]]:
         """
@@ -107,18 +103,18 @@ class KeywordLGBTQDetector:
             chunks: List of text chunks
             
         Returns:
-            Dict mapping identity -> list of surnames
-            Format: {'gay': ['drexel', 'singer', 'barney'], ...}
+            Dict mapping identity -> list of FULL NAMES (not just surnames)
+            Format: {'gay': ['John Smith', 'J.P. Morgan'], ...}
         """
-        # Map identity -> surnames
-        identity_to_surnames = defaultdict(set)
+        # Map identity -> full names
+        identity_to_names = defaultdict(set)
         
         print(f"[KEYWORD_LGBTQ] Scanning {len(chunks)} chunks for LGBTQ+ keywords...")
         
         for chunk_idx, chunk in enumerate(chunks):
-            surnames = self.find_surnames_near_keywords(chunk)
+            full_names = self.find_full_names_near_keywords(chunk)
             
-            if surnames:
+            if full_names:
                 # Check which keywords appear in this chunk
                 chunk_lower = chunk.lower()
                 has_gay = any(kw in chunk_lower for kw in ['gay', 'gays', 'homosexual', 'homosexuals', 'homosexuality'])
@@ -127,24 +123,27 @@ class KeywordLGBTQDetector:
                 has_lavender = any(kw in chunk_lower for kw in ['lavender marriage', 'lavender marriages'])
                 
                 # Assign identities based on keywords found
-                for surname in surnames:
+                for full_name in full_names:
+                    # Normalize: convert to lowercase for consistency
+                    name_lower = full_name.lower()
+                    
                     if has_gay or has_lavender:
-                        identity_to_surnames['gay'].add(surname.lower())
+                        identity_to_names['gay'].add(name_lower)
                     if has_bisexual:
-                        identity_to_surnames['bisexual'].add(surname.lower())
+                        identity_to_names['bisexual'].add(name_lower)
                     if has_lesbian:
-                        identity_to_surnames['lesbian'].add(surname.lower())
+                        identity_to_names['lesbian'].add(name_lower)
                     # Also add to general lgbtq category
                     if has_gay or has_bisexual or has_lesbian or has_lavender:
-                        identity_to_surnames['lgbtq'].add(surname.lower())
+                        identity_to_names['lgbtq'].add(name_lower)
         
         # Convert sets to lists
-        result = {identity: sorted(list(surnames)) for identity, surnames in identity_to_surnames.items()}
+        result = {identity: sorted(list(names)) for identity, names in identity_to_names.items()}
         
-        total_surnames = len(set(s for surnames in identity_to_surnames.values() for s in surnames))
-        print(f"[KEYWORD_LGBTQ] Found {total_surnames} unique surnames with LGBTQ+ identities")
-        for identity, surnames in result.items():
-            print(f"  {identity}: {len(surnames)} surnames")
+        total_names = len(set(n for names in identity_to_names.values() for n in names))
+        print(f"[KEYWORD_LGBTQ] Found {total_names} unique full names with LGBTQ+ identities")
+        for identity, names in result.items():
+            print(f"  {identity}: {len(names)} full names")
         
         return result
 

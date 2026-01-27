@@ -48,19 +48,42 @@ print(f"  Example surnames: {list(surname_to_identity.keys())[:10]}")
 print()
 
 # AUGMENT with keyword-based LGBTQ+ detection (non-LLM, uses regex patterns)
+# NOTE: Keyword detection returns FULL NAMES, not surnames. 
+# CRITICAL: LGBTQ+ identity is NAME-BASED, not surname-based. We should NOT tag
+# all people with a surname just because one individual with that surname is LGBTQ+.
+# 
+# Strategy: Only add surnames from keyword detection if they're NOT already in LLM results.
+# This is conservative - if LLM didn't catch it, it's likely a specific individual mention
+# that keyword detection found. If LLM already has the surname, we trust LLM's context awareness.
 print("  Augmenting with keyword-based LGBTQ+ detection...")
 try:
     from lib.keyword_lgbtq_detector import KeywordLGBTQDetector
     keyword_detector = KeywordLGBTQDetector()
     keyword_results = keyword_detector.detect_from_chunks(all_chunks)
     
-    # Merge keyword results into surname_to_identity
-    for identity, surnames in keyword_results.items():
-        for surname in surnames:
-            surname_to_identity[surname.lower()].add(identity)
+    # Extract surnames from full names
+    # Only add if surname is NOT already in LLM results (conservative approach)
+    keyword_added = 0
+    keyword_skipped = 0
     
-    keyword_total = sum(len(surnames) for surnames in keyword_results.values())
-    print(f"  Added {keyword_total} keyword-based LGBTQ+ associations")
+    for identity, full_names in keyword_results.items():
+        for full_name in full_names:
+            # Extract surname (last word of full name)
+            name_parts = full_name.split()
+            if len(name_parts) >= 2:
+                surname = name_parts[-1].lower()
+                
+                # Only add if this surname is NOT already in LLM results
+                # This prevents tagging all people with that surname when only specific individuals are LGBTQ+
+                if surname not in surname_to_identity:
+                    surname_to_identity[surname].add(identity)
+                    keyword_added += 1
+                else:
+                    # Surname already in LLM results - skip to avoid false positives
+                    keyword_skipped += 1
+    
+    print(f"  Added {keyword_added} keyword-based LGBTQ+ associations (new surnames only)")
+    print(f"  Skipped {keyword_skipped} associations (surnames already in LLM results)")
 except Exception as e:
     print(f"  [WARN] Keyword detection failed: {e}")
     import traceback
