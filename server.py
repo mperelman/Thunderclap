@@ -602,13 +602,13 @@ def get_indexed_terms():
         if filtered_file and os.path.exists(filtered_file):
             try:
                 print(f"[TERMS] Attempting to load from {filtered_file}")
-            with open(filtered_file, 'r', encoding='utf-8') as f:
-                terms = json.load(f)
-                if not isinstance(terms, list):
-                    print(f"[TERMS] ERROR: {filtered_file} is not a list, got {type(terms)}")
-                    terms = []
-        else:
-                    print(f"[TERMS] Successfully loaded {len(terms)} terms from {filtered_file}")
+                with open(filtered_file, 'r', encoding='utf-8') as f:
+                    terms = json.load(f)
+                    if not isinstance(terms, list):
+                        print(f"[TERMS] ERROR: {filtered_file} is not a list, got {type(terms)}")
+                        terms = []
+                    else:
+                        print(f"[TERMS] Successfully loaded {len(terms)} terms from {filtered_file}")
             except json.JSONDecodeError as e:
                 print(f"[TERMS] JSON decode error loading {filtered_file}: {e}")
                 filtered_file = None  # Fall through to indices loading
@@ -625,10 +625,10 @@ def get_indexed_terms():
             # Load from indices
             if os.path.exists(INDICES_FILE):
                 try:
-                with open(INDICES_FILE, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                terms = list(data.get('term_to_chunks', {}).keys())
-                print(f"[TERMS] Loaded {len(terms)} terms from indices")
+                    with open(INDICES_FILE, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    terms = list(data.get('term_to_chunks', {}).keys())
+                    print(f"[TERMS] Loaded {len(terms)} terms from indices")
                 except Exception as e:
                     print(f"[TERMS] Error loading indices: {e}")
                     import traceback
