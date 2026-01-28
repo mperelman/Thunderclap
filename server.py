@@ -564,7 +564,7 @@ def get_indexed_terms():
     Hyperlinking is based on what this endpoint returns, so filtering here is simpler than
     filtering at multiple stages during indexing."""
     from lib.config import INDICES_FILE, DATA_DIR
-    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
+    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE, RELATED_SURNAMES_BLOCKLIST
     
     def should_exclude_term(term):
         """Check if term should be excluded (word or phrase)."""
@@ -681,7 +681,9 @@ def get_indexed_terms():
                         identity_data = json.load(f)
                     surname_to_identity_data = identity_data.get('surname_to_identity', {})
                     for surname, identities_list in surname_to_identity_data.items():
-                        surname_lower = surname.lower()
+                        surname_lower = surname.lower().strip()
+                        if surname_lower in RELATED_SURNAMES_BLOCKLIST:
+                            continue
                         surname_to_identities[surname_lower] = [id.lower() for id in identities_list]
                         for identity in identities_list:
                             identity_lower = identity.lower()
@@ -717,12 +719,12 @@ def get_indexed_terms():
                 identity_key = identity_normalization_map.get(term_lower, term_lower)
                 if identity_key in identity_to_surnames:
                     all_related = identity_to_surnames[identity_key]
-                    filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
+                    filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered])]
                     metadata['related_surnames'] = filtered_related[:30]
                     is_identity_term = True
                 elif term_lower in identity_to_surnames:
                     all_related = identity_to_surnames[term_lower]
-                    filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
+                    filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered])]
                     metadata['related_surnames'] = filtered_related[:30]
                     is_identity_term = True
                 
@@ -1215,7 +1217,9 @@ def get_indexed_terms():
                 # Structure: {"parsons": ["black"], "mcguire": ["black", "irish"], ...}
                 surname_to_identity_data = identity_data.get('surname_to_identity', {})
                 for surname, identities_list in surname_to_identity_data.items():
-                    surname_lower = surname.lower()
+                    surname_lower = surname.lower().strip()
+                    if surname_lower in RELATED_SURNAMES_BLOCKLIST:
+                        continue
                     # Build surname -> identities mapping
                     if surname_lower not in surname_to_identities:
                         surname_to_identities[surname_lower] = []
@@ -1294,16 +1298,16 @@ def get_indexed_terms():
             identity_key = identity_normalization_map.get(term_lower, term_lower)
             is_identity_term = False
             if identity_key in identity_to_surnames:
-                # Filter to only surnames that actually exist in filtered_terms (indexed)
+                # Filter to only surnames that actually exist in filtered_terms (indexed), and exclude blocklist
                 all_related = identity_to_surnames[identity_key]
-                filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
+                filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms])]
                 metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
                 is_identity_term = True
             elif term_lower in identity_to_surnames:
                 # Fallback: check exact match
                 all_related = identity_to_surnames[term_lower]
-                filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
+                filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms])]
                 metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
                 is_identity_term = True

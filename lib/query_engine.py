@@ -29,7 +29,7 @@ from .engines.event_engine import EventEngine
 from .engines.period_engine import PeriodEngine
 from .acronyms import ACRONYM_EXPANSIONS
 from .term_utils import canonicalize_term
-from .constants import YEAR_PREFIX_EXPANSIONS, STOP_WORDS
+from .constants import YEAR_PREFIX_EXPANSIONS, STOP_WORDS, RELATED_SURNAMES_BLOCKLIST
 from .text_utils import split_into_sentences
 from .answer_reviewer import AnswerReviewer
 
@@ -182,7 +182,7 @@ class QueryEngine:
                         data = json.load(f)
                     for identity, info in data.get('identities', {}).items():
                         families = info.get('families') or info.get('individuals') or []
-                        out[identity.lower()] = [f for f in families if f]
+                        out[identity.lower()] = [f for f in families if f and f.lower().strip() not in RELATED_SURNAMES_BLOCKLIST]
                     if out:
                         print(f"  [IDENTITY] Loaded {len(out)} identity->families from {path}")
                     break
@@ -993,6 +993,8 @@ class QueryEngine:
                     continue
                 before = len(chunk_ids)
                 for surname in families:
+                    if surname.lower().strip() in RELATED_SURNAMES_BLOCKLIST:
+                        continue
                     for key in (surname, surname.capitalize(), surname.lower()):
                         if key in self.term_to_chunks:
                             chunk_ids.update(self.term_to_chunks[key])

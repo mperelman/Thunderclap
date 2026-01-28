@@ -132,6 +132,13 @@ COMMON_FIRST_NAMES = {
     'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'maria', 'heather',
 }
 
+# Terms that must NEVER appear as "related surnames" for an identity (autofill / GAY etc.)
+# Place names, common words, or identity words wrongly tagged by the detector.
+RELATED_SURNAMES_BLOCKLIST = {
+    'indian', 'india', 'france', 'guard', 'exeter', 'foundation', 'party', 'fellow',
+    'partners', 'post', 'carolina', 'york', 'general', 'romanovs',
+}
+
 # Multi-word generic phrases that should be excluded
 GENERIC_PHRASES_TO_EXCLUDE = {
     'american cities', 'american city', 'british cities', 'european cities',
