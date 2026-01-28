@@ -700,24 +700,46 @@ def get_indexed_terms():
                 for variant in variants:
                     identity_normalization_map[variant.lower()] = main_term
             
+            # CRITICAL: Filter out identity-only terms from autofill (unless they're also surnames)
+            # This must be done in the simplified path too, not just the complex path
+            terms_to_exclude = set()
+            final_filtered = []
+            
             for term in simple_filtered:
                 term_lower = term.lower()
                 metadata = {}
-                if term_lower in surname_to_identities:
+                is_surname = term_lower in surname_to_identities
+                is_identity_term = False
+                
+                if is_surname:
                     metadata['identities'] = surname_to_identities[term_lower]
+                
                 identity_key = identity_normalization_map.get(term_lower, term_lower)
                 if identity_key in identity_to_surnames:
                     all_related = identity_to_surnames[identity_key]
                     filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
                     metadata['related_surnames'] = filtered_related[:30]
+                    is_identity_term = True
                 elif term_lower in identity_to_surnames:
                     all_related = identity_to_surnames[term_lower]
                     filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
                     metadata['related_surnames'] = filtered_related[:30]
+                    is_identity_term = True
+                
+                # CRITICAL: Filter out identity-only terms from autofill (unless they're also surnames)
+                if is_identity_term and not is_surname:
+                    # This is an identity-only term (not a surname) - exclude it from autofill
+                    terms_to_exclude.add(term)
+                    print(f"[FILTER] Excluding identity-only term from autofill: {term} (not a surname, only an identity)")
+                    continue
+                
                 if metadata:
                     identity_metadata[term] = metadata
+                
+                final_filtered.append(term)
             
-            return {"terms": simple_filtered[:5000], "identity_metadata": identity_metadata}  # Limit to 5000 for performance
+            print(f"[FILTER] Simplified path: excluded {len(terms_to_exclude)} identity-only terms")
+            return {"terms": final_filtered[:5000], "identity_metadata": identity_metadata}  # Limit to 5000 for performance
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
