@@ -41,7 +41,7 @@ def build_complete_index():
     chunk_metadatas = []
     chunk_counter = 0
     
-    for doc in documents:
+    for doc in tqdm(documents, desc="Chunking documents", unit="doc"):
         text = doc['text']  # Combined body text
         filename = doc['filename']
         chunks = split_into_chunks(text)
@@ -81,7 +81,7 @@ def build_complete_index():
             # Import TERM_GROUPS to find all variants for each identity
             from lib.index_builder import TERM_GROUPS
             
-            for identity, data in identity_data['identities'].items():
+            for identity, data in tqdm(identity_data['identities'].items(), desc="Augmenting with identities", unit="identity", total=len(identity_data['identities'])):
                 identity_lower = identity.lower()
                 chunk_ids_from_detection = data['chunk_ids']
                 
