@@ -73,10 +73,10 @@ for compressed_path in compressed_paths:
             with gzip.open(compressed_path, 'rb') as f_in:
                 with open(INDICES_FILE, 'wb') as f_out:
                     f_out.write(f_in.read())
-            print(f"[STARTUP] ✅ Decompressed index ({os.path.getsize(INDICES_FILE) / 1024 / 1024:.2f} MB)")
+            print(f"[STARTUP] Decompressed index ({os.path.getsize(INDICES_FILE) / 1024 / 1024:.2f} MB)")
             break
         except Exception as e:
-            print(f"[STARTUP] ⚠️ Failed to decompress index: {e}")
+            print(f"[STARTUP] WARN: Failed to decompress index: {e}")
 
 # Check if ChromaDB collection exists, rebuild if missing
 from lib.config import VECTORDB_DIR, COLLECTION_NAME
@@ -87,10 +87,10 @@ try:
     try:
         collection = chroma_client_startup.get_collection(name=COLLECTION_NAME)
         chromadb_exists_on_startup = True
-        print(f"[STARTUP] ✅ ChromaDB collection exists ({collection.count():,} chunks)")
+        print(f"[STARTUP] ChromaDB collection exists ({collection.count():,} chunks)")
     except Exception:
         chromadb_exists_on_startup = False
-        print(f"[STARTUP] ⚠️ ChromaDB collection '{COLLECTION_NAME}' not found")
+        print(f"[STARTUP] WARN: ChromaDB collection '{COLLECTION_NAME}' not found")
         print(f"[STARTUP] Will rebuild ChromaDB in background (this may take a few minutes)...")
         # Will be handled by background_rebuild below
     finally:
@@ -101,7 +101,7 @@ try:
         gc.collect()  # Force garbage collection to close file handles
 except Exception as e:
     chromadb_exists_on_startup = False
-    print(f"[STARTUP] ⚠️ Could not check ChromaDB: {e}")
+    print(f"[STARTUP] WARN: Could not check ChromaDB: {e}")
 
 # Auto-rebuild index if source documents changed (in background to avoid blocking startup)
 # Only rebuilds when source documents actually change, not on every startup
@@ -138,13 +138,13 @@ def background_rebuild():
             is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
             
             if is_railway and not chromadb_exists:
-                print(f"\n[STARTUP] ⚠️ ChromaDB collection missing on Railway")
-                print(f"[STARTUP] ⚠️ Railway volumes cannot create ChromaDB databases (SQLite write limitation)")
-                print(f"[STARTUP] ⚠️ You must build the database locally and upload it:")
+                print(f"\n[STARTUP] WARN: ChromaDB collection missing on Railway")
+                print(f"[STARTUP] WARN: Railway volumes cannot create ChromaDB databases (SQLite write limitation)")
+                print(f"[STARTUP] WARN: You must build the database locally and upload it:")
                 print(f"[STARTUP]    1. Run 'python build_index.py' locally")
                 print(f"[STARTUP]    2. Upload data/vectordb/ directory to Railway volume at /app/data/vectordb/")
                 print(f"[STARTUP]    3. Restart Railway service")
-                print(f"[STARTUP] ⚠️ Skipping rebuild to avoid error")
+                print(f"[STARTUP] WARN: Skipping rebuild to avoid error")
                 rebuild_in_progress = False
             elif not os.path.exists(INDICES_FILE):
                 print("\n[STARTUP] No index found - starting background rebuild...")
@@ -153,9 +153,9 @@ def background_rebuild():
                 success = rebuild_index()
                 rebuild_in_progress = False
                 if success:
-                    print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
+                    print(f"[STARTUP] Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
                 else:
-                    print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                    print(f"[STARTUP] WARN: Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
                 print(f"\n[STARTUP] ChromaDB collection missing - starting background rebuild...")
                 print(f"[STARTUP] VECTORDB_DIR: {VECTORDB_DIR}")
@@ -165,16 +165,16 @@ def background_rebuild():
                 success = rebuild_index()
                 rebuild_in_progress = False
                 if success:
-                    print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
+                    print(f"[STARTUP] Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
                     # Verify ChromaDB was created
                     try:
                         chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
                         collection = chroma_client.get_collection(name=COLLECTION_NAME)
-                        print(f"[STARTUP] ✅ Verified: ChromaDB collection exists with {collection.count()} chunks")
+                        print(f"[STARTUP] Verified: ChromaDB collection exists with {collection.count()} chunks")
                     except Exception as e:
-                        print(f"[STARTUP] ⚠️ WARNING: Rebuild reported success but ChromaDB still missing: {e}")
+                        print(f"[STARTUP] WARN: Rebuild reported success but ChromaDB still missing: {e}")
                 else:
-                    print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                    print(f"[STARTUP] WARN: Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             return
         
         # Index exists - check if source documents changed
@@ -185,15 +185,15 @@ def background_rebuild():
             success = rebuild_index()
             rebuild_in_progress = False
             if success:
-                print("[STARTUP] ✅ Background rebuild completed successfully!")
+                print("[STARTUP] Background rebuild completed successfully!")
             else:
-                print("[STARTUP] ⚠️ Background rebuild failed, using existing index")
+                print("[STARTUP] WARN: Background rebuild failed, using existing index")
         else:
             # No changes - skip rebuild entirely (most common case)
-            print("[STARTUP] ✅ No changes - using existing index")
+            print("[STARTUP] No changes - using existing index")
     except Exception as e:
         rebuild_in_progress = False
-        print(f"[STARTUP] ⚠️ Could not check/rebuild index: {e}")
+        print(f"[STARTUP] WARN: Could not check/rebuild index: {e}")
         import traceback
         traceback.print_exc()
         print("[STARTUP] Continuing with existing index (if available)")
@@ -542,12 +542,12 @@ def trigger_rebuild():
             success = rebuild_index()
             rebuild_in_progress = False
             if success:
-                print(f"[MANUAL REBUILD] ✅ Completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"[MANUAL REBUILD] Completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
-                print(f"[MANUAL REBUILD] ⚠️ Failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"[MANUAL REBUILD] WARN: Failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
             rebuild_in_progress = False
-            print(f"[MANUAL REBUILD] ❌ Error: {e}")
+            print(f"[MANUAL REBUILD] ERROR: {e}")
             import traceback
             traceback.print_exc()
     
@@ -1208,7 +1208,7 @@ def get_indexed_terms():
                 with open(identity_file, 'r', encoding='utf-8') as f:
                     identity_data = json.load(f)
                 
-                print(f"[INFO] ✅ Loaded identity data from {identity_file}")
+                print(f"[INFO] Loaded identity data from {identity_file}")
                 print(f"[INFO] File size: {os.path.getsize(identity_file)} bytes")
                 
                 # Build surname -> identities mapping from surname_to_identity

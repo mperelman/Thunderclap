@@ -167,6 +167,29 @@ class QueryEngine:
         
         # Load endnotes for sparse result augmentation
         self._load_endnotes()
+        # Load identity -> families for expanding identity queries (e.g. GAY -> Bessent, Jenrette chunks)
+        self._identity_to_families = self._load_identity_families()
+    
+    def _load_identity_families(self) -> Dict[str, List[str]]:
+        """Load identity -> list of surnames from identity_detection_v3.json for expanding identity queries."""
+        from .config import DATA_DIR
+        out = {}
+        for base in [DATA_DIR, 'data', os.path.join(os.getcwd(), 'data')]:
+            path = os.path.join(base, 'identity_detection_v3.json')
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    for identity, info in data.get('identities', {}).items():
+                        families = info.get('families') or info.get('individuals') or []
+                        out[identity.lower()] = [f for f in families if f]
+                    if out:
+                        print(f"  [IDENTITY] Loaded {len(out)} identity->families from {path}")
+                    break
+                except Exception as e:
+                    print(f"  [WARN] Could not load identity families from {path}: {e}")
+                break
+        return out
     
     def _load_endnotes(self):
         """Load endnotes for augmenting sparse results."""
@@ -959,6 +982,24 @@ class QueryEngine:
                     for keyword in keywords:
                         if keyword in self.term_to_chunks:
                             chunk_ids.update(self.term_to_chunks[keyword])
+        
+        # For identity queries (e.g. GAY), expand with chunks from related surnames
+        # so the answer includes Wall Street/LGBT individuals (Bessent, Jenrette, etc.), not only Templars
+        if chunk_ids and self._is_identity_query(question) and self._identity_to_families:
+            for it in (intersect_terms or []):
+                term_lower = it.lower()
+                families = self._identity_to_families.get(term_lower)
+                if not families:
+                    continue
+                before = len(chunk_ids)
+                for surname in families:
+                    for key in (surname, surname.capitalize(), surname.lower()):
+                        if key in self.term_to_chunks:
+                            chunk_ids.update(self.term_to_chunks[key])
+                            break
+                if len(chunk_ids) > before:
+                    print(f"  [IDENTITY_EXPAND] Added {len(chunk_ids) - before} chunks from {len(families)} surnames for identity '{term_lower}'")
+                break
         
         # CRITICAL: Detect control/influence queries EARLY and limit chunks BEFORE augmentation
         # These queries are very broad and will timeout if we retrieve too many chunks

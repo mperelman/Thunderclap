@@ -365,10 +365,25 @@ ANSWER (JSON format, one entry per chunk):
             chunks: Optional list of all chunks for keyword-based augmentation
         """
         aggregated = defaultdict(lambda: defaultdict(int))
+
+        # Guardrail: sometimes the LLM returns an identity term itself as a "surname"
+        # (e.g., {"gay": ["black"]} when a chunk contains "gay ... Black ...").
+        # Those should NEVER become surnames in outputs like identity_detection_v3.json,
+        # because they pollute autofill/metadata and cause false "surname" entries.
+        identity_terms = set()
+        try:
+            for _, labels in (self.IDENTITIES or {}).items():
+                for label in labels:
+                    identity_terms.add(str(label).lower().strip())
+        except Exception:
+            identity_terms = set()
         
         for chunk_hash, data in self.cache.items():
             for identity, surnames in data.get('identities', {}).items():
                 for surname in surnames:
+                    surname_norm = str(surname).lower().strip()
+                    if surname_norm in identity_terms:
+                        continue
                     aggregated[identity][surname] += 1
         
         # Format results
