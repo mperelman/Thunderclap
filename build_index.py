@@ -17,6 +17,7 @@ from lib.panic_indexer import augment_index_with_panics
 from lib.config import DATA_DIR, COLLECTION_NAME
 import chromadb
 import json
+from tqdm import tqdm
 
 def build_complete_index():
     """Build complete index with body chunks and endnotes."""
@@ -141,7 +142,7 @@ def build_complete_index():
             # Identity detector creates underscore versions (e.g., "court_jew") AFTER TERM_GROUPS merging
             # So we need to merge them again now that identity augmentation has added them
             print("  Re-merging TERM_GROUPS to include identity-augmented underscore versions...")
-            for main_term, variants in TERM_GROUPS.items():
+            for main_term, variants in tqdm(TERM_GROUPS.items(), desc="Re-merging TERM_GROUPS", unit="term"):
                 merged_chunk_set = set()  # Use different variable name to avoid shadowing outer all_chunks
                 # Collect from all space variants
                 for variant in variants:
@@ -489,19 +490,21 @@ def build_complete_index():
         
         raise
     
-    # Add in batches
+    # Add in batches with progress bar
     batch_size = 100
-    for i in range(0, len(all_chunks), batch_size):
-        batch_chunks = all_chunks[i:i+batch_size]
-        batch_ids = chunk_ids[i:i+batch_size]
-        batch_metas = chunk_metadatas[i:i+batch_size]
-        
-        collection.add(
-            documents=batch_chunks,
-            ids=batch_ids,
-            metadatas=batch_metas
-        )
-        print(f"  Added {len(batch_ids)} chunks ({i+len(batch_ids)}/{len(all_chunks)})")
+    total_batches = (len(all_chunks) + batch_size - 1) // batch_size
+    with tqdm(total=len(all_chunks), desc="Building vector database", unit="chunk") as pbar:
+        for i in range(0, len(all_chunks), batch_size):
+            batch_chunks = all_chunks[i:i+batch_size]
+            batch_ids = chunk_ids[i:i+batch_size]
+            batch_metas = chunk_metadatas[i:i+batch_size]
+            
+            collection.add(
+                documents=batch_chunks,
+                ids=batch_ids,
+                metadatas=batch_metas
+            )
+            pbar.update(len(batch_ids))
     
     print(f"[OK] Vector database built\n")
     
