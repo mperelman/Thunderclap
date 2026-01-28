@@ -726,12 +726,9 @@ def get_indexed_terms():
                     metadata['related_surnames'] = filtered_related[:30]
                     is_identity_term = True
                 
-                # CRITICAL: Filter out identity-only terms from autofill (unless they're also surnames)
-                if is_identity_term and not is_surname:
-                    # This is an identity-only term (not a surname) - exclude it from autofill
-                    terms_to_exclude.add(term)
-                    print(f"[FILTER] Excluding identity-only term from autofill: {term} (not a surname, only an identity)")
-                    continue
+                # NOTE: Identity terms like "gay", "black", "jewish" ARE included in autofill
+                # They're useful for searching identity-based content
+                # Surnames with those identities will also appear in autofill separately
                 
                 if metadata:
                     identity_metadata[term] = metadata
@@ -1311,16 +1308,9 @@ def get_indexed_terms():
                 metadata_count += 1
                 is_identity_term = True
             
-            # CRITICAL: Filter out identity-only terms from autofill (unless they're also surnames)
-            # Identity terms like "gay", "black", "jewish" should NOT appear in autofill unless they're surnames
-            # Check if this is an identity term but NOT a surname
-            if is_identity_term and not is_surname:
-                # This is an identity-only term (not a surname) - exclude it from autofill
-                # Mark for removal (don't remove during iteration)
-                terms_to_exclude.add(term)
-                print(f"[FILTER] Excluding identity-only term from autofill: {term} (not a surname, only an identity)")
-                # Don't add metadata for identity-only terms
-                continue
+            # NOTE: Identity terms like "gay", "black", "jewish" ARE included in autofill
+            # They're useful for searching identity-based content
+            # Surnames with those identities will also appear in autofill separately
             
             if metadata:
                 identity_metadata[term] = metadata
