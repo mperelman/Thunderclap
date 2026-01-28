@@ -1817,11 +1817,20 @@ def augment_indices_with_identities(term_to_chunks, detected_identities):
         # For each name with this identity (family or individual)
         for name in names:
             name_lower = name.lower()
+            name_capitalized = name.capitalize()  # Try capitalized version too
             
             # Find all chunks containing this surname
+            # Try both lowercase and capitalized versions (index preserves capitalization)
+            name_chunks = []
             if name_lower in term_to_chunks:
-                name_chunks = term_to_chunks[name_lower]
-                
+                name_chunks.extend(term_to_chunks[name_lower])
+            if name_capitalized in term_to_chunks:
+                name_chunks.extend(term_to_chunks[name_capitalized])
+            # Also try original case if different
+            if name != name_lower and name != name_capitalized and name in term_to_chunks:
+                name_chunks.extend(term_to_chunks[name])
+            
+            if name_chunks:
                 # Add these chunks to the identity term (avoid duplicates)
                 for chunk_id in name_chunks:
                     if chunk_id not in existing_chunks:
