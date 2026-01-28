@@ -141,11 +141,20 @@ if len(identity_to_chunks) > 20:
     print(f"  ... and {len(identity_to_chunks) - 20} more")
 
 # Save results
+# CRITICAL: Include surnames in 'families' field so augmentation can link them
+# Build identity -> surnames mapping
+identity_to_surnames_map = defaultdict(set)
+for surname, identities in surname_to_identity.items():
+    for identity in identities:
+        identity_to_surnames_map[identity].add(surname)
+
 results = {
     'identities': {
         identity: {
             'chunk_ids': sorted(list(chunk_ids)),
-            'chunk_count': len(chunk_ids)
+            'chunk_count': len(chunk_ids),
+            # CRITICAL: Include surnames so augmentation can link them to chunks
+            'families': sorted(list(identity_to_surnames_map.get(identity, set())))
         }
         for identity, chunk_ids in identity_to_chunks.items()
     },
