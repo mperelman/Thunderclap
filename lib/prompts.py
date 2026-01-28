@@ -924,9 +924,22 @@ def build_batch_prompt(question: str, chunks: list, batch_context: str = "", is_
             critical_rules = rules_parts[0].rstrip()
         else:
             critical_rules = CRITICAL_RELEVANCE_AND_ACCURACY
-    
+
+    # Detect identity queries (e.g. "GAY", "Black", "Jewish") so we force coverage of named individuals
+    try:
+        from lib.identity_terms import IDENTITY_TERMS_SET as identity_terms_set
+        q_tokens = question_lower.split()
+        is_identity_query = len(q_tokens) <= 3 and any(t in identity_terms_set for t in q_tokens)
+    except Exception:
+        is_identity_query = False
+    identity_instruction = ""
+    if is_identity_query:
+        identity_instruction = """
+MANDATORY FOR IDENTITY QUERIES: The context below may include BOTH (a) historical allegations or events and (b) named individuals in banking/finance. You MUST cover BOTH when present. Do not summarize only the first narrative—include named individuals (financiers, bankers, executives) and their roles when they appear in the context.
+
+"""
     prompt = f"""Write a factual overview about {question}. Use ONLY the text below and never mention sources.
-{key_facts_block}
+{identity_instruction}{key_facts_block}
 
 Historical Documents:
 {context}
