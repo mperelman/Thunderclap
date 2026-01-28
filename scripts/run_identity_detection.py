@@ -4,6 +4,7 @@ import re
 import json
 from collections import defaultdict
 from pathlib import Path
+from tqdm import tqdm
 
 sys.path.insert(0, '.')
 
@@ -97,7 +98,7 @@ print(f"  Searching all {len(all_chunks)} chunks for these surnames...")
 
 surname_to_chunks = defaultdict(set)
 
-for surname in surname_to_identity.keys():
+for surname in tqdm(surname_to_identity.keys(), desc="Searching surnames", unit="surname"):
     # Create regex pattern
     pattern = rf'\b{re.escape(surname)}\b'
     compiled = re.compile(pattern, re.IGNORECASE)
