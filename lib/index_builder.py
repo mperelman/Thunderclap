@@ -848,6 +848,7 @@ def build_indices(chunks, chunk_ids):
         
         # Index identity terms directly from text (Jewish, female, widow, Black, etc.)
         # These are important searchable terms even without identity detector
+        # CRITICAL: Use word boundaries to prevent substring matches (e.g., "gay" in "Générale")
         identity_terms = [
             # Religious
             r'\b(jewish|jew|jews|sephardi|sephardim|ashkenazi|ashkenazim|court\s+jew|court\s+jews|kohanim|katz)\b',
@@ -863,6 +864,8 @@ def build_indices(chunks, chunk_ids):
             r'\b(black|african\s+american|african-american)\b',
             # Gender
             r'\b(female|woman|women|widow|widows|queen|princess|lady|heiress)\b',
+            # LGBTQ+ (CRITICAL: word boundaries prevent "gay" matching in "Générale")
+            r'\b(gay|gays|homosexual|homosexuals|homosexuality|lesbian|lesbians|bisexual|bisexuals|lgbt|lgbtq|lgbtq\+|queer|transgender|trans|lavender\s+marriage|lavender\s+marriages)\b',
             # Latino/Hispanic
             r'\b(latino|latina|latinos|latinas|hispanic|hispanics|mexican|cuban|puerto\s+rican)\b',
         ]
