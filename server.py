@@ -58,12 +58,17 @@ if not gemini_key:
 print(f"API Key loaded: {gemini_key[:20]}... (length: {len(gemini_key)})")
 
 print("Initializing Thunderclap AI...")
-# Cunliffe-fix deploy check: this line only exists in builds that include the sanitizer
+# Cunliffe-fix deploy check: sanitizer + query_engine version (if you see single-word-skip-v1, new code is deployed)
 try:
     from lib.query_engine import sanitize_final_answer_for_question
     print("[STARTUP] CUNLIFFE_SANITIZER=body-check-v2 (answer sanitizer loaded)")
 except Exception as e:
     print(f"[STARTUP] CUNLIFFE_SANITIZER=missing ({e})")
+try:
+    from lib.query_engine import QUERY_ENGINE_CUNLIFFE_FIX_VERSION
+    print(f"[STARTUP] QUERY_ENGINE={QUERY_ENGINE_CUNLIFFE_FIX_VERSION} (single-word skip + single-term early-filter skip)")
+except ImportError:
+    print("[STARTUP] QUERY_ENGINE=old (no single-word skip - push latest lib/query_engine.py and redeploy)")
 
 # Decompress index if compressed version exists (in scripts/ or data/)
 from lib.config import INDICES_FILE

@@ -33,12 +33,18 @@ from .constants import YEAR_PREFIX_EXPANSIONS, STOP_WORDS
 from .text_utils import split_into_sentences
 from .answer_reviewer import AnswerReviewer
 
+# Deploy check: server prints this at startup; if you see it in Railway logs, new query_engine is in the image
+QUERY_ENGINE_CUNLIFFE_FIX_VERSION = "single-word-skip-v1"
+
 
 def sanitize_final_answer_for_question(question: str, answer: str) -> str:
     """
-    Standalone sanitizer: if answer does not contain the query term (whole word),
-    return fallback message. For "Found N relevant passages" answers, require the
-    body (not just the header) to contain the query term.
+    Only replace with fallback when the answer is "Found N relevant passages" and the
+    body doesn't contain the query term — and only for multi-term queries. For
+    single-term queries (e.g. "Cunliffe") we already trusted the index: the chunks
+    came from term_to_chunks for that term, so we show the passages as-is even if
+    ChromaDB text doesn't literally contain the term (e.g. index/Chroma mismatch).
+    For narrative answers we never require the term (LLM may say "the Governor").
     """
     if not answer or not answer.strip():
         return answer
@@ -46,11 +52,12 @@ def sanitize_final_answer_for_question(question: str, answer: str) -> str:
     terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
     if not terms:
         return answer
-    answer_lower = answer.lower()
-    # If answer starts with "Found N relevant passages:", require the BODY to contain the term
-    # (so we don't keep 9 unrelated passages just because "Cunliffe" appears in a filename/header)
+    single_term = len(terms) == 1
+    # Only sanitize the "Found N relevant passages" format: require body to contain the term
     if re.match(r'Found\s+\d+\s+relevant\s+passages\s*:\s*', answer, re.IGNORECASE):
-        # Body is after the first line (allow \n or \n\n)
+        # For single-term queries, trust the index — don't replace just because body lacks the term
+        if single_term:
+            return answer
         first_newline = answer.find('\n')
         body = answer[first_newline:].strip() if first_newline >= 0 else ""
         body_lower = body.lower()
@@ -62,15 +69,8 @@ def sanitize_final_answer_for_question(question: str, answer: str) -> str:
             "The retrieved passages did not contain your search term. "
             "Try rephrasing or a more specific question."
         )
-    # For any other answer, require the full answer to contain the term
-    for term in terms:
-        if re.search(rf'\b{re.escape(term)}\b', answer_lower):
-            return answer
-    return (
-        "No answer could be generated for this question. "
-        "The retrieved passages did not contain your search term. "
-        "Try rephrasing or a more specific question."
-    )
+    # For narrative answers: do NOT replace just because the term is missing
+    return answer
 
 
 SUBJECT_GENERIC_TERMS = {
@@ -449,7 +449,8 @@ class QueryEngine:
             "after_filtering": 0,
             "final_chunk_count": 0,
             "query_path": "unknown",
-            "firm_detection_debug": []  # Store debug info about firm phrase detection attempts
+            "firm_detection_debug": [],  # Store debug info about firm phrase detection attempts
+            "single_word_skipped_firm": None  # Set when we skip treating single-word as firm (e.g. Cunliffe)
         }
         
         # CRITICAL: Always get fresh collection reference to avoid ChromaDB stale UUID caching
@@ -657,6 +658,12 @@ class QueryEngine:
                     if potential_firm_lower in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term: '{potential_firm}'")
                         break
+                    # Don't treat single-word queries as firm names (e.g. "Cunliffe" = person, not firm)
+                    # They will be handled as single-term and get correct relaxations
+                    if len(lookup_term.split()) == 1:
+                        self.query_diagnostics["single_word_skipped_firm"] = lookup_term
+                        print(f"  [SKIP] Single-word query '{lookup_term}' - not treating as firm (use single-term path)")
+                        break
                     firm_name_phrases.append(lookup_term)
                     chunk_count = len(self.term_to_chunks[lookup_term])
                     print(f"  [FIRM_NAME] Found indexed firm name: '{lookup_term}' ({chunk_count} chunks)")
@@ -669,6 +676,9 @@ class QueryEngine:
                     # Double-check: if canonicalized version is an identity term, skip
                     if firm_clean.lower() in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term (canonicalized): '{firm_clean}'")
+                        break
+                    if len(firm_clean.split()) == 1:
+                        print(f"  [SKIP] Single-word '{firm_clean}' - not treating as firm")
                         break
                     firm_name_phrases.append(firm_clean)
                     print(f"  [FIRM_NAME] Found indexed firm name (canonicalized): '{firm_clean}' ({len(self.term_to_chunks[firm_clean])} chunks)")
@@ -692,6 +702,9 @@ class QueryEngine:
                     if potential_firm_title.lower() in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term (title case): '{potential_firm_title}'")
                         break
+                    if len(potential_firm_title.split()) == 1:
+                        print(f"  [SKIP] Single-word '{potential_firm_title}' - not treating as firm")
+                        break
                     firm_name_phrases.append(potential_firm_title)
                     chunk_count = len(self.term_to_chunks[potential_firm_title])
                     print(f"  [FIRM_NAME] Found indexed firm name (title case): '{potential_firm_title}' ({chunk_count} chunks)")
@@ -701,6 +714,9 @@ class QueryEngine:
                 elif potential_firm_preserved != potential_firm and potential_firm_preserved in self.term_to_chunks:
                     if potential_firm_preserved.lower() in identity_terms_set:
                         print(f"  [SKIP] Skipping firm name detection for identity term (preserved case): '{potential_firm_preserved}'")
+                        break
+                    if len(potential_firm_preserved.split()) == 1:
+                        print(f"  [SKIP] Single-word '{potential_firm_preserved}' - not treating as firm")
                         break
                     firm_name_phrases.append(potential_firm_preserved)
                     chunk_count = len(self.term_to_chunks[potential_firm_preserved])
@@ -1215,6 +1231,20 @@ class QueryEngine:
                 (text, meta)
                 for text, meta in zip(data['documents'], data['metadatas'])
             ]
+            # Index/Chroma mismatch: index had chunk IDs but ChromaDB returned no documents
+            if chunk_ids_list and not chunks:
+                n_expected = len(chunk_ids_list)
+                try:
+                    self.query_diagnostics["after_filtering"] = 0
+                    self.query_diagnostics["final_chunk_count"] = 0
+                except Exception:
+                    pass
+                msg = (
+                    f"The index found {n_expected} passage(s) for your query, but the content could not be loaded. "
+                    "The database may be out of sync with the index. Try again later or rephrase."
+                )
+                print(f"  [WARN] Index had {n_expected} chunk IDs but ChromaDB returned 0 documents: {msg[:80]}...")
+                return msg
             # Ideology tightening: for Marxism/Socialism/Communism/Collectivism, filter to finance-relevant chunks
             if self._is_ideology_query(question):
                 chunks = self._filter_chunks_for_ideology(chunks, question)
@@ -1431,16 +1461,23 @@ class QueryEngine:
             # This prevents re-asks from bypassing token limits
             original_chunks = chunks[:]
             
-            # CRITICAL: Filter by query term before any LLM call. If no chunks contain the query term,
-            # return fallback immediately so we never send irrelevant chunks to the LLM (which could echo them).
-            term_filtered = self._filter_chunks_by_question_terms(question, chunks)
-            if not term_filtered:
-                print("  [EARLY_FILTER] No retrieved chunks contain the query term; returning fallback (no LLM call)")
-                return self._fallback_no_answer_message(question)
-            if len(term_filtered) < len(chunks):
-                print(f"  [EARLY_FILTER] Restricting to {len(term_filtered)} chunks that contain query term (from {len(chunks)})")
-                chunks = term_filtered
-                original_chunks = chunks[:]
+            # Filter by query term before any LLM call - but for single-term queries, trust the index:
+            # if the user asked "Cunliffe" and we got chunks from term_to_chunks["Cunliffe"], use them
+            # (index may link chunks via surname/identity even when the exact word appears in a variant).
+            tokens = re.findall(r"[A-Za-z']+", question)
+            terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
+            single_term_query = len(terms) == 1
+            if single_term_query:
+                print("  [EARLY_FILTER] Single-term query - using index chunks (no text filter)")
+            else:
+                term_filtered = self._filter_chunks_by_question_terms(question, chunks)
+                if not term_filtered:
+                    print("  [EARLY_FILTER] No retrieved chunks contain the query term; returning fallback (no LLM call)")
+                    return self._fallback_no_answer_message(question)
+                if len(term_filtered) < len(chunks):
+                    print(f"  [EARLY_FILTER] Restricting to {len(term_filtered)} chunks that contain query term (from {len(chunks)})")
+                    chunks = term_filtered
+                    original_chunks = chunks[:]
             
             if chunks == original_chunks:  # No preprocessed file was used
                 print(f"  [DEDUP] Used preprocessed deduplicated file ({len(chunks)} chunks)")
@@ -1885,32 +1922,44 @@ class QueryEngine:
                 ans = self._review_and_fix_answer(ans, original_chunks, question, max_iterations=max_review_iter, query_start_time=query_start)
                 if self._is_no_info_answer(ans):
                     filtered_chunks = self._filter_chunks_by_question_terms(question, original_chunks)
-                    if not filtered_chunks:
+                    # For single-term queries we already trusted the index (e.g. Cunliffe → 9 chunks);
+                    # if chunk text doesn't contain the term (e.g. Chroma/index mismatch), still show the chunks
+                    tokens = re.findall(r"[A-Za-z']+", question)
+                    terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
+                    single_term = len(terms) == 1
+                    use_chunks = filtered_chunks if filtered_chunks else (original_chunks if single_term else [])
+                    if not use_chunks:
                         print("  [FALLBACK] No-info answer and no chunks contain query term; returning fallback message")
                         ans = self._fallback_no_answer_message(question)
                     else:
-                        print("  [FALLBACK] No-info answer after review; using filtered chunks")
+                        print("  [FALLBACK] No-info answer after review; using chunks" + (" (single-term, showing index chunks)" if single_term and not filtered_chunks else ""))
                         context_text = "\n\n".join([
                             f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                            for text, meta in filtered_chunks
+                            for text, meta in use_chunks
                         ])
-                        ans = f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
+                        ans = f"Found {len(use_chunks)} relevant passages:\n\n{context_text}"
                 query_duration = time.time() - query_start
                 print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s, answer length: {len(ans)} chars")
                 return ans
         else:
-            # Fallback: return only chunks that contain the query term, or fallback message
+            # No LLM path: return chunks that contain the query term, or for single-term trust the index
             fallback_chunks = list(zip(data['documents'], data['metadatas']))
             filtered_chunks = self._filter_chunks_by_question_terms(question, fallback_chunks)
-            if not filtered_chunks:
+            tokens = re.findall(r"[A-Za-z']+", question)
+            terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
+            single_term = len(terms) == 1
+            use_chunks = filtered_chunks if filtered_chunks else (fallback_chunks if single_term else [])
+            if not use_chunks:
                 result = self._fallback_no_answer_message(question)
                 print("  [FALLBACK] No LLM and no chunks contain query term; returning fallback message")
             else:
+                if single_term and not filtered_chunks:
+                    print("  [FALLBACK] No LLM, single-term query - showing index chunks (no text filter)")
                 context_text = "\n\n".join([
                     f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                    for text, meta in filtered_chunks
+                    for text, meta in use_chunks
                 ])
-                result = f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
+                result = f"Found {len(use_chunks)} relevant passages:\n\n{context_text}"
             query_duration = time.time() - query_start
             print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s (no LLM), result length: {len(result)} chars")
             return result

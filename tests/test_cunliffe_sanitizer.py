@@ -54,18 +54,23 @@ def test_sanitizer_logic():
     assert "cunliffe" in _extract_terms("Lord Cunliffe"), "Query term 'Cunliffe' must be in terms"
     # Call actual module-level sanitizer (used by server)
     from lib.query_engine import sanitize_final_answer_for_question
-    replaced = sanitize_final_answer_for_question("Cunliffe", unrelated)
-    assert "Cunliffe" not in replaced and "search term" in replaced, "Unrelated answer must be replaced by fallback"
+    # Single-term "Cunliffe": we trust the index, so "Found N relevant passages" is kept even if body lacks term
+    kept_found_style = sanitize_final_answer_for_question("Cunliffe", unrelated)
+    assert kept_found_style == unrelated, "Single-term: Found N passages must be kept (index trusted)"
     kept = sanitize_final_answer_for_question("Cunliffe", related)
     assert kept == related, "Related answer must be kept"
-    # Body-only check: "Found 9 relevant passages:" with body that has no Cunliffe -> replaced
+    # Single-term: "Found 9 relevant passages" with body that has no Cunliffe -> still kept (index trusted)
     found_style = "Found 9 relevant passages:\n\n[Doc] Morgan and Homberg. French debt. Mendelssohn Amsterdam."
-    replaced2 = sanitize_final_answer_for_question("Cunliffe", found_style)
-    assert "search term" in replaced2, "Found N passages with unrelated body must be replaced"
+    kept_found = sanitize_final_answer_for_question("Cunliffe", found_style)
+    assert kept_found == found_style, "Single-term: Found N passages kept even if body lacks term"
     # Body that does contain Cunliffe -> kept
     found_style_ok = "Found 1 relevant passages:\n\n[Doc] Lord Cunliffe was Governor of the Bank of England."
     kept2 = sanitize_final_answer_for_question("Cunliffe", found_style_ok)
     assert kept2 == found_style_ok, "Found N passages with body containing term must be kept"
+    # Multi-term query: "Found N passages" with body that lacks all terms -> replaced
+    multi_found = "Found 2 relevant passages:\n\n[Doc] Some generic text. No search terms here."
+    replaced_multi = sanitize_final_answer_for_question("Lord Cunliffe Governor", multi_found)
+    assert "search term" in replaced_multi, "Multi-term: Found N passages with unrelated body must be replaced"
     print("test_sanitizer_logic: OK")
 
 
