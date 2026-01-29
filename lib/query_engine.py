@@ -29,10 +29,48 @@ from .engines.event_engine import EventEngine
 from .engines.period_engine import PeriodEngine
 from .acronyms import ACRONYM_EXPANSIONS
 from .term_utils import canonicalize_term
-from .constants import YEAR_PREFIX_EXPANSIONS, STOP_WORDS, RELATED_SURNAMES_BLOCKLIST
+from .constants import YEAR_PREFIX_EXPANSIONS, STOP_WORDS
 from .text_utils import split_into_sentences
 from .answer_reviewer import AnswerReviewer
 
+
+def sanitize_final_answer_for_question(question: str, answer: str) -> str:
+    """
+    Standalone sanitizer: if answer does not contain the query term (whole word),
+    return fallback message. For "Found N relevant passages" answers, require the
+    body (not just the header) to contain the query term.
+    """
+    if not answer or not answer.strip():
+        return answer
+    tokens = re.findall(r"[A-Za-z']+", question)
+    terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
+    if not terms:
+        return answer
+    answer_lower = answer.lower()
+    # If answer starts with "Found N relevant passages:", require the BODY to contain the term
+    # (so we don't keep 9 unrelated passages just because "Cunliffe" appears in a filename/header)
+    if re.match(r'Found\s+\d+\s+relevant\s+passages\s*:\s*', answer, re.IGNORECASE):
+        # Body is after the first line (allow \n or \n\n)
+        first_newline = answer.find('\n')
+        body = answer[first_newline:].strip() if first_newline >= 0 else ""
+        body_lower = body.lower()
+        for term in terms:
+            if re.search(rf'\b{re.escape(term)}\b', body_lower):
+                return answer
+        return (
+            "No answer could be generated for this question. "
+            "The retrieved passages did not contain your search term. "
+            "Try rephrasing or a more specific question."
+        )
+    # For any other answer, require the full answer to contain the term
+    for term in terms:
+        if re.search(rf'\b{re.escape(term)}\b', answer_lower):
+            return answer
+    return (
+        "No answer could be generated for this question. "
+        "The retrieved passages did not contain your search term. "
+        "Try rephrasing or a more specific question."
+    )
 
 
 SUBJECT_GENERIC_TERMS = {
@@ -167,29 +205,6 @@ class QueryEngine:
         
         # Load endnotes for sparse result augmentation
         self._load_endnotes()
-        # Load identity -> families for expanding identity queries (e.g. GAY -> Bessent, Jenrette chunks)
-        self._identity_to_families = self._load_identity_families()
-    
-    def _load_identity_families(self) -> Dict[str, List[str]]:
-        """Load identity -> list of surnames from identity_detection_v3.json for expanding identity queries."""
-        from .config import DATA_DIR
-        out = {}
-        for base in [DATA_DIR, 'data', os.path.join(os.getcwd(), 'data')]:
-            path = os.path.join(base, 'identity_detection_v3.json')
-            if os.path.exists(path):
-                try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                    for identity, info in data.get('identities', {}).items():
-                        families = info.get('families') or info.get('individuals') or []
-                        out[identity.lower()] = [f for f in families if f and f.lower().strip() not in RELATED_SURNAMES_BLOCKLIST]
-                    if out:
-                        print(f"  [IDENTITY] Loaded {len(out)} identity->families from {path}")
-                    break
-                except Exception as e:
-                    print(f"  [WARN] Could not load identity families from {path}: {e}")
-                break
-        return out
     
     def _load_endnotes(self):
         """Load endnotes for augmenting sparse results."""
@@ -425,8 +440,6 @@ class QueryEngine:
         import time
         from lib.config import QUERY_TIMEOUT_SECONDS
         query_start = time.time()
-        # Store question for subject checking
-        self._last_question = question
         
         # Store diagnostic info for this query
         self.query_diagnostics = {
@@ -983,26 +996,6 @@ class QueryEngine:
                         if keyword in self.term_to_chunks:
                             chunk_ids.update(self.term_to_chunks[keyword])
         
-        # For identity queries (e.g. GAY), expand with chunks from related surnames
-        # so the answer includes Wall Street/LGBT individuals (Bessent, Jenrette, etc.), not only Templars
-        if chunk_ids and self._is_identity_query(question) and self._identity_to_families:
-            for it in (intersect_terms or []):
-                term_lower = it.lower()
-                families = self._identity_to_families.get(term_lower)
-                if not families:
-                    continue
-                before = len(chunk_ids)
-                for surname in families:
-                    if surname.lower().strip() in RELATED_SURNAMES_BLOCKLIST:
-                        continue
-                    for key in (surname, surname.capitalize(), surname.lower()):
-                        if key in self.term_to_chunks:
-                            chunk_ids.update(self.term_to_chunks[key])
-                            break
-                if len(chunk_ids) > before:
-                    print(f"  [IDENTITY_EXPAND] Added {len(chunk_ids) - before} chunks from {len(families)} surnames for identity '{term_lower}'")
-                break
-        
         # CRITICAL: Detect control/influence queries EARLY and limit chunks BEFORE augmentation
         # These queries are very broad and will timeout if we retrieve too many chunks
         # Use VERY small limit (8) to ensure fast processing and avoid rate limits
@@ -1437,6 +1430,17 @@ class QueryEngine:
             # CRITICAL: Update original_chunks to use limited chunks for re-asks
             # This prevents re-asks from bypassing token limits
             original_chunks = chunks[:]
+            
+            # CRITICAL: Filter by query term before any LLM call. If no chunks contain the query term,
+            # return fallback immediately so we never send irrelevant chunks to the LLM (which could echo them).
+            term_filtered = self._filter_chunks_by_question_terms(question, chunks)
+            if not term_filtered:
+                print("  [EARLY_FILTER] No retrieved chunks contain the query term; returning fallback (no LLM call)")
+                return self._fallback_no_answer_message(question)
+            if len(term_filtered) < len(chunks):
+                print(f"  [EARLY_FILTER] Restricting to {len(term_filtered)} chunks that contain query term (from {len(chunks)})")
+                chunks = term_filtered
+                original_chunks = chunks[:]
             
             if chunks == original_chunks:  # No preprocessed file was used
                 print(f"  [DEDUP] Used preprocessed deduplicated file ({len(chunks)} chunks)")
@@ -1880,22 +1884,33 @@ class QueryEngine:
                 max_review_iter = 1 if len(original_chunks) <= 15 else MAX_REVIEW_ITERATIONS
                 ans = self._review_and_fix_answer(ans, original_chunks, question, max_iterations=max_review_iter, query_start_time=query_start)
                 if self._is_no_info_answer(ans):
-                    print("  [FALLBACK] No-info answer after review; using raw chunks")
-                    context_text = "\n\n".join([
-                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in original_chunks
-                    ])
-                    ans = f"Found {len(original_chunks)} relevant passages:\n\n{context_text}"
+                    filtered_chunks = self._filter_chunks_by_question_terms(question, original_chunks)
+                    if not filtered_chunks:
+                        print("  [FALLBACK] No-info answer and no chunks contain query term; returning fallback message")
+                        ans = self._fallback_no_answer_message(question)
+                    else:
+                        print("  [FALLBACK] No-info answer after review; using filtered chunks")
+                        context_text = "\n\n".join([
+                            f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                            for text, meta in filtered_chunks
+                        ])
+                        ans = f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
                 query_duration = time.time() - query_start
                 print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s, answer length: {len(ans)} chars")
                 return ans
         else:
-            # Fallback: return raw context
-            context_text = "\n\n".join([
-                f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                for text, meta in zip(data['documents'], data['metadatas'])
-            ])
-            result = f"Found {len(chunk_ids_list)} relevant passages:\n\n{context_text}"
+            # Fallback: return only chunks that contain the query term, or fallback message
+            fallback_chunks = list(zip(data['documents'], data['metadatas']))
+            filtered_chunks = self._filter_chunks_by_question_terms(question, fallback_chunks)
+            if not filtered_chunks:
+                result = self._fallback_no_answer_message(question)
+                print("  [FALLBACK] No LLM and no chunks contain query term; returning fallback message")
+            else:
+                context_text = "\n\n".join([
+                    f"[{meta.get('filename', 'Unknown')}]\n{text}"
+                    for text, meta in filtered_chunks
+                ])
+                result = f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
             query_duration = time.time() - query_start
             print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s (no LLM), result length: {len(result)} chars")
             return result
@@ -2479,27 +2494,6 @@ ENTITY INTRODUCTIONS (MANDATORY):
                         print(f"  [SPARSE] Answer has {para_count} paragraphs but average length is only {avg_para_len:.0f} chars - too sparse")
                         return True
             
-            # CRITICAL: Check if answer mentions the query subject
-            # Extract subject terms from the question
-            if hasattr(self, '_last_question'):
-                question = self._last_question
-                # Extract subject from "tell me about X" or "who is X" or just "X"
-                subject_match = re.search(r'(?:tell me about|who is|what is|explain|describe)\s+(.+?)(?:\?|$)', question.lower())
-                if subject_match:
-                    subject = subject_match.group(1).strip()
-                    # Check if answer mentions the subject (case-insensitive, word boundary)
-                    subject_words = subject.split()
-                    if subject_words:
-                        # Check if any subject word appears in the answer
-                        subject_mentioned = any(
-                            re.search(rf'\b{re.escape(word)}\b', text, re.IGNORECASE)
-                            for word in subject_words
-                            if len(word) > 2  # Skip short words like "a", "an", "the"
-                        )
-                        if not subject_mentioned:
-                            print(f"  [MISSING_SUBJECT] Answer doesn't mention query subject '{subject}' - needs grounding")
-                            return True
-            
             # CRITICAL: Check if answer is missing significant time periods from chunks
             # This catches cases where answer has minimum length but is missing information
             if chunks:
@@ -2662,13 +2656,15 @@ STRICT RULES:
                     print(f"  [RETRY] Retrying with {len(reduced_chunks)} chunks (reduced from {len(chunks)})")
                     answer = self.llm.generate_answer(question, reduced_chunks)
                 if not answer or not answer.strip() or self._is_no_info_answer(answer):
-                    print("  [FALLBACK] No usable answer after retry; using raw chunks")
-                    filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
+                    print("  [FALLBACK] No usable answer after retry; using chunks filtered by query term")
+                    term_filtered = self._filter_chunks_by_question_terms(question, chunks)
+                    if not term_filtered:
+                        return self._fallback_no_answer_message(question)
                     context_text = "\n\n".join([
                         f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in filtered_chunks
+                        for text, meta in term_filtered
                     ])
-                    return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
+                    return f"Found {len(term_filtered)} relevant passages:\n\n{context_text}"
             # Ensure structure & related questions
             if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                 answer = self._polish_answer(question, answer)
@@ -2729,12 +2725,15 @@ STRICT RULES:
                     print(f"  [RETRY] Retrying with {len(reduced_chunks)} chunks (reduced from {len(filtered_chunks)})")
                     answer = self.llm.generate_answer(question, reduced_chunks)
                 if not answer or not answer.strip() or self._is_no_info_answer(answer):
-                    print("  [FALLBACK] No usable answer after retry; using raw chunks")
+                    print("  [FALLBACK] No usable answer after retry; using chunks filtered by query term")
+                    term_filtered = self._filter_chunks_by_question_terms(question, filtered_chunks)
+                    if not term_filtered:
+                        return self._fallback_no_answer_message(question)
                     context_text = "\n\n".join([
                         f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in filtered_chunks
+                        for text, meta in term_filtered
                     ])
-                    return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
+                    return f"Found {len(term_filtered)} relevant passages:\n\n{context_text}"
             # Ensure structure & related questions
             if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                 answer = self._polish_answer(question, answer)
@@ -2839,19 +2838,51 @@ STRICT RULES:
         return result.strip()
 
     def _filter_chunks_by_question_terms(self, question: str, chunks: List[tuple]) -> List[tuple]:
-        """Filter chunks to those that contain meaningful question terms (fallback for no-info answers)."""
+        """Filter chunks to those that contain the query term as a whole word. Never return unrelated chunks."""
         if not question or not chunks:
-            return chunks
+            return list(chunks)
         tokens = re.findall(r"[A-Za-z']+", question)
         terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
         if not terms:
-            return chunks
+            return list(chunks)
         filtered = []
         for text, meta in chunks:
+            if not isinstance(text, str):
+                continue
             tl = text.lower()
-            if any(term in tl for term in terms):
-                filtered.append((text, meta))
-        return filtered or chunks
+            for term in terms:
+                if re.search(rf'\b{re.escape(term)}\b', tl):
+                    filtered.append((text, meta))
+                    break
+        return filtered
+
+    def _fallback_no_answer_message(self, question: str) -> str:
+        """When LLM failed and retrieved chunks don't contain the query term."""
+        return (
+            "No answer could be generated for this question. "
+            "The retrieved passages did not contain your search term. "
+            "Try rephrasing or a more specific question."
+        )
+
+    def sanitize_final_answer(self, question: str, answer: str) -> str:
+        """
+        Last-line-of-defense: if the answer does not contain the query term (whole word),
+        return the fallback message. Catches both 'Found N relevant passages' with wrong
+        content and LLM narratives that don't mention the subject.
+        """
+        if not answer or not answer.strip():
+            return answer
+        # Same term extraction as _filter_chunks_by_question_terms
+        tokens = re.findall(r"[A-Za-z']+", question)
+        terms = [t.lower() for t in tokens if t.lower() not in STOP_WORDS and len(t) > 3]
+        if not terms:
+            return answer
+        answer_lower = answer.lower()
+        for term in terms:
+            if re.search(rf'\b{re.escape(term)}\b', answer_lower):
+                return answer  # at least one term present, keep answer
+        # No query term anywhere in answer - replace with fallback
+        return self._fallback_no_answer_message(question)
 
     def _extract_subject_key_facts(self, chunks: List[tuple], subject_terms: List[str], max_facts: int = 8) -> List[str]:
         """Extract a small set of subject-linked sentences to force inclusion of key facts."""
@@ -2897,6 +2928,8 @@ STRICT RULES:
         output = text or ""
         if chunks and self._is_no_info_answer(output):
             filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
+            if not filtered_chunks:
+                return self._fallback_no_answer_message(question)
             context_text = "\n\n".join([
                 f"[{meta.get('filename', 'Unknown')}]\n{text}"
                 for text, meta in filtered_chunks
@@ -4036,8 +4069,10 @@ Answer:"""
             llm_duration = time.time() - llm_start
             print(f"    [LLM_CALL] Completed in {llm_duration:.1f}s (~{estimated_total:,} total tokens, {len(result)} chars)")
             if not result or not result.strip():
-                print("    [LLM_CALL] Empty response detected; falling back to raw chunks")
+                print("    [LLM_CALL] Empty response detected; falling back to chunks filtered by query term")
                 filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
+                if not filtered_chunks:
+                    return self._fallback_no_answer_message(question)
                 context_text = "\n\n".join([
                     f"[{meta.get('filename', 'Unknown')}]\n{text}"
                     for text, meta in filtered_chunks
@@ -4049,8 +4084,10 @@ Answer:"""
                 force_prompt = build_prompt(question, chunks) + "\n\nCRITICAL: You MUST answer using the provided text. Do NOT say there is no information."
                 result = self.llm.call_api(force_prompt)
                 if not result or not result.strip():
-                    print("    [LLM_CALL] Empty response after rewrite; falling back to raw chunks")
+                    print("    [LLM_CALL] Empty response after rewrite; falling back to chunks filtered by query term")
                     filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
+                    if not filtered_chunks:
+                        return self._fallback_no_answer_message(question)
                     context_text = "\n\n".join([
                         f"[{meta.get('filename', 'Unknown')}]\n{text}"
                         for text, meta in filtered_chunks

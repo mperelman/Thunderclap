@@ -58,6 +58,12 @@ if not gemini_key:
 print(f"API Key loaded: {gemini_key[:20]}... (length: {len(gemini_key)})")
 
 print("Initializing Thunderclap AI...")
+# Cunliffe-fix deploy check: this line only exists in builds that include the sanitizer
+try:
+    from lib.query_engine import sanitize_final_answer_for_question
+    print("[STARTUP] CUNLIFFE_SANITIZER=body-check-v2 (answer sanitizer loaded)")
+except Exception as e:
+    print(f"[STARTUP] CUNLIFFE_SANITIZER=missing ({e})")
 
 # Decompress index if compressed version exists (in scripts/ or data/)
 from lib.config import INDICES_FILE
@@ -73,10 +79,10 @@ for compressed_path in compressed_paths:
             with gzip.open(compressed_path, 'rb') as f_in:
                 with open(INDICES_FILE, 'wb') as f_out:
                     f_out.write(f_in.read())
-            print(f"[STARTUP] Decompressed index ({os.path.getsize(INDICES_FILE) / 1024 / 1024:.2f} MB)")
+            print(f"[STARTUP] ✅ Decompressed index ({os.path.getsize(INDICES_FILE) / 1024 / 1024:.2f} MB)")
             break
         except Exception as e:
-            print(f"[STARTUP] WARN: Failed to decompress index: {e}")
+            print(f"[STARTUP] ⚠️ Failed to decompress index: {e}")
 
 # Check if ChromaDB collection exists, rebuild if missing
 from lib.config import VECTORDB_DIR, COLLECTION_NAME
@@ -87,10 +93,10 @@ try:
     try:
         collection = chroma_client_startup.get_collection(name=COLLECTION_NAME)
         chromadb_exists_on_startup = True
-        print(f"[STARTUP] ChromaDB collection exists ({collection.count():,} chunks)")
+        print(f"[STARTUP] ✅ ChromaDB collection exists ({collection.count():,} chunks)")
     except Exception:
         chromadb_exists_on_startup = False
-        print(f"[STARTUP] WARN: ChromaDB collection '{COLLECTION_NAME}' not found")
+        print(f"[STARTUP] ⚠️ ChromaDB collection '{COLLECTION_NAME}' not found")
         print(f"[STARTUP] Will rebuild ChromaDB in background (this may take a few minutes)...")
         # Will be handled by background_rebuild below
     finally:
@@ -101,7 +107,7 @@ try:
         gc.collect()  # Force garbage collection to close file handles
 except Exception as e:
     chromadb_exists_on_startup = False
-    print(f"[STARTUP] WARN: Could not check ChromaDB: {e}")
+    print(f"[STARTUP] ⚠️ Could not check ChromaDB: {e}")
 
 # Auto-rebuild index if source documents changed (in background to avoid blocking startup)
 # Only rebuilds when source documents actually change, not on every startup
@@ -138,13 +144,13 @@ def background_rebuild():
             is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
             
             if is_railway and not chromadb_exists:
-                print(f"\n[STARTUP] WARN: ChromaDB collection missing on Railway")
-                print(f"[STARTUP] WARN: Railway volumes cannot create ChromaDB databases (SQLite write limitation)")
-                print(f"[STARTUP] WARN: You must build the database locally and upload it:")
+                print(f"\n[STARTUP] ⚠️ ChromaDB collection missing on Railway")
+                print(f"[STARTUP] ⚠️ Railway volumes cannot create ChromaDB databases (SQLite write limitation)")
+                print(f"[STARTUP] ⚠️ You must build the database locally and upload it:")
                 print(f"[STARTUP]    1. Run 'python build_index.py' locally")
                 print(f"[STARTUP]    2. Upload data/vectordb/ directory to Railway volume at /app/data/vectordb/")
                 print(f"[STARTUP]    3. Restart Railway service")
-                print(f"[STARTUP] WARN: Skipping rebuild to avoid error")
+                print(f"[STARTUP] ⚠️ Skipping rebuild to avoid error")
                 rebuild_in_progress = False
             elif not os.path.exists(INDICES_FILE):
                 print("\n[STARTUP] No index found - starting background rebuild...")
@@ -153,9 +159,9 @@ def background_rebuild():
                 success = rebuild_index()
                 rebuild_in_progress = False
                 if success:
-                    print(f"[STARTUP] Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
+                    print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
                 else:
-                    print(f"[STARTUP] WARN: Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                    print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
                 print(f"\n[STARTUP] ChromaDB collection missing - starting background rebuild...")
                 print(f"[STARTUP] VECTORDB_DIR: {VECTORDB_DIR}")
@@ -165,16 +171,16 @@ def background_rebuild():
                 success = rebuild_index()
                 rebuild_in_progress = False
                 if success:
-                    print(f"[STARTUP] Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
+                    print(f"[STARTUP] ✅ Background rebuild completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}!")
                     # Verify ChromaDB was created
                     try:
                         chroma_client = chromadb.PersistentClient(path=VECTORDB_DIR)
                         collection = chroma_client.get_collection(name=COLLECTION_NAME)
-                        print(f"[STARTUP] Verified: ChromaDB collection exists with {collection.count()} chunks")
+                        print(f"[STARTUP] ✅ Verified: ChromaDB collection exists with {collection.count()} chunks")
                     except Exception as e:
-                        print(f"[STARTUP] WARN: Rebuild reported success but ChromaDB still missing: {e}")
+                        print(f"[STARTUP] ⚠️ WARNING: Rebuild reported success but ChromaDB still missing: {e}")
                 else:
-                    print(f"[STARTUP] WARN: Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                    print(f"[STARTUP] ⚠️ Background rebuild failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             return
         
         # Index exists - check if source documents changed
@@ -185,15 +191,15 @@ def background_rebuild():
             success = rebuild_index()
             rebuild_in_progress = False
             if success:
-                print("[STARTUP] Background rebuild completed successfully!")
+                print("[STARTUP] ✅ Background rebuild completed successfully!")
             else:
-                print("[STARTUP] WARN: Background rebuild failed, using existing index")
+                print("[STARTUP] ⚠️ Background rebuild failed, using existing index")
         else:
             # No changes - skip rebuild entirely (most common case)
-            print("[STARTUP] No changes - using existing index")
+            print("[STARTUP] ✅ No changes - using existing index")
     except Exception as e:
         rebuild_in_progress = False
-        print(f"[STARTUP] WARN: Could not check/rebuild index: {e}")
+        print(f"[STARTUP] ⚠️ Could not check/rebuild index: {e}")
         import traceback
         traceback.print_exc()
         print("[STARTUP] Continuing with existing index (if available)")
@@ -269,7 +275,15 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    out = {"status": "ok"}
+    try:
+        from lib.query_engine import sanitize_final_answer_for_question
+        # Deploy check: body-only check exists only in post-Cunliffe-fix build
+        test = sanitize_final_answer_for_question("Cunliffe", "Found 9 relevant passages:\n\nMorgan and Homberg.")
+        out["sanitizer"] = "body-check-v2" if "search term" in test else "v1"
+    except Exception:
+        out["sanitizer"] = "missing"
+    return out
 
 async def process_query_job(job_id: str, question: str, max_length: int):
     """Background task to process query with timeout protection."""
@@ -382,6 +396,20 @@ async def process_query_job(job_id: str, question: str, max_length: int):
             except:
                 pass
         
+        # Last-line-of-defense: if answer doesn't contain the query term (e.g. Cunliffe), replace with fallback
+        try:
+            from lib.query_engine import sanitize_final_answer_for_question
+            print(f"[JOB {job_id}] [SANITIZER] Checking answer len={len(answer)} question={question[:40]!r}")
+            sys.stdout.flush()
+            before_len = len(answer)
+            answer = sanitize_final_answer_for_question(question, answer)
+            if len(answer) != before_len:
+                print(f"[JOB {job_id}] [SANITIZER] Replaced (query term not in answer); before={before_len} after={len(answer)}")
+                sys.stdout.flush()
+        except Exception as san_err:
+            print(f"[JOB {job_id}] [SANITIZER] Error: {san_err}")
+            sys.stdout.flush()
+        
         if len(answer) > max_length:
             answer = answer[:max_length] + "\n\n[Truncated]"
         
@@ -417,10 +445,20 @@ async def get_query_status(job_id: str):
     if "start_time" in job:
         elapsed = time.time() - job["start_time"]
     
+    answer = job.get("answer")
+    # Sanitize at response time so client never sees "Found N passages" without query term (e.g. Cunliffe)
+    if answer and job.get("status") == "complete":
+        question = job.get("question")
+        if question:
+            try:
+                from lib.query_engine import sanitize_final_answer_for_question
+                answer = sanitize_final_answer_for_question(question, answer)
+            except Exception:
+                pass
     return QueryStatusResponse(
         job_id=job_id,
         status=job.get("status", "pending"),
-        answer=job.get("answer"),
+        answer=answer,
         error=job.get("error"),
         elapsed=elapsed,
         chunk_count=job.get("chunk_count")
@@ -542,12 +580,12 @@ def trigger_rebuild():
             success = rebuild_index()
             rebuild_in_progress = False
             if success:
-                print(f"[MANUAL REBUILD] Completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"[MANUAL REBUILD] ✅ Completed successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
-                print(f"[MANUAL REBUILD] WARN: Failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"[MANUAL REBUILD] ⚠️ Failed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
             rebuild_in_progress = False
-            print(f"[MANUAL REBUILD] ERROR: {e}")
+            print(f"[MANUAL REBUILD] ❌ Error: {e}")
             import traceback
             traceback.print_exc()
     
@@ -564,7 +602,7 @@ def get_indexed_terms():
     Hyperlinking is based on what this endpoint returns, so filtering here is simpler than
     filtering at multiple stages during indexing."""
     from lib.config import INDICES_FILE, DATA_DIR
-    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE, RELATED_SURNAMES_BLOCKLIST
+    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
     
     def should_exclude_term(term):
         """Check if term should be excluded (word or phrase)."""
@@ -604,11 +642,11 @@ def get_indexed_terms():
                 print(f"[TERMS] Attempting to load from {filtered_file}")
                 with open(filtered_file, 'r', encoding='utf-8') as f:
                     terms = json.load(f)
-                    if not isinstance(terms, list):
-                        print(f"[TERMS] ERROR: {filtered_file} is not a list, got {type(terms)}")
-                        terms = []
-                    else:
-                        print(f"[TERMS] Successfully loaded {len(terms)} terms from {filtered_file}")
+                if not isinstance(terms, list):
+                    print(f"[TERMS] ERROR: {filtered_file} is not a list, got {type(terms)}")
+                    terms = []
+                else:
+                    print(f"[TERMS] Successfully loaded {len(terms)} terms from {filtered_file}")
             except json.JSONDecodeError as e:
                 print(f"[TERMS] JSON decode error loading {filtered_file}: {e}")
                 filtered_file = None  # Fall through to indices loading
@@ -681,9 +719,7 @@ def get_indexed_terms():
                         identity_data = json.load(f)
                     surname_to_identity_data = identity_data.get('surname_to_identity', {})
                     for surname, identities_list in surname_to_identity_data.items():
-                        surname_lower = surname.lower().strip()
-                        if surname_lower in RELATED_SURNAMES_BLOCKLIST:
-                            continue
+                        surname_lower = surname.lower()
                         surname_to_identities[surname_lower] = [id.lower() for id in identities_list]
                         for identity in identities_list:
                             identity_lower = identity.lower()
@@ -702,43 +738,24 @@ def get_indexed_terms():
                 for variant in variants:
                     identity_normalization_map[variant.lower()] = main_term
             
-            # CRITICAL: Filter out identity-only terms from autofill (unless they're also surnames)
-            # This must be done in the simplified path too, not just the complex path
-            terms_to_exclude = set()
-            final_filtered = []
-            
             for term in simple_filtered:
                 term_lower = term.lower()
                 metadata = {}
-                is_surname = term_lower in surname_to_identities
-                is_identity_term = False
-                
-                if is_surname:
+                if term_lower in surname_to_identities:
                     metadata['identities'] = surname_to_identities[term_lower]
-                
                 identity_key = identity_normalization_map.get(term_lower, term_lower)
                 if identity_key in identity_to_surnames:
                     all_related = identity_to_surnames[identity_key]
-                    filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered])]
+                    filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
                     metadata['related_surnames'] = filtered_related[:30]
-                    is_identity_term = True
                 elif term_lower in identity_to_surnames:
                     all_related = identity_to_surnames[term_lower]
-                    filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered])]
+                    filtered_related = [s for s in all_related if s in simple_filtered or s.lower() in [t.lower() for t in simple_filtered]]
                     metadata['related_surnames'] = filtered_related[:30]
-                    is_identity_term = True
-                
-                # NOTE: Identity terms like "gay", "black", "jewish" ARE included in autofill
-                # They're useful for searching identity-based content
-                # Surnames with those identities will also appear in autofill separately
-                
                 if metadata:
                     identity_metadata[term] = metadata
-                
-                final_filtered.append(term)
             
-            print(f"[FILTER] Simplified path: excluded {len(terms_to_exclude)} identity-only terms")
-            return {"terms": final_filtered[:5000], "identity_metadata": identity_metadata}  # Limit to 5000 for performance
+            return {"terms": simple_filtered[:5000], "identity_metadata": identity_metadata}  # Limit to 5000 for performance
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
@@ -1210,16 +1227,14 @@ def get_indexed_terms():
                 with open(identity_file, 'r', encoding='utf-8') as f:
                     identity_data = json.load(f)
                 
-                print(f"[INFO] Loaded identity data from {identity_file}")
+                print(f"[INFO] ✅ Loaded identity data from {identity_file}")
                 print(f"[INFO] File size: {os.path.getsize(identity_file)} bytes")
                 
                 # Build surname -> identities mapping from surname_to_identity
                 # Structure: {"parsons": ["black"], "mcguire": ["black", "irish"], ...}
                 surname_to_identity_data = identity_data.get('surname_to_identity', {})
                 for surname, identities_list in surname_to_identity_data.items():
-                    surname_lower = surname.lower().strip()
-                    if surname_lower in RELATED_SURNAMES_BLOCKLIST:
-                        continue
+                    surname_lower = surname.lower()
                     # Build surname -> identities mapping
                     if surname_lower not in surname_to_identities:
                         surname_to_identities[surname_lower] = []
@@ -1262,9 +1277,6 @@ def get_indexed_terms():
             print(f"[IDENTITY] Sample: {identity_to_surnames['black'][:5]}")
         
         metadata_count = 0
-        # Track which terms to exclude (identity-only terms that aren't surnames)
-        terms_to_exclude = set()
-        
         for term in filtered_terms:
             term_lower = term.lower()
             metadata = {}
@@ -1296,25 +1308,18 @@ def get_indexed_terms():
             # If term is an identity, add related surnames (filter to only surnames in index, limit to 20 for autofill)
             # Check both the exact term and its normalized form (e.g., "blacks" -> "black")
             identity_key = identity_normalization_map.get(term_lower, term_lower)
-            is_identity_term = False
             if identity_key in identity_to_surnames:
-                # Filter to only surnames that actually exist in filtered_terms (indexed), and exclude blocklist
+                # Filter to only surnames that actually exist in filtered_terms (indexed)
                 all_related = identity_to_surnames[identity_key]
-                filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms])]
+                filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
                 metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
-                is_identity_term = True
             elif term_lower in identity_to_surnames:
                 # Fallback: check exact match
                 all_related = identity_to_surnames[term_lower]
-                filtered_related = [s for s in all_related if s.lower() not in RELATED_SURNAMES_BLOCKLIST and (s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms])]
+                filtered_related = [s for s in all_related if s in filtered_terms or s.lower() in [t.lower() for t in filtered_terms]]
                 metadata['related_surnames'] = filtered_related[:30]  # Increased limit to include more surnames
                 metadata_count += 1
-                is_identity_term = True
-            
-            # NOTE: Identity terms like "gay", "black", "jewish" ARE included in autofill
-            # They're useful for searching identity-based content
-            # Surnames with those identities will also appear in autofill separately
             
             if metadata:
                 identity_metadata[term] = metadata
@@ -1343,11 +1348,6 @@ def get_indexed_terms():
                 identity_metadata[disambiguated_term] = disambiguated_metadata
                 print(f"[DISAMBIGUATE] Added disambiguated term: {disambiguated_term} (base: {disambiguated_metadata['_base_term']}, group: {disambiguated_metadata['_group_name']})")
         
-        # Remove identity-only terms from filtered_terms (after iteration to avoid modification during iteration)
-        if terms_to_exclude:
-            filtered_terms = [t for t in filtered_terms if t not in terms_to_exclude]
-            print(f"[FILTER] Removed {len(terms_to_exclude)} identity-only terms from autofill: {sorted(terms_to_exclude)}")
-        
         print(f"[IDENTITY] Attached metadata to {metadata_count} terms, {len(identity_metadata)} total entries")
         
         # Debug: Log some metadata examples
@@ -1370,7 +1370,7 @@ def get_indexed_terms():
                 print(f"[DEBUG] Sample normalized_terms keys: {list(normalized_terms.keys())[:10]}")
             else:
                 print(f"[DEBUG] normalized_terms is empty or not defined")
-
+        
         if filtered_terms:
             return {
                 "terms": filtered_terms,
