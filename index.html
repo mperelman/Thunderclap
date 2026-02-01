@@ -919,7 +919,7 @@
                 contentDiv.innerHTML = `<p style="white-space: pre-line; line-height: 1.8;">${tab.error}</p>`;
             } else if (tab.answer) {
                 const answerDiv = document.createElement('div');
-                answerDiv.innerHTML = formatMarkdown(tab.answer);
+                answerDiv.innerHTML = formatMarkdown(tab.answer, tab.question || '');
                 contentDiv.appendChild(answerDiv);
                 
                 if (tab.questions && tab.questions.length > 0) {
@@ -1611,10 +1611,15 @@
             container.style.display = 'block';
         }
         
-        function hyperlinkIndexedTerms(html) {
+        function hyperlinkIndexedTerms(html, querySubjectOverride) {
             if (!indexedTerms || indexedTerms.length === 0) {
                 console.log('[HYPERLINK] No indexed terms available, skipping hyperlinking');
                 return html;
+            }
+            // Use tab's question for exclusion (avoids wrong exclusion when switching tabs)
+            const excludeSubject = (querySubjectOverride || currentQuerySubject || '').toLowerCase().trim();
+            if (excludeSubject) {
+                console.log('[HYPERLINK] Excluding query subject from hyperlinks:', excludeSubject);
             }
             console.log('[HYPERLINK] Processing HTML for hyperlinking,', indexedTerms.length, 'terms available');
             
@@ -1655,7 +1660,7 @@
             for (let i = textNodes.length - 1; i >= 0; i--) {
                 const textNode = textNodes[i];
                 const text = textNode.textContent;
-                const linked = hyperlinkText(text);
+                const linked = hyperlinkText(text, excludeSubject);
                 if (linked !== text) {
                     // Replace text node with HTML
                     const wrapper = document.createElement('span');
@@ -1680,20 +1685,22 @@
             return tempDiv.innerHTML;
         }
         
-        function hyperlinkText(text) {
+        function hyperlinkText(text, excludeSubject) {
             if (!text || text.trim().length === 0 || !indexedTerms || indexedTerms.length === 0) return text;
             
+            // excludeSubject: the question term(s) - don't hyperlink these in the response (e.g. "heckscher" for query "Heckscher")
+            const subjectToExclude = (excludeSubject || currentQuerySubject || '').toLowerCase().trim();
+            
             // Create a case-insensitive map for quick lookup
-            // ONLY include multi-word terms OR single-word terms that are clearly entities (all caps, special chars, etc.)
             const termMap = new Map();
             indexedTerms.forEach(term => {
                 const lower = term.toLowerCase();
                 
-                // Exclude the query subject itself (don't hyperlink "Bank of Montreal" in a query about "Bank of Montreal")
-                // Also exclude the acronym (don't hyperlink "WFC" in a query about "War Finance Corporation")
-                if (currentQuerySubject && lower === currentQuerySubject) {
+                // Exclude the query subject (don't hyperlink "Heckscher" in a response for "Heckscher")
+                if (subjectToExclude && (lower === subjectToExclude || subjectToExclude.indexOf(lower) >= 0 || lower.indexOf(subjectToExclude) >= 0)) {
                     return;
                 }
+                // Exclude acronym (don't hyperlink "WFC" in a query about "War Finance Corporation")
                 if (currentQuerySubjectAcronym && lower === currentQuerySubjectAcronym) {
                     return;
                 }
@@ -1707,8 +1714,8 @@
                 // So we can be permissive here - only exclude the query subject itself
                 
                 // Add all terms to the map (backend has already done the filtering)
-                if (!termMap.has(lower)) {
-                    termMap.set(lower, term);
+                    if (!termMap.has(lower)) {
+                        termMap.set(lower, term);
                 }
             });
             
@@ -1784,8 +1791,8 @@
                     const isNested = (matchStart >= existingStart && matchEnd <= existingEnd) ||
                                     (matchStart > existingStart && matchEnd < existingEnd);
                     const isOverlapping = (matchStart >= existingStart && matchStart < existingEnd) ||
-                                         (matchEnd > existingStart && matchEnd <= existingEnd) ||
-                                         (matchStart <= existingStart && matchEnd >= existingEnd);
+                           (matchEnd > existingStart && matchEnd <= existingEnd) ||
+                           (matchStart <= existingStart && matchEnd >= existingEnd);
                     
                     // If this match is nested within an existing longer match, skip it
                     if (isNested && existing.length > match.length) {
@@ -1859,8 +1866,9 @@
             return result;
         }
         
-        function formatMarkdown(text) {
+        function formatMarkdown(text, querySubject) {
             // Simple markdown-to-HTML converter
+            // querySubject: the question that generated this answer - used to exclude from hyperlinking
             let html = text;
             
             // Headers (do ## before # to avoid double-replacement)
@@ -1885,8 +1893,8 @@
             html = html.replace(/<p>(<h[123]>)/g, '$1');
             html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
             
-            // Hyperlink indexed terms
-            html = hyperlinkIndexedTerms(html);
+            // Hyperlink indexed terms (exclude the query subject - don't hyperlink "Heckscher" in a Heckscher response)
+            html = hyperlinkIndexedTerms(html, querySubject || currentQuerySubject);
             
             return html;
         }
@@ -1967,7 +1975,8 @@
             const question = document.getElementById('question').value.trim();
             console.log('Question:', question);
             
-            // Extract the subject from "Tell me about X" queries
+            // Always set query subject so we don't hyperlink the question term(s) in the answer
+            // (e.g. query "Cunliffe" -> don't hyperlink "Cunliffe" in the response)
             const aboutMatch = question.match(/tell me about (.+)/i);
             if (aboutMatch) {
                 const subject = aboutMatch[1].trim();
@@ -1977,7 +1986,6 @@
                 // Also extract acronym if present (e.g., "War Finance Corporation" -> "WFC")
                 const words = subject.split(/\s+/);
                 if (words.length >= 2) {
-                    // Create acronym from capital letters
                     const acronym = words.map(w => w[0]).join('').toUpperCase();
                     if (acronym.length >= 2) {
                         currentQuerySubjectAcronym = acronym.toLowerCase();
@@ -1985,8 +1993,12 @@
                     }
                 }
             } else {
-                currentQuerySubject = '';
+                // Plain query (e.g. "Cunliffe" or "Lord Cunliffe") - use full question as subject to exclude
+                currentQuerySubject = question.toLowerCase();
                 currentQuerySubjectAcronym = '';
+                if (currentQuerySubject) {
+                    console.log('[QUERY] Subject (from question):', currentQuerySubject);
+                }
             }
             
             if (!question || question.length < 3) {
