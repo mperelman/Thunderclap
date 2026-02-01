@@ -2,6 +2,20 @@
 
 Fast, clean query interface for Thunderclap historical banking documents.
 
+**When you identify a problem and changes are made:** The person making the fix must re-run the relevant code and confirm that the fix actually works before considering it done.
+
+**When I tell you there's a problem:** Do not just describe what you did after fixing it. Your goal is to solve the problem and always go back to it: re-run, verify the fix, and confirm the problem is resolved.
+
+**ALWAYS retry after a fix:** When something doesn't work and you fix it, you must re-run the code to confirm it works. Never just give a message that you fixed it—always retry and show that it works.
+
+**Always show progress; never background-only:** Always run so progress is visible. Never do something only in the background. The user must see progress.
+
+**No background runs — progress bars required:** Do not run any part of this pipeline in the background. The user must be able to see when it is done, when it has hung, or what stage it is in. **All long-running processes must show progress bars** (or equivalent visible progress). Never start a long-running command in the background without a way to see live progress.
+
+**No caps:** Do not add or rely on artificial caps (limits on chunks, query complexity, number of results, term lists, etc.). The user does not like caps and has stated this preference repeatedly. Prefer fixing the underlying cause (e.g. performance, indexing, batching) rather than capping.
+
+---
+
 ## Quick Start
 
 ### Interactive Mode
@@ -92,6 +106,10 @@ export GEMINI_API_KEY='your-key'
 ```
 
 Without keys, returns raw document passages.
+
+### Gemini (LLM)
+
+When using Gemini for AI answers we apply per-key-per-model rate limiting and key/model rotation on 429. **Full behavior** (RPM, delays, 429 handling, timeouts, async flow): see **`lib/llm_executor.py`** and **`lib/llm_config.py`** (module docstrings and comments there are the source of truth).
 
 ## Database Status
 

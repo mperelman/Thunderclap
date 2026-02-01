@@ -1169,14 +1169,12 @@ class QueryEngine:
         # Use a conservative limit based on token estimates (rough: ~400 words/chunk * 1.3 tokens/word = ~520 tokens/chunk)
         # With 35% of 250k tokens/minute = 87.5k tokens, minus overhead = ~82k tokens for chunks
         # 82k / 520 = ~157 chunks max, but be more conservative: 100 chunks to prevent timeouts
-        # Reduced from 150 to 100 to prevent 410s timeouts
-        # BUT: For firm queries, allow more chunks (they're usually well-focused)
         MAX_CHUNKS_BEFORE_FETCH = 100
         # Check if this is a firm query (has firm phrases or bank-related terms)
         # Use question_lower from earlier in the function (line 441)
         is_firm_query_early = bool(all_firm_phrases) or any(word in question_lower for word in ['bank', 'nb', 'firm', 'company', 'crédit', 'credit'])
         if is_firm_query_early:
-            MAX_CHUNKS_BEFORE_FETCH = 150  # Allow more chunks for firm queries
+            MAX_CHUNKS_BEFORE_FETCH = max(MAX_CHUNKS_BEFORE_FETCH, 150)  # Allow more chunks for firm queries
             print(f"  [FIRM_QUERY] Detected firm query - allowing up to {MAX_CHUNKS_BEFORE_FETCH} chunks (found {len(chunk_ids_list)} chunks)")
         
         if len(chunk_ids_list) > MAX_CHUNKS_BEFORE_FETCH:
@@ -1386,9 +1384,9 @@ class QueryEngine:
             minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
             effective_limit_pre = min(available_for_chunks, minute_budget)
             
-            # If chunks are way over limit, limit BEFORE deduplication to save time
-            # Use 35% limit (matching post-dedup limit) to prevent timeouts
-            if estimated_tokens_pre > effective_limit_pre * 1.3:  # 30% over limit (more aggressive)
+            # If chunks are over limit, limit BEFORE deduplication to save time and prevent timeouts
+            # Trigger at 1.0× (was 1.3×) so we trim whenever over budget; avoids broad-query timeouts
+            if estimated_tokens_pre > effective_limit_pre * 1.0:
                 tokens_per_chunk = estimated_tokens_pre / len(chunks) if chunks else 0
                 max_chunks_pre = int(effective_limit_pre * 1.1 / tokens_per_chunk) if tokens_per_chunk > 0 else len(chunks)  # Allow 10% buffer for dedup reduction
                 # CRITICAL: For firm queries, ensure minimum chunks for comprehensive coverage

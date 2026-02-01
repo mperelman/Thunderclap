@@ -1691,6 +1691,43 @@ async def upload_filtered_terms(file: UploadFile = File(...)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
+@app.post("/admin/upload-deduplicated-cache")
+async def upload_deduplicated_cache(file: UploadFile = File(...)):
+    """Upload deduplicated_cache.json via HTTP. Build locally with: python build_index.py (Step 6 creates data/deduplicated_terms/deduplicated_cache.json). Upload so broad queries (e.g. 'Chinese') use pre-deduplicated text and avoid timeouts."""
+    from lib.config import DATA_DIR
+    import os
+
+    if file.filename not in ["deduplicated_cache.json"]:
+        raise HTTPException(status_code=400, detail="File must be named 'deduplicated_cache.json'")
+
+    try:
+        content = await file.read()
+
+        import json
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            raise ValueError("deduplicated_cache.json must be a JSON object (term -> deduplicated text)")
+
+        dedup_dir = os.path.join(DATA_DIR, "deduplicated_terms")
+        os.makedirs(dedup_dir, exist_ok=True)
+        cache_path = os.path.join(dedup_dir, "deduplicated_cache.json")
+
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        print(f"[UPLOAD] Successfully uploaded deduplicated_cache.json ({len(data)} terms) to {cache_path}")
+
+        return {
+            "status": "success",
+            "message": f"Deduplicated cache uploaded successfully ({len(data)} terms)",
+            "path": cache_path,
+        }
+    except Exception as e:
+        print(f"[UPLOAD ERROR] Deduplicated cache upload failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 @app.post("/admin/upload-chunk-to-endnotes")
 async def upload_chunk_to_endnotes(file: UploadFile = File(...), content_encoding: Optional[str] = Header(None)):
     """Upload chunk_to_endnotes.json via HTTP."""
