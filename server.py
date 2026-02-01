@@ -760,7 +760,7 @@ def get_indexed_terms():
                 if metadata:
                     identity_metadata[term] = metadata
             
-            return {"terms": simple_filtered[:5000], "identity_metadata": identity_metadata}  # Limit to 5000 for performance
+            return {"terms": simple_filtered[:15000], "identity_metadata": identity_metadata}  # Limit to 15000 for performance
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
