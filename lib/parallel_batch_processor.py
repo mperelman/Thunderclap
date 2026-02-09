@@ -70,7 +70,7 @@ async def process_batches_parallel(
     if len(narratives) == 1:
         return narratives[0]
     
-    return _merge_batch_narratives(narratives, question, context_name)
+    return await _merge_batch_narratives(narratives, question, context_name, llm_generator)
 
 
 def _create_batch_tasks(
@@ -122,18 +122,20 @@ def _create_batch_tasks(
     return batch_tasks
 
 
-def _merge_batch_narratives(
+async def _merge_batch_narratives(
     narratives: List[str],
     question: str,
-    context_name: str
+    context_name: str,
+    llm_generator
 ) -> str:
     """
-    Merge multiple batch narratives into a single coherent narrative.
+    Merge multiple batch narratives into a single coherent narrative via LLM.
     
     Args:
         narratives: List of narrative strings from batches
         question: Original question
         context_name: Context name for merge prompt
+        llm_generator: LLMAnswerGenerator instance for API call
     
     Returns:
         Merged narrative string
@@ -143,7 +145,6 @@ def _merge_batch_narratives(
     
     print(f"    Merging {len(narratives)} sub-batches for {context_name}...")
     
-    # Combine batches
     combined_text = "\n\n---\n\n".join(narratives)
     merge_prompt = f"""Combine these {len(narratives)} sections about {question} in {context_name} into ONE coherent narrative.
 
@@ -158,6 +159,4 @@ Instructions:
 
 Combined narrative:"""
     
-    # Use the LLM to merge (but this requires llm_generator, so we'll return combined for now)
-    # The calling code can handle merging if needed
-    return combined_text
+    return await llm_generator.call_api_async(merge_prompt)

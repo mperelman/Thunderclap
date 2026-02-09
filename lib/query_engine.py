@@ -19,6 +19,7 @@ from .config import (
     MAX_SENTENCES_PER_PARAGRAPH, MAX_REVIEW_ITERATIONS, BATCH_SIZE, BATCH_PAUSE_SECONDS,
     CHUNK_RETRIEVAL_BATCH_SIZE, EARLY_STOP_GAP_THRESHOLD, SPARSE_RESULTS_THRESHOLD,
     MAX_TOKENS_PER_REQUEST, MAX_TOKENS_PER_MINUTE, ESTIMATED_WORDS_PER_CHUNK, TOKENS_PER_WORD, MAX_WORDS_PER_REQUEST,
+    TOKEN_BUDGET_FRACTION,
     CONTROL_INFLUENCE_EARLY_CHUNK_LIMIT, CONTROL_INFLUENCE_FINAL_CHUNK_LIMIT,
     CONTROL_INFLUENCE_MAX_RETRIES, CONTROL_INFLUENCE_SLOW_THRESHOLD_SECONDS
 )
@@ -169,6 +170,7 @@ class QueryEngine:
 
         # Cache for document paragraph data (endnote targeting)
         self._doc_paragraph_cache = {}
+        self._logged_paragraph_cache_errors: Set[str] = set()
         
         print("  [OK] Query engine ready\n")
     
@@ -248,8 +250,10 @@ class QueryEngine:
                 paragraphs = cached.get('body_paragraphs', [])
                 self._doc_paragraph_cache[filename] = paragraphs
                 return paragraphs
-        except Exception:
-            pass
+        except Exception as e:
+            if filename not in self._logged_paragraph_cache_errors:
+                self._logged_paragraph_cache_errors.add(filename)
+                print(f"    [WARNING] Could not load cached paragraphs for {filename}: {e}")
         self._doc_paragraph_cache[filename] = []
         return []
 
@@ -1003,6 +1007,17 @@ class QueryEngine:
                 if term_sets:
                     # Single meaningful term: use its set only (no union with generic terms)
                     chunk_ids = term_sets[0]
+                    # For single-word (surname) queries: include ALL index terms that contain this word
+                    # so we get "Kung", "HH Kung", "Kung family", etc. — full coverage of occurrences
+                    primary_term = intersect_terms[0] if intersect_terms else None
+                    if primary_term and len(primary_term.split()) == 1 and len(primary_term) >= 2:
+                        term_lower = primary_term.lower()
+                        before = len(chunk_ids)
+                        for indexed_term in self.term_to_chunks:
+                            if re.search(r'\b' + re.escape(term_lower) + r'\b', indexed_term.lower()):
+                                chunk_ids.update(self.term_to_chunks[indexed_term])
+                        if len(chunk_ids) > before:
+                            print(f"  [SURNAME_EXPAND] Single-term '{primary_term}': added chunks from all index terms containing it ({before} -> {len(chunk_ids)} chunks)")
                     self.query_diagnostics["query_path"] = "single_term"
                     self.query_diagnostics["initial_chunk_count"] = len(chunk_ids)
                     print(f"  [SINGLE_TERM] Using single term set: {len(chunk_ids)} chunks")
@@ -1165,13 +1180,9 @@ class QueryEngine:
         print(f"  [INFO] Found {len(chunk_ids_list)} relevant chunks")
         
         # CRITICAL: Apply early hard limit on chunk IDs to prevent token quota errors AND timeouts
-        # This limits chunks BEFORE fetching them, saving memory and processing time
-        # Use a conservative limit based on token estimates (rough: ~400 words/chunk * 1.3 tokens/word = ~520 tokens/chunk)
-        # With 35% of 250k tokens/minute = 87.5k tokens, minus overhead = ~82k tokens for chunks
-        # 82k / 520 = ~157 chunks max, but be more conservative: 100 chunks to prevent timeouts
-        MAX_CHUNKS_BEFORE_FETCH = 100
+        # Use 150 for general/surname queries so single-term (e.g. "Kung") gets all occurrences; 150 for firm
+        MAX_CHUNKS_BEFORE_FETCH = 150
         # Check if this is a firm query (has firm phrases or bank-related terms)
-        # Use question_lower from earlier in the function (line 441)
         is_firm_query_early = bool(all_firm_phrases) or any(word in question_lower for word in ['bank', 'nb', 'firm', 'company', 'crédit', 'credit'])
         if is_firm_query_early:
             MAX_CHUNKS_BEFORE_FETCH = max(MAX_CHUNKS_BEFORE_FETCH, 150)  # Allow more chunks for firm queries
@@ -1224,10 +1235,10 @@ class QueryEngine:
         
         # Generate answer using advanced LLM if available
         if use_llm and self.llm:
-            # Prepare chunks in the format expected by LLM
+            # Prepare chunks in the format expected by LLM (include chunk_id for stratified sampling when trimming)
             chunks = [
-                (text, meta)
-                for text, meta in zip(data['documents'], data['metadatas'])
+                (text, {**(meta or {}), 'chunk_id': cid})
+                for text, meta, cid in zip(data['documents'], data['metadatas'], data['ids'])
             ]
             # Index/Chroma mismatch: index had chunk IDs but ChromaDB returned no documents
             if chunk_ids_list and not chunks:
@@ -1255,10 +1266,13 @@ class QueryEngine:
             is_identity_query = self._is_identity_query(question)
             if is_identity_query:
                 # Strict banking/finance keywords only (exclude general "trade", "commerce", "economic" which can be non-banking)
+                # Include terms that appear in doc (compradors, salt banking, remittance, qianzhuang, piaohao, hongs) so those chunks are not dropped
                 strict_finance_keywords = ['bank', 'banking', 'banker', 'bankers', 'finance', 'financial', 'financier', 'financiers',
                                           'investment', 'investor', 'investors', 'capital', 'credit', 'loan', 'lending',
                                           'insurance', 'securities', 'bond', 'bonds', 'stock', 'stocks', 'exchange',
-                                          'cdfi', 'lic', 'mesbic']
+                                          'cdfi', 'lic', 'mesbic',
+                                          'comprador', 'compradors', 'salt', 'remittance', 'remittances', 'qianzhuang', 'piaohao',
+                                          'hong', 'hongs', 'money shop', 'tiepiao']
                 # Exclude chunks that mention non-banking economic terms without banking terms
                 exclude_if_only = ['slave trade', 'transatlantic', 'colonial econom', 'loyalist', 'settlement', 'colony', 'migration']
                 
@@ -1379,9 +1393,9 @@ class QueryEngine:
             estimated_tokens_pre = self._estimate_tokens_for_chunks(chunks)
             prompt_overhead = 5000
             response_estimate = 15000
-            # Use 35% limit (matching post-dedup limit) to prevent timeouts
-            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.35) - prompt_overhead - response_estimate
-            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
+            # Use TOKEN_BUDGET_FRACTION (default 35%) to cap context size; higher = fewer requests, better TPM use
+            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * TOKEN_BUDGET_FRACTION) - prompt_overhead - response_estimate
+            minute_budget = int(MAX_TOKENS_PER_MINUTE * TOKEN_BUDGET_FRACTION) - prompt_overhead - response_estimate
             effective_limit_pre = min(available_for_chunks, minute_budget)
             
             # If chunks are over limit, limit BEFORE deduplication to save time and prevent timeouts
@@ -1397,8 +1411,8 @@ class QueryEngine:
                     min_chunks = MIN_CHUNKS_FOR_LLM
                 max_chunks_pre = max(min_chunks, max_chunks_pre)  # At least minimum chunks
                 if len(chunks) > max_chunks_pre:
-                    print(f"  [PRE_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks_pre} BEFORE deduplication (saves processing time, prevents timeouts)")
-                    chunks = chunks[:max_chunks_pre]
+                    print(f"  [PRE_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks_pre} BEFORE deduplication (stratified by document order)")
+                    chunks = self._stratified_chunk_sample(chunks, max_chunks_pre)
             
             # Deduplicate and merge overlapping chunks before sending to LLM (if no preprocessed file)
             # BUT: For firm queries with many chunks, skip aggressive deduplication - it destroys context
@@ -1420,19 +1434,13 @@ class QueryEngine:
             
             # CRITICAL: Limit chunks based on token estimates AFTER deduplication
             # This prevents token quota exceeded errors AND timeouts
-            # Use very conservative limits (35% instead of 40%) to account for:
-            # - Token estimation inaccuracy (can be off by 40-50%)
-            # - Prompt overhead (question + instructions)
-            # - Response tokens (can be large for long answers)
-            # - Rate limiting window (quota is per minute, not per request)
-            # - Multiple retries/re-asks that use the same chunks
-            # - Batching overhead (PeriodEngine processing time)
-            # Reduced from 40% to 35% to prevent 410s timeouts
+            # Use TOKEN_BUDGET_FRACTION (default 35%) to cap context; higher = fewer requests, better TPM use
+            # Conservative default accounts for: estimation inaccuracy, prompt/response overhead, rate limit window
             estimated_tokens = self._estimate_tokens_for_chunks(chunks)
             prompt_overhead = 5000  # Question + instructions + formatting
             response_estimate = 15000  # Estimated response tokens (increased for long answers)
-            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * 0.35) - prompt_overhead - response_estimate
-            minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
+            available_for_chunks = int(MAX_TOKENS_PER_REQUEST * TOKEN_BUDGET_FRACTION) - prompt_overhead - response_estimate
+            minute_budget = int(MAX_TOKENS_PER_MINUTE * TOKEN_BUDGET_FRACTION) - prompt_overhead - response_estimate
             effective_limit = min(available_for_chunks, minute_budget)
             
             if estimated_tokens > effective_limit:
@@ -1449,9 +1457,8 @@ class QueryEngine:
                 
                 if len(chunks) > max_chunks:
                     print(f"  [TOKEN_LIMIT] Limiting chunks from {len(chunks)} to {max_chunks} to stay under token limit (~{estimated_tokens:,} > {effective_limit:,} tokens)")
-                    print(f"  [TOKEN_LIMIT] Using 35% of limits with overhead: {available_for_chunks:,} tokens available for chunks")
-                    # Prioritize: keep first chunks (they're usually most relevant)
-                    chunks = chunks[:max_chunks]
+                    print(f"  [TOKEN_LIMIT] Using {int(TOKEN_BUDGET_FRACTION*100)}% of limits with overhead: {available_for_chunks:,} tokens available for chunks")
+                    chunks = self._stratified_chunk_sample(chunks, max_chunks)
                     estimated_tokens = self._estimate_tokens_for_chunks(chunks)
                     print(f"  [TOKEN_LIMIT] After limiting: {len(chunks)} chunks (~{estimated_tokens:,} tokens)")
             
@@ -3037,8 +3044,8 @@ STRICT RULES:
         iteration = 0
         
         while iteration < max_iterations:
-            # Check timeout if query_start_time provided
-            if query_start_time:
+            # Check timeout if query_start_time provided and timeout is set (0 = no timeout)
+            if query_start_time and QUERY_TIMEOUT_SECONDS > 0:
                 elapsed = time.time() - query_start_time
                 if elapsed > QUERY_TIMEOUT_SECONDS - 30:  # Leave 30s buffer for final processing
                     print(f"  [REVIEW] Approaching timeout ({elapsed:.1f}s), stopping review early")
@@ -4020,6 +4027,32 @@ Answer:"""
         # Join chunks back with boundaries
         return "\n\n---CHUNK_BOUNDARY---\n\n".join(deduplicated_chunks)
     
+    @staticmethod
+    def _stratified_chunk_sample(chunks: List[tuple], max_n: int) -> List[tuple]:
+        """Return up to max_n chunks by document order, evenly spread to preserve period/topic diversity.
+        Sorts by chunk_id (chunk_0, chunk_1, ...) so body chunks follow document order; endnotes last."""
+        if not chunks or max_n <= 0:
+            return []
+        if len(chunks) <= max_n:
+            return chunks
+
+        def _sort_key(item):
+            text, meta = item
+            cid = (meta or {}).get('chunk_id') or ''
+            cid = str(cid)
+            if 'endnote' in cid.lower():
+                return (1, 0, cid)  # endnotes last
+            m = re.match(r'chunk_(\d+)', cid)
+            return (0, int(m.group(1)) if m else 0, cid)
+
+        sorted_chunks = sorted(chunks, key=_sort_key)
+        n = len(sorted_chunks)
+        if max_n >= n:
+            return sorted_chunks
+        # Evenly spaced indices to get spread across document range
+        indices = [int(round(i * (n - 1) / (max_n - 1))) for i in range(max_n)] if max_n > 1 else [0]
+        return [sorted_chunks[i] for i in indices]
+
     def _estimate_tokens_for_chunks(self, chunks: List[tuple]) -> int:
         """Estimate token count for chunks."""
         total_words = sum(len(chunk[0].split()) for chunk in chunks)
@@ -4078,17 +4111,11 @@ Answer:"""
         
         # FAST FAIL: If this query would obviously exceed our safe token limits,
         # abort BEFORE calling the LLM so the user doesn't wait 300s for a failure.
-        # Use very conservative limits (35% instead of 40%) to account for:
-        # - Prompt overhead (question + instructions)
-        # - Response tokens
-        # - Token estimation inaccuracy (can be off by 40-50%)
-        # - Rate limiting window (quota is per minute, not per request)
-        # - Batching overhead (PeriodEngine processing time)
-        # Reduced from 40% to 35% to prevent 410s timeouts
+        # Use TOKEN_BUDGET_FRACTION (default 35%); higher = fewer requests, better TPM use
         prompt_overhead = 5000
         response_estimate = 15000  # Increased to match actual limiting
-        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * 0.35) - prompt_overhead - response_estimate
-        minute_budget = int(MAX_TOKENS_PER_MINUTE * 0.35) - prompt_overhead - response_estimate
+        hard_input_limit = int(MAX_TOKENS_PER_REQUEST * TOKEN_BUDGET_FRACTION) - prompt_overhead - response_estimate
+        minute_budget = int(MAX_TOKENS_PER_MINUTE * TOKEN_BUDGET_FRACTION) - prompt_overhead - response_estimate
         effective_limit = min(hard_input_limit, minute_budget)
         if estimated_input_tokens > effective_limit:
             print(
