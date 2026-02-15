@@ -2903,33 +2903,25 @@ STRICT RULES:
             "Try rephrasing or a more specific question."
         )
 
-    # Max passages to show when we fall back to raw passages (README: proper response is narrative answer)
-    _PASSAGES_FALLBACK_MAX = 5
-
     def _format_passages_fallback(self, chunks: list, no_llm: bool = False) -> str:
         """
-        Format a proper fallback when no narrative answer is available (README: proper response is an answer).
-        Returns a short message plus at most _PASSAGES_FALLBACK_MAX passages, not a full dump.
+        Proper fallback when no narrative answer is available (README: proper response is an answer, not passages).
+        Return only a short message; do not append raw passages.
         """
-        n = len(chunks)
         if no_llm:
-            intro = (
+            return (
                 "No AI-generated answer is available. "
-                "Set OPENAI_API_KEY or GEMINI_API_KEY for narrative answers. "
+                "Set OPENAI_API_KEY or GEMINI_API_KEY for narrative answers."
             )
-        else:
-            intro = (
-                "We couldn't generate a narrative answer for this question. "
+        if not chunks:
+            return (
+                "No answer could be generated for this question. "
+                "Try rephrasing or a more specific question."
             )
-        if n == 0:
-            return intro + "No relevant passages were found. Try rephrasing or a more specific question."
-        show = chunks[: self._PASSAGES_FALLBACK_MAX]
-        intro += f"Below are {len(show)} of {n} relevant passage(s):\n\n"
-        context_text = "\n\n".join(
-            f"[{meta.get('filename', 'Unknown')}]\n{text}"
-            for text, meta in show
+        return (
+            "We couldn't generate a narrative answer for this question. "
+            "Try rephrasing or a more specific question."
         )
-        return intro + context_text
 
     def sanitize_final_answer(self, question: str, answer: str) -> str:
         """
