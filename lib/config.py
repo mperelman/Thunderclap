@@ -42,7 +42,8 @@ BATCH_SIZE = 20  # Process chunks in batches of this size (DEPRECATED - use toke
 BATCH_PAUSE_SECONDS = 5  # Pause between batches to avoid rate limits (reduced from 15 to speed up queries)
 CHUNK_RETRIEVAL_BATCH_SIZE = 200  # Batch size for retrieving chunks from database
 MAX_ANSWER_LENGTH = 15000  # Maximum answer length in characters (for truncation)
-QUERY_TIMEOUT_SECONDS = 420  # Maximum time for query processing (7 minutes, leaving buffer for frontend timeout)
+# Maximum time for query processing. 0 = no timeout (for batch/script runs). Set QUERY_TIMEOUT_SECONDS env to override.
+QUERY_TIMEOUT_SECONDS = int(os.environ.get("QUERY_TIMEOUT_SECONDS", "420") or "420")
 
 # Token-based batching (more efficient than chunk count)
 MAX_TOKENS_PER_MINUTE = 250000  # Max tokens per minute (user limit)
@@ -50,6 +51,12 @@ MAX_TOKENS_PER_REQUEST = 200000  # Max tokens per API call (conservative limit u
 ESTIMATED_WORDS_PER_CHUNK = 400  # Average words per chunk (from CHUNK_SIZE)
 TOKENS_PER_WORD = 1.3  # Rough estimate: 1 word ≈ 1.3 tokens
 MAX_WORDS_PER_REQUEST = 150000  # Max words per request (~200K tokens / 1.3)
+# Fraction of token budget used per request. RPM (requests/min) is usually the bottleneck; TPM/RPD are under-used. Higher = fewer requests, less RPM pressure, better TPM use. Default 0.7 (was 0.35). Set TOKEN_BUDGET_FRACTION env to override.
+try:
+    _raw = float(os.environ.get("TOKEN_BUDGET_FRACTION", "0.7") or "0.7")
+except (ValueError, TypeError):
+    _raw = 0.7
+TOKEN_BUDGET_FRACTION = max(0.1, min(1.0, _raw))
 
 # Answer review thresholds
 EARLY_STOP_GAP_THRESHOLD = 10  # Years gap threshold for detecting early stopping
