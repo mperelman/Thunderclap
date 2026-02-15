@@ -1939,11 +1939,7 @@ class QueryEngine:
                         ans = self._fallback_no_answer_message(question)
                     else:
                         print("  [FALLBACK] No-info answer after review; using chunks" + (" (single-term, showing index chunks)" if single_term and not filtered_chunks else ""))
-                        context_text = "\n\n".join([
-                            f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                            for text, meta in use_chunks
-                        ])
-                        ans = f"Found {len(use_chunks)} relevant passages:\n\n{context_text}"
+                        ans = self._format_passages_fallback(use_chunks, no_llm=False)
                 query_duration = time.time() - query_start
                 print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s, answer length: {len(ans)} chars")
                 return ans
@@ -1961,11 +1957,7 @@ class QueryEngine:
             else:
                 if single_term and not filtered_chunks:
                     print("  [FALLBACK] No LLM, single-term query - showing index chunks (no text filter)")
-                context_text = "\n\n".join([
-                    f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                    for text, meta in use_chunks
-                ])
-                result = f"Found {len(use_chunks)} relevant passages:\n\n{context_text}"
+                result = self._format_passages_fallback(use_chunks, no_llm=True)
             query_duration = time.time() - query_start
             print(f"  [QUERY_COMPLETE] Finished in {query_duration:.1f}s (no LLM), result length: {len(result)} chars")
             return result
@@ -2715,11 +2707,7 @@ STRICT RULES:
                     term_filtered = self._filter_chunks_by_question_terms(question, chunks)
                     if not term_filtered:
                         return self._fallback_no_answer_message(question)
-                    context_text = "\n\n".join([
-                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in term_filtered
-                    ])
-                    return f"Found {len(term_filtered)} relevant passages:\n\n{context_text}"
+                    return self._format_passages_fallback(term_filtered, no_llm=False)
             # Ensure structure & related questions
             if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                 answer = self._polish_answer(question, answer)
@@ -2784,11 +2772,7 @@ STRICT RULES:
                     term_filtered = self._filter_chunks_by_question_terms(question, filtered_chunks)
                     if not term_filtered:
                         return self._fallback_no_answer_message(question)
-                    context_text = "\n\n".join([
-                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in term_filtered
-                    ])
-                    return f"Found {len(term_filtered)} relevant passages:\n\n{context_text}"
+                    return self._format_passages_fallback(term_filtered, no_llm=False)
             # Ensure structure & related questions
             if (not self._has_related_questions(answer)) or self._para_count(answer) < 3:
                 answer = self._polish_answer(question, answer)
@@ -2919,6 +2903,34 @@ STRICT RULES:
             "Try rephrasing or a more specific question."
         )
 
+    # Max passages to show when we fall back to raw passages (README: proper response is narrative answer)
+    _PASSAGES_FALLBACK_MAX = 5
+
+    def _format_passages_fallback(self, chunks: list, no_llm: bool = False) -> str:
+        """
+        Format a proper fallback when no narrative answer is available (README: proper response is an answer).
+        Returns a short message plus at most _PASSAGES_FALLBACK_MAX passages, not a full dump.
+        """
+        n = len(chunks)
+        if no_llm:
+            intro = (
+                "No AI-generated answer is available. "
+                "Set OPENAI_API_KEY or GEMINI_API_KEY for narrative answers. "
+            )
+        else:
+            intro = (
+                "We couldn't generate a narrative answer for this question. "
+            )
+        if n == 0:
+            return intro + "No relevant passages were found. Try rephrasing or a more specific question."
+        show = chunks[: self._PASSAGES_FALLBACK_MAX]
+        intro += f"Below are {len(show)} of {n} relevant passage(s):\n\n"
+        context_text = "\n\n".join(
+            f"[{meta.get('filename', 'Unknown')}]\n{text}"
+            for text, meta in show
+        )
+        return intro + context_text
+
     def sanitize_final_answer(self, question: str, answer: str) -> str:
         """
         Last-line-of-defense: if the answer does not contain the query term (whole word),
@@ -2985,11 +2997,7 @@ STRICT RULES:
             filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
             if not filtered_chunks:
                 return self._fallback_no_answer_message(question)
-            context_text = "\n\n".join([
-                f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                for text, meta in filtered_chunks
-            ])
-            return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
+            return self._format_passages_fallback(filtered_chunks, no_llm=False)
         # Ensure minimum paragraphs
         if self._para_count(output) < 3:
             output = output.strip() + "\n\n" + "**Additional Context:**\n- Clarify scope across decades present in sources.\n- Highlight leadership where mentioned (chairs, directors).\n"
@@ -4148,11 +4156,7 @@ Answer:"""
                 filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
                 if not filtered_chunks:
                     return self._fallback_no_answer_message(question)
-                context_text = "\n\n".join([
-                    f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                    for text, meta in filtered_chunks
-                ])
-                return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
+                return self._format_passages_fallback(filtered_chunks, no_llm=False)
             if chunks and self._is_no_info_answer(result):
                 print("    [LLM_CALL] No-info answer detected with chunks present; forcing rewrite")
                 from lib.prompts import build_prompt
@@ -4163,11 +4167,7 @@ Answer:"""
                     filtered_chunks = self._filter_chunks_by_question_terms(question, chunks)
                     if not filtered_chunks:
                         return self._fallback_no_answer_message(question)
-                    context_text = "\n\n".join([
-                        f"[{meta.get('filename', 'Unknown')}]\n{text}"
-                        for text, meta in filtered_chunks
-                    ])
-                    return f"Found {len(filtered_chunks)} relevant passages:\n\n{context_text}"
+                    return self._format_passages_fallback(filtered_chunks, no_llm=False)
             return result
         except Exception as e:
             llm_duration = time.time() - llm_start
