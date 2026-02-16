@@ -48,14 +48,25 @@ app.add_middleware(
 )
 
 # Store API key for creating QueryEngine instances (from env var or .env file)
-gemini_key = os.getenv('GEMINI_API_KEY')
+# Allow server to start without key so Railway/runtime-injected vars can be read on first request
+gemini_key = (os.getenv('GEMINI_API_KEY') or '').strip()
 if not gemini_key:
-    print("ERROR: GEMINI_API_KEY environment variable not set!")
-    print("  Set it with: $env:GEMINI_API_KEY='your-key' (PowerShell)")
-    print("  Or add it to .env file: GEMINI_API_KEY=your-key")
-    sys.exit(1)
-
-print(f"API Key loaded: {gemini_key[:20]}... (length: {len(gemini_key)})")
+    print("WARNING: GEMINI_API_KEY not set at startup. Set it in Railway Variables (or .env locally).")
+    print("  Queries will try env again per request. Add GEMINI_API_KEY and redeploy if narratives fail.")
+else:
+    print(f"API Key loaded at startup: {gemini_key[:20]}... (length: {len(gemini_key)})")
+# Count env keys (GEMINI_API_KEY, GEMINI_API_KEY_1, ...) for debugging
+def _count_gemini_env_keys():
+    n = 0
+    if (os.getenv('GEMINI_API_KEY') or '').strip().startswith('AIza'):
+        n += 1
+    for i in range(1, 6):
+        if (os.getenv(f'GEMINI_API_KEY_{i}') or '').strip().startswith('AIza'):
+            n += 1
+    return n
+_env_key_count = _count_gemini_env_keys()
+if _env_key_count:
+    print(f"  Env keys visible at startup: {_env_key_count}")
 
 print("Initializing Thunderclap AI...")
 # Cunliffe-fix deploy check: sanitizer + query_engine version (if you see single-word-skip-v1, new code is deployed)
@@ -565,6 +576,24 @@ def get_rebuild_status():
         status["chromadb_error"] = f"Failed to connect: {str(e)}"
     
     return status
+
+@app.get("/debug/api-key-status")
+def get_api_key_status():
+    """Debug: whether API keys are visible to this process (no keys revealed)."""
+    startup_has = bool(gemini_key and str(gemini_key).strip().startswith("AIza"))
+    env_count = _count_gemini_env_keys()
+    env_names = []
+    if (os.getenv("GEMINI_API_KEY") or "").strip().startswith("AIza"):
+        env_names.append("GEMINI_API_KEY")
+    for i in range(1, 6):
+        if (os.getenv(f"GEMINI_API_KEY_{i}") or "").strip().startswith("AIza"):
+            env_names.append(f"GEMINI_API_KEY_{i}")
+    return {
+        "key_present_at_startup": startup_has,
+        "env_key_count": env_count,
+        "env_keys_seen": env_names,
+        "message": "Set GEMINI_API_KEY (and optionally GEMINI_API_KEY_1..5) in Railway Variables if 0." if env_count == 0 else "Keys visible to this process.",
+    }
 
 @app.post("/debug/trigger-rebuild")
 @app.get("/debug/trigger-rebuild")  # Also allow GET for easier access
