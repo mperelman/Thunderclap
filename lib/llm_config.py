@@ -1,6 +1,16 @@
 """
-Centralized LLM Configuration
-All LLM-related scripts should import from this module to ensure consistency.
+Centralized LLM Configuration – **source of truth** for model list and RPM (README points here).
+
+Uses a FIXED model list only (no list_models call). Text-out models only: 2.5 Flash, 2.5 Flash Lite,
+3 Flash. 2.5 Flash TTS is not supported for generateContent in the standard API (404).
+
+Rate limits (per key per model); delay before reusing same (key, model) = 60/RPM seconds:
+  Model                    RPM   TPM     RPD
+  Gemini 2.5 Flash         5    250 K   20
+  Gemini 2.5 Flash Lite   10   250 K   20
+  Gemini 3 Flash           10  250 K   20
+
+Enforcement of delay and 429 handling: lib.llm_executor.
 """
 import os
 from dotenv import load_dotenv
@@ -11,7 +21,22 @@ load_dotenv()
 
 # API Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-GEMINI_MODEL = 'gemini-pro'  # Use gemini-pro (most widely supported, works with all API versions)
+GEMINI_MODEL = 'gemini-pro'
+
+# Fixed list of model IDs that support text output (generateContent). Do NOT use list_models().
+# Order: 2.5 Flash, 2.5 Flash Lite, 3 Flash (aligned with Austria).
+MODEL_PRIORITY = [
+    'gemini-2.5-flash',        # Gemini 2.5 Flash
+    'gemini-2.5-flash-lite',   # Gemini 2.5 Flash Lite
+    'gemini-3-flash-preview',   # Gemini 3 Flash
+]
+
+# Limit is per key per model (RPM = requests per minute). Delay between same (key, model) = 60/RPM.
+MODEL_RPM = {
+    'gemini-2.5-flash': 5,
+    'gemini-2.5-flash-lite': 10,
+    'gemini-3-flash-preview': 10,
+}
 
 # Generation configuration
 GENERATION_CONFIG = {
@@ -22,84 +47,27 @@ GENERATION_CONFIG = {
     "candidate_count": 1,
 }
 
-def get_llm_client(api_key=None):
+def get_llm_client(api_key=None, model_index=0):
     """
-    Get a configured Gemini LLM client.
-    
-    Args:
-        api_key: Optional API key. If not provided, uses GEMINI_API_KEY from env/.env
-    
-    Returns:
-        genai.GenerativeModel: Configured Gemini model
-    
-    Raises:
-        Exception: If API key is not set or model initialization fails
+    Get a configured Gemini LLM client using a FIXED model list (no list_models).
+    model_index rotates on 429 (next model in MODEL_PRIORITY). Per-key-per-model RPM is enforced in llm_executor.
     """
-    # Use provided key, or fall back to env/.env
     key = api_key or GEMINI_API_KEY
     if not key:
         raise Exception("No API key found. Set GEMINI_API_KEY environment variable.")
-    
-    # Strip whitespace and validate key format
     key = key.strip()
     if not key.startswith('AIza'):
         raise Exception(f"Invalid API key format. Key should start with 'AIza'. Got: {key[:10]}...")
-    
-    # Configure globally - this is required for GenerativeModel to work
-    # The configure() method stores the key internally
-    print(f"  [DEBUG] Configuring genai with key: {key[:20]}... (length: {len(key)})")
+
     genai.configure(api_key=key)
-    
-    # First, try to list available models to see what's actually available
-    try:
-        print(f"  [DEBUG] Listing available models...")
-        available_models = genai.list_models()
-        model_names_available = [m.name for m in available_models if 'generateContent' in m.supported_generation_methods]
-        print(f"  [DEBUG] Available models with generateContent: {model_names_available[:5]}...")  # Show first 5
-        
-        # Try available models first
-        for model_name in model_names_available:
-            try:
-                # Remove 'models/' prefix if present for GenerativeModel
-                clean_name = model_name.replace('models/', '')
-                print(f"  [DEBUG] Trying available model: {clean_name}")
-                client = genai.GenerativeModel(
-                    model_name=clean_name,
-                    generation_config=GENERATION_CONFIG,
-                )
-                print(f"  [OK] Gemini API configured ({clean_name}), key: {key[:20]}...")
-                return client
-            except Exception as e:
-                print(f"  [DEBUG] Model {clean_name} failed: {e}")
-                continue
-    except Exception as list_error:
-        print(f"  [DEBUG] Could not list models: {list_error}, trying common names...")
-    
-    # Fallback: Try common model names if listing failed
-    # Try both with and without "models/" prefix
-    model_names = [
-        'gemini-1.5-flash',  # Try flash first (faster, cheaper)
-        'models/gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'models/gemini-1.5-pro',
-        'gemini-pro',
-        'models/gemini-pro',
-    ]
-    last_error = None
-    for model_name in model_names:
-        try:
-            print(f"  [DEBUG] Trying fallback model: {model_name}")
-            client = genai.GenerativeModel(
-                model_name=model_name,
-                generation_config=GENERATION_CONFIG,
-            )
-            print(f"  [OK] Gemini API configured ({model_name}), key: {key[:20]}...")
-            return client
-        except Exception as e:
-            last_error = e
-            print(f"  [DEBUG] Model {model_name} failed: {e}")
-            continue
-    
-    # If all models failed, raise the last error
-    raise Exception(f"Failed to create Gemini client with any model. Last error: {last_error}")
+    idx = max(0, int(model_index)) % len(MODEL_PRIORITY)
+    model_name = MODEL_PRIORITY[idx]
+    if idx > 0:
+        print(f"  [DEBUG] Using model #{idx + 1}: {model_name} (rotated from 429)")
+    client = genai.GenerativeModel(
+        model_name=model_name,
+        generation_config=GENERATION_CONFIG,
+    )
+    print(f"  [OK] Gemini API configured ({model_name}), key: {key[:20]}...")
+    return client
 
