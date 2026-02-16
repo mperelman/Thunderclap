@@ -303,24 +303,24 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         print(f"[JOB {job_id}] Starting query processing (timeout: {QUERY_TIMEOUT_SECONDS}s)...")
         sys.stdout.flush()
         
-        # Reload .env file to pick up API key changes
+        # Reload .env file to pick up API key changes (do not let it clear the key we had at startup)
         from dotenv import load_dotenv
         load_dotenv(override=True)  # override=True forces reload
-        current_key = os.getenv('GEMINI_API_KEY') or gemini_key
-        print(f"[JOB {job_id}] Using API key: {current_key[:20]}... (from .env: {os.getenv('GEMINI_API_KEY') is not None})")
+        current_key = (os.getenv('GEMINI_API_KEY') or gemini_key or '').strip()
+        if not current_key and gemini_key:
+            current_key = gemini_key  # keep using startup key if env was cleared (e.g. by load_dotenv)
+        if not current_key:
+            print(f"[JOB {job_id}] WARNING: No API key available for this request (env and startup key both missing)")
+        else:
+            print(f"[JOB {job_id}] Using API key: {current_key[:20]}... (len={len(current_key)})")
         
-        # Force reload modules to pick up code changes without server restart
-        # BUT: Don't reload google.generativeai - it will reset its configuration
-        # The genai module should be configured fresh in each request anyway
-        import importlib
-        if 'lib.query_engine' in sys.modules:
-            importlib.reload(sys.modules['lib.query_engine'])
-        if 'lib.llm' in sys.modules:
-            importlib.reload(sys.modules['lib.llm'])
-        if 'lib.llm_config' in sys.modules:
-            importlib.reload(sys.modules['lib.llm_config'])
-        # DO NOT reload google.generativeai - it resets configuration
-        # The configure() call in llm.py will set it fresh for each request
+        # Optional: reload modules to pick up code changes without server restart.
+        # Disabled by default so API key and key manager state are not lost (Railway).
+        # Uncomment to force-pick code changes on next request:
+        # import importlib
+        # if 'lib.query_engine' in sys.modules: importlib.reload(sys.modules['lib.query_engine'])
+        # if 'lib.llm' in sys.modules: importlib.reload(sys.modules['lib.llm'])
+        # if 'lib.llm_config' in sys.modules: importlib.reload(sys.modules['lib.llm_config'])
         
         # Check if ChromaDB exists before creating QueryEngine
         from lib.config import VECTORDB_DIR, COLLECTION_NAME
@@ -691,7 +691,7 @@ def get_indexed_terms():
         # They've already been LLM-filtered, so skip complex normalization/filtering
         if filtered_file and os.path.exists(filtered_file):
             print(f"[TERMS] Using simplified path for filtered_terms.json - skipping complex normalization")
-            # Just do basic deduplication and return
+            # Just do basic deduplication and return; also exclude generic words/phrases
             seen_lower = set()
             simple_filtered = []
             for term in terms:
@@ -701,6 +701,9 @@ def get_indexed_terms():
                 seen_lower.add(term_lower)
                 # Skip obviously invalid terms
                 if len(term) < 2 or term_lower.isdigit():
+                    continue
+                # Skip generic words/phrases (same filter as indices path - prevents bad hyperlinks)
+                if should_exclude_term(term):
                     continue
                 simple_filtered.append(term)
             
