@@ -10,6 +10,10 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+# After a key returns 429, don't reuse it for this many seconds (avoids same key within 60s when rotating)
+RATE_LIMIT_COOLDOWN_SEC = 60.0
+
+
 @dataclass
 class KeyStatus:
     """Status tracking for an API key."""
@@ -19,12 +23,14 @@ class KeyStatus:
     request_count: int = 0
     exhausted: bool = False
     error_count: int = 0
-    # Rate limiting: track requests per minute
+    # When this key last got 429 (rate limit); skip key until cooldown expires
+    last_rate_limit_at: float = 0.0
+    # Rate limiting: track requests per minute (maxlen set by APIKeyManager)
     request_times: deque = None
-    
+
     def __post_init__(self):
         if self.request_times is None:
-            self.request_times = deque(maxlen=15)  # Track last 15 requests (15 RPM limit)
+            self.request_times = deque(maxlen=5)  # overwritten by APIKeyManager if rpm_per_key set
 
 
 class APIKeyManager:
@@ -33,52 +39,81 @@ class APIKeyManager:
     
     Features:
     - Cycles through available keys
-    - Tracks rate limits per key (15 RPM per key)
+    - Tracks rate limits per key (configurable RPM, default 5)
     - Marks keys as exhausted on quota errors
     - Distributes load across all keys
     """
     
-    def __init__(self, api_keys: Optional[List[str]] = None, include_env_keys: bool = True):
+    def __init__(
+        self,
+        api_keys: Optional[List[str]] = None,
+        initial_key: Optional[str] = None,
+        include_env_keys: bool = True,
+        rpm_per_key: int = 5,
+    ):
         """
         Initialize key manager.
-        
+
         Args:
             api_keys: List of API keys. If None, loads from test file or env.
+            initial_key: Optional single key (e.g. from server/Railway) to seed the manager.
+                         Use this so keys work when env is not visible in request context.
+            include_env_keys: Whether to load keys from environment variables.
+            rpm_per_key: Max requests per minute per key (model-dependent; e.g. Gemini 2.5 Flash free tier ~3–5).
         """
         self.keys: List[KeyStatus] = []
         self.current_index = 0
         self.lock = threading.Lock()
-        
-        # Load keys
+        self.rpm_per_key = max(1, rpm_per_key)
+
+        def _valid(k: Optional[str]) -> bool:
+            if not k or not isinstance(k, str):
+                return False
+            k = k.strip()
+            return k != "REVOKED_KEY_REMOVED" and k.startswith("AIza")
+
+        # 1) Seed with server/passed key first (Railway: server has key at startup, request context may not)
+        if initial_key and _valid(initial_key):
+            self.keys.append(KeyStatus(key=initial_key.strip(), name="Server/Env Key"))
+
+        # 2) Load from explicit list or file
         if api_keys:
             for i, key in enumerate(api_keys):
-                if key and key != "REVOKED_KEY_REMOVED" and key.startswith("AIza"):
-                    self.keys.append(KeyStatus(key=key, name=f"Key #{i+1}"))
-        else:
+                if _valid(key):
+                    self.keys.append(KeyStatus(key=key.strip(), name=f"Key #{i+1}"))
+        elif not self.keys:
             self._load_keys_from_test_file()
-        
+
+        # 3) Add environment variables (GEMINI_API_KEY, GOOGLE_API_KEY, GEMINI_API_KEY_1, ...); avoid duplicates
         if include_env_keys:
-            # CRITICAL: Prioritize environment variables (Railway/production)
-            # This is the ONLY secure source - never load from files in production
-            # Try GEMINI_API_KEY first, then try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
-            env_key = os.getenv('GEMINI_API_KEY')
-            if env_key and env_key.startswith("AIza"):
-                self.keys.append(KeyStatus(key=env_key, name="Env Key"))
-            
-            # Try numbered keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
-            for i in range(1, 21):  # Check up to 20 numbered keys
+            seen = {ks.key for ks in self.keys}
+            for env_name in ('GEMINI_API_KEY', 'GOOGLE_API_KEY'):
+                env_key = os.getenv(env_name)
+                if env_key and _valid(env_key):
+                    k = env_key.strip()
+                    if k not in seen:
+                        self.keys.append(KeyStatus(key=k, name=f"Env ({env_name})"))
+                        seen.add(k)
+            for i in range(1, 21):
                 numbered_key = os.getenv(f'GEMINI_API_KEY_{i}')
-                if numbered_key and numbered_key.startswith("AIza"):
-                    self.keys.append(KeyStatus(key=numbered_key, name=f"Env Key #{i}"))
-        
-        # Only use file-based loading if NO environment variables found (local dev only)
+                if numbered_key and _valid(numbered_key):
+                    k = numbered_key.strip()
+                    if k not in seen:
+                        self.keys.append(KeyStatus(key=k, name=f"Env Key #{i}"))
+                        seen.add(k)
+
+        # 4) Fallback: file-based (local dev only)
         if not self.keys:
             self._load_keys_from_test_file()
-        
+
         if not self.keys:
             raise ValueError("No valid API keys found. Set GEMINI_API_KEY or provide keys list.")
-        
-        print(f"[KEY_MANAGER] Initialized with {len(self.keys)} API keys")
+
+        # Apply RPM limit to all keys (model-dependent; e.g. 3–5 for Gemini 2.5 Flash free tier)
+        for ks in self.keys:
+            ks.request_times = deque(maxlen=self.rpm_per_key)
+
+        print(f"[KEY_MANAGER] Initialized with {len(self.keys)} API keys (RPM/key={self.rpm_per_key})")
         for i, key_status in enumerate(self.keys):
             print(f"  [{i+1}] {key_status.name}: {key_status.key[:20]}...")
     
@@ -131,7 +166,7 @@ class APIKeyManager:
         Get the next available API key with rate limiting.
         
         Args:
-            delay_seconds: Minimum delay between requests for the same key (default 4s = 15 RPM)
+            delay_seconds: Minimum delay between requests for the same key (default 4s)
                           Set to 0 to skip rate limiting (useful when rotating from expired keys)
         
         Returns:
@@ -142,6 +177,7 @@ class APIKeyManager:
             attempts = 0
             start_index = self.current_index  # Track where we started to detect full cycle
             
+            now = time.time()
             while attempts < len(self.keys):
                 key_status = self.keys[self.current_index]
                 
@@ -155,8 +191,16 @@ class APIKeyManager:
                         break
                     continue
                 
-                # Check rate limit: need at least delay_seconds since last use
+                # After 429, don't reuse this key until cooldown (avoid same key within 60s)
                 now = time.time()
+                if getattr(key_status, "last_rate_limit_at", 0) and (now - key_status.last_rate_limit_at) < RATE_LIMIT_COOLDOWN_SEC:
+                    self.current_index = (self.current_index + 1) % len(self.keys)
+                    attempts += 1
+                    if self.current_index == start_index:
+                        break
+                    continue
+                
+                # Check rate limit: need at least delay_seconds since last use
                 time_since_last = now - key_status.last_used
                 
                 if time_since_last < delay_seconds:
@@ -169,8 +213,8 @@ class APIKeyManager:
                 while key_status.request_times and (now - key_status.request_times[0]) > 60:
                     key_status.request_times.popleft()
                 
-                # If we've hit 15 requests in the last minute, skip this key
-                if len(key_status.request_times) >= 15:
+                # If we've hit RPM limit in the last minute, skip this key
+                if len(key_status.request_times) >= self.rpm_per_key:
                     self.current_index = (self.current_index + 1) % len(self.keys)
                     attempts += 1
                     continue
@@ -203,15 +247,13 @@ class APIKeyManager:
                     return
     
     def mark_key_error(self, key: str):
-        """Increment error count for a key."""
+        """Increment error count and start 60s cooldown for this key (e.g. 429 RPM).
+        Does NOT mark exhausted. Ensures we don't reuse the same key within 60s when rotating."""
         with self.lock:
             for key_status in self.keys:
                 if key_status.key == key:
                     key_status.error_count += 1
-                    # Mark exhausted after 3 consecutive errors
-                    if key_status.error_count >= 3:
-                        key_status.exhausted = True
-                        print(f"[KEY_MANAGER] Marked {key_status.name} as exhausted after {key_status.error_count} errors")
+                    key_status.last_rate_limit_at = time.time()
                     return
     
     def reset_key_errors(self, key: str):

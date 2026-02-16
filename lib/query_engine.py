@@ -135,11 +135,13 @@ class QueryEngine:
         self._load_indices()
         
         # Initialize API key manager for multi-key rotation
+        # Pass gemini_api_key as initial_key so Railway/server key is used even when env not visible in request context
         print("  Initializing API key manager...")
         self.key_manager = None
         try:
             from lib.api_key_manager import APIKeyManager
-            self.key_manager = APIKeyManager()
+            initial = (gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or '').strip()
+            self.key_manager = APIKeyManager(initial_key=initial if initial and initial.startswith('AIza') else None)
             key_count = len(self.key_manager.keys)
             available_count = self.key_manager.get_available_count()
             print(f"  [OK] Key manager initialized with {key_count} keys ({available_count} available)")
