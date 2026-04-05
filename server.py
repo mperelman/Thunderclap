@@ -15,6 +15,7 @@ load_dotenv()
 
 from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict
 from collections import defaultdict, deque
@@ -46,6 +47,21 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],  # expose X-Request-ID to browser
 )
+
+# Ensure CORS headers are present even on unhandled 500 errors.
+# Without this, browsers see "no CORS header" instead of the real error.
+CORS_ORIGIN = "https://mperelman.github.io"
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    tb = traceback.format_exc()
+    print(f"[500] Unhandled exception on {request.url.path}:\n{tb}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)},
+        headers={"Access-Control-Allow-Origin": CORS_ORIGIN,
+                 "Access-Control-Allow-Credentials": "true"},
+    )
 
 # Store API key for creating QueryEngine instances (from env var or .env file)
 # Allow server to start without key so Railway/runtime-injected vars can be read on first request
@@ -681,6 +697,16 @@ def get_indexed_terms():
     Env TERMS_FROM_INDICES_ONLY: if 1/true/yes, ignore filtered_terms.json and load term keys from
     indices.json only (so /terms tracks the uploaded index; counts can still differ slightly after
     normalization and generic-word filtering in the non-simplified path)."""
+    import traceback as _tb
+    try:
+        return _get_indexed_terms_impl()
+    except Exception as exc:
+        print(f"[TERMS ERROR] /terms endpoint crashed:\n{_tb.format_exc()}")
+        return {"terms": [], "identity_metadata": {},
+                "_error": str(exc), "_note": "See Railway logs for traceback"}
+
+def _get_indexed_terms_impl():
+    """Inner implementation — wrapped by get_indexed_terms() for error capture."""
     from lib.config import INDICES_FILE, DATA_DIR
     from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE, HYPERLINK_SUPPLEMENTAL_WORDS, COMMON_FIRST_NAMES
 
