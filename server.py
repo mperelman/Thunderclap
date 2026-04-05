@@ -25,7 +25,7 @@ import shutil
 
 # Import query engine
 from lib.query_engine import QueryEngine
-from lib.config import MAX_ANSWER_LENGTH, is_railway, safe_load_json
+from lib.config import MAX_ANSWER_LENGTH, is_railway as _is_railway, safe_load_json
 
 app = FastAPI(title="Thunderclap AI")
 
@@ -157,7 +157,7 @@ def background_rebuild():
         from lib.config import INDICES_FILE, VECTORDB_DIR
         if not os.path.exists(INDICES_FILE) or not chromadb_exists:
             # Check if we're on Railway - if so, can't rebuild ChromaDB
-            is_railway = is_railway()
+            is_railway = _is_railway()
             
             if is_railway and not chromadb_exists:
                 print(f"\n[STARTUP] ⚠️ ChromaDB collection missing on Railway")
@@ -338,7 +338,7 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         sys.stdout.flush()
         
         # On Railway, do not reload .env (no .env file; avoid touching env). Locally, reload to pick up changes.
-        is_railway = is_railway()
+        is_railway = _is_railway()
         if not is_railway:
             from dotenv import load_dotenv
             load_dotenv(override=True)
@@ -376,7 +376,7 @@ async def process_query_job(job_id: str, question: str, max_length: int):
                 raise RuntimeError("Database is being rebuilt. Please wait a few minutes and try again. Check Railway logs for progress.")
             else:
                 # Check if we're on Railway
-                is_railway = is_railway()
+                is_railway = _is_railway()
                 if is_railway:
                     raise RuntimeError("Database not initialized. Railway volumes cannot create ChromaDB databases. Please build the database locally (python build_index.py) and upload data/vectordb/ to Railway volume at /app/data/vectordb/, then restart the service.")
                 else:
