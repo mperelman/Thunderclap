@@ -95,6 +95,12 @@ GENERIC_WORDS_TO_EXCLUDE = {
     'dorothy', 'carol', 'amanda', 'melissa', 'deborah', 'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia',
     'kathleen', 'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma', 'nicole', 'virginia',
     'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'maria', 'heather',
+    # Words that must not be hyperlinked (only proper/indexed terms should link)
+    'following', 'competition', 'business', 'networks', 'into', 'largest', 'founded', 'their',
+    'decree', 'money', 'since', 'after', 'left', 'became', 'between', 'which', 'service', 'sold',
+    'partner', 'partners', 'acquired', 'during', 'through', 'under', 'over', 'same', 'such',
+    'initiated', 'held', 'positions', 'position', 'managed', 'manage', 'manages', 'chair', 'control',
+    'controls', 'controlled', 'controlling', 'enterprise', 'enterprises', 'leadership', 'involved',
 }
 
 # Generic words that are NOT surnames (used when extracting proper names)
@@ -130,6 +136,11 @@ COMMON_FIRST_NAMES = {
     'dorothy', 'carol', 'amanda', 'melissa', 'deborah', 'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia',
     'kathleen', 'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma', 'nicole', 'virginia',
     'catherine', 'christine', 'samantha', 'debra', 'rachel', 'carolyn', 'janet', 'maria', 'heather',
+    # Common verbs/words that create bad hyperlinks in answers
+    'service', 'their', 'sold', 'opened', 'between', 'manage', 'became', 'into', 'competition', 'formed',
+    'chair', 'vice', 'founded', 'moved', 'overseas', 'legal', 'also', 'controlled', 'world', 'expanded',
+    'built', 'former', 'shares', 'after', 'hunter', 'partner', 'which', 'granted', 'they', 'money', 'mass',
+    'coast', 'started', 'remittances', 'acquired', 'it', 'its', 'them', 'then', 'there', 'these', 'those',
 }
 
 # Terms that must NEVER appear as "related surnames" for an identity (autofill / GAY etc.)
@@ -144,7 +155,34 @@ GENERIC_PHRASES_TO_EXCLUDE = {
     'american cities', 'american city', 'british cities', 'european cities',
     'financial markets', 'financial market', 'political system',
     'chamber of commerce', 'board of directors', 'president of', 'director of',
+    'acquired it',
 }
 
+# Extra tokens to never hyperlink in the browser when they appear as standalone index entries
+# (answer prose / common given names). Single place for client; see hyperlink_skip_words_for_client().
+HYPERLINK_SUPPLEMENTAL_WORDS = {
+    'era', 'also', 'building', 'they', 'their', 'expanded', 'multiple', 'following',
+    'concurrent', 'concurrently', 'amid', 'navigated', 'reflects', 'engagement', 'turbulent',
+    'landscape', 'originating', 'developed', 'significant', 'unrest', 'pogroms',
+    'period', 'events', 'international', 'earlier', 'later', 'directly', 'including',
+    'while', 'although', 'however', 'therefore', 'related', 'questions',
+    'asher',
+}
+
+_HYPERLINK_SKIP_WORDS_CACHE = None
+
+
+def hyperlink_skip_words_for_client():
+    """Lowercased tokens the UI must not auto-link; used by GET /terms (single source of truth)."""
+    global _HYPERLINK_SKIP_WORDS_CACHE
+    if _HYPERLINK_SKIP_WORDS_CACHE is not None:
+        return _HYPERLINK_SKIP_WORDS_CACHE
+    combined = set()
+    combined.update(w.lower() for w in GENERIC_WORDS_TO_EXCLUDE)
+    combined.update(w.lower() for w in GENERIC_PHRASES_TO_EXCLUDE)
+    combined.update(w.lower() for w in COMMON_FIRST_NAMES)
+    combined.update(w.lower() for w in HYPERLINK_SUPPLEMENTAL_WORDS)
+    _HYPERLINK_SKIP_WORDS_CACHE = sorted(combined)
+    return _HYPERLINK_SKIP_WORDS_CACHE
 
 
