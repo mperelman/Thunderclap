@@ -1253,6 +1253,15 @@ class QueryEngine:
                     if chunk_id in self.chunk_to_endnotes:
                         endnote_ids.update(self.chunk_to_endnotes[chunk_id])
 
+            # For rare-entity queries, cap endnotes to prevent them dominating the context.
+            # These entities have few primary chunks; adding 30+ endnotes defeats the purpose
+            # of the rare-entity cap and causes slow LLM calls with unrelated content.
+            MAX_ENDNOTES_RARE_ENTITY = 10
+            if is_rare_entity and len(endnote_ids) > MAX_ENDNOTES_RARE_ENTITY:
+                original_endnote_count = len(endnote_ids)
+                endnote_ids = set(list(endnote_ids)[:MAX_ENDNOTES_RARE_ENTITY])
+                print(f"  [RARE_ENTITY] Capping endnotes to {MAX_ENDNOTES_RARE_ENTITY} (was {original_endnote_count}) for rare entity")
+
             # Include entire endnote texts (no searching - just include what's linked)
             if endnote_ids:
                 for endnote_id in endnote_ids:
@@ -1265,7 +1274,7 @@ class QueryEngine:
                             'filename': 'Endnotes'
                         }
                         endnote_chunks.append((text, metadata))
-                
+
                 print(f"  [AUGMENT] Added {len(endnote_chunks)} endnotes linked to chunks ({len(chunk_ids_list)} chunks -> {len(endnote_chunks)} endnotes)")
         
         # Generate answer using advanced LLM if available
