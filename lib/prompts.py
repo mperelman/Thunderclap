@@ -143,6 +143,7 @@ WHAT COUNTS AS "DIRECTLY INVOLVES":
 ✓ Trading/commercial activities of the subject (not just banking - include trade, industry if docs mention)
 ✓ All major families that are part of the subject group (e.g., Tata, Wadia for Parsees)
 ✓ CRITICAL: For PERSON queries, include ALL biographical information mentioned in documents:
+  * Ancestry, family lineage, and family connections (e.g., Soong/Kung/Chiang, 75th descendant of Confucius) when documents mention them - do not omit ancestry or lineage
   * Early career, start, founding, beginning (e.g., "Abs began at...", "Abs started...", "Abs founded...")
   * Marriages and family connections (e.g., "Abs married...", "Abs's marriage to...")
   * Connections to other people/institutions (e.g., "Abs connected with Schmitzler and Schroder", "Abs's relationship with...")
@@ -179,6 +180,12 @@ RULE #2: ACCURACY - NEVER FABRICATE
 - CRITICAL: NEVER infer ancestral relationships (e.g., "descendant of", "ancestor of") unless documents EXPLICITLY state them
 - CRITICAL: If documents say "connected to contemporary bankers", write that - do NOT infer "descendant of" or other ancestral relationships
 - CRITICAL: When documents mention connections to contemporary people, include those connections exactly as stated - do NOT replace them with inferred ancestral relationships
+- CRITICAL: GENEALOGY AND LINEAGE — NO INVENTED FAMILY TREES:
+  * Do NOT write that a person, family, or firm "descends from," "traces back to," or "originated with" a named rabbi, town, or unrelated lineage unless the chunks EXPLICITLY state that exact relationship for THIS subject.
+  * Do NOT stitch unrelated sentences from different chunks into one family tree (e.g. combining a "Rabbi X of Grodno" passage with a tea-business passage unless the text explicitly links them to the same family).
+  * Do NOT invent surname changes (e.g. "sons adopted Rabinowitch/Pundik") unless the chunks explicitly say so for that family.
+  * If chunks mainly describe business (agents, branches, politics) without ancestry, stick to those facts and do NOT add fabricated lineage.
+  * CRITICAL — DANGLING PRONOUNS: If a passage begins with "this family," "the family," "their family," or similar pronouns without a clear named referent visible in the retrieved text, treat the subject as UNKNOWN. Do NOT assume it refers to any business, tea company, or other entity mentioned later in the same passage. Example: a passage saying "this family descended from Rabbi Jacob Havar of Grodno... [Havar family details]... Wissotsky Tea expanded..." does NOT mean Wissotsky Tea descends from Havar. The "this family" refers to whoever was introduced in a preceding passage (not shown). NEVER attribute genealogical descent from "this family" text to a business entity mentioned afterward in the same passage.
 - CRITICAL: DISTINGUISH ENTITIES WITH SAME NAME BUT DIFFERENT LOCATIONS (MANDATORY):
   * Entities with the same name but different locations are DISTINCT entities - NEVER conflate them
   * Examples: "National City Bank of New York" vs "National City Bank of Seattle" vs "National City Bank of Cleveland" are THREE DIFFERENT banks
@@ -936,6 +943,11 @@ def build_batch_prompt(question: str, chunks: list, batch_context: str = "", is_
     if is_identity_query:
         identity_instruction = """
 MANDATORY FOR IDENTITY QUERIES: The context below may include BOTH (a) historical allegations or events and (b) named individuals in banking/finance. You MUST cover BOTH when present. Do not summarize only the first narrative—include named individuals (financiers, bankers, executives) and their roles when they appear in the context.
+
+COVERAGE REQUIREMENTS (when present in the context):
+- Cover ALL historical periods mentioned (early modern, 19th century, early 20th, revolution/civil war, mid–late 20th, 21st century). Do not skip intermediate decades or jump from early to modern without covering the middle.
+- Include EVERY panic/crisis the context mentions (e.g., Panic of 1620, 1763, 1825, 1837, 1873, 1893, 1897, 1907, 1929, etc.) when they appear in the passages—do not mention only one or two.
+- When the context discusses compradors, salt/revenue banking, remittance networks (qianzhuang, piaohao, hongs, money shops, tiepiao), or modern/21st-century bankers and relations, you MUST include those topics in your answer.
 
 """
     prompt = f"""Write a factual overview about {question}. Use ONLY the text below and never mention sources.
