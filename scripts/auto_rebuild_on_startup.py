@@ -99,7 +99,8 @@ def rebuild_index():
     # Check if we're on Railway and if ChromaDB already exists
     # If so, skip rebuild (Railway volumes can't create ChromaDB, but can read existing ones)
     import os
-    is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+    from lib.config import is_railway as _is_railway
+    is_railway = _is_railway()
     
     if is_railway:
         from lib.config import VECTORDB_DIR, COLLECTION_NAME

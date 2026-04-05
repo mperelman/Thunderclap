@@ -6,6 +6,17 @@ import os
 import asyncio
 import re
 
+# Reuse the standalone error-detection functions from llm_executor so the
+# classification logic lives in exactly one place.
+from lib.llm_executor import (
+    _is_rate_limit_error as _rate_limit,
+    _is_key_expired_error as _key_expired,
+    _is_token_quota_error as _token_quota,
+    _is_key_leaked_error as _key_leaked,
+    _is_actual_quota_exhaustion as _actual_quota,
+    _extract_retry_delay as _retry_delay,
+)
+
 
 class LLMAnswerGenerator:
     """Simplified LLM wrapper - just API calls, no prompt logic."""
@@ -56,71 +67,24 @@ class LLMAnswerGenerator:
             if not self.client and self.api_key:
                 print("  [WARNING] No Gemini client created; API calls may fail.")
     
+    # Error classification — delegates to standalone functions in llm_executor (single source of truth).
     def _is_rate_limit_error(self, exc: Exception) -> bool:
-        """Check if exception is a rate limit or quota error."""
-        msg = str(exc).lower()
-        # Be more specific - only match actual rate limit/quota errors
-        # "quota" alone is too broad - could match other errors
-        return (
-            "rate limit" in msg or 
-            "429" in msg or 
-            "resource has been exhausted" in msg or 
-            ("quota" in msg and ("exceeded" in msg or "exhausted" in msg or "limit" in msg)) or
-            "too many requests" in msg
-        )
-    
+        return _rate_limit(exc)
+
     def _is_key_expired_error(self, exc: Exception) -> bool:
-        """Check if exception is an expired or invalid API key error."""
-        msg = str(exc).lower()
-        return (
-            "api key expired" in msg or
-            "api key invalid" in msg or
-            "api_key_invalid" in msg or
-            ("api key" in msg and ("expired" in msg or "invalid" in msg)) or
-            ("key" in msg and "expired" in msg) or
-            ("key" in msg and "invalid" in msg and "api" in msg)
-        )
-    
+        return _key_expired(exc)
+
     def _is_token_quota_error(self, exc: Exception) -> bool:
-        """Check if this is a token quota error (TPM - tokens per minute), not request quota."""
-        msg = str(exc).lower()
-        # Token quota errors mention "input_token" or "output_token" or "token_count"
-        return (
-            "token" in msg and ("quota" in msg or "exceeded" in msg or "limit" in msg) or
-            "input_token" in msg or
-            "output_token" in msg or
-            "token_count" in msg
-        )
+        return _token_quota(exc)
 
     def _is_key_leaked_error(self, exc: Exception) -> bool:
-        """Check if exception indicates the API key was leaked/compromised."""
-        msg = str(exc).lower()
-        return "leaked" in msg or "compromised" in msg or "exposed" in msg
-    
+        return _key_leaked(exc)
+
     def _is_actual_quota_exhaustion(self, exc: Exception) -> bool:
-        """Check if this is actual daily quota exhaustion (not just rate limiting or token quota)."""
-        msg = str(exc).lower()
-        # Actual daily quota exhaustion has specific indicators
-        # Token quota (TPM) is different from daily quota (RPD)
-        return (
-            ("quota" in msg and "exhausted" in msg and "daily" in msg) or
-            ("quota" in msg and "exhausted" in msg and "per day" in msg) or
-            ("quota" in msg and "exhausted" in msg and "200" in msg and "rpd" in msg) or
-            ("resource has been exhausted" in msg and "daily" in msg)
-        )
-    
+        return _actual_quota(exc)
+
     def _extract_retry_delay(self, exc: Exception) -> float:
-        """Extract retry delay from error message, or return default."""
-        import re as re_module
-        msg = str(exc)
-        # Look for "retry in X.XXs" or "retry_delay { seconds: X }"
-        match = re_module.search(r'retry in (\d+\.?\d*)s', msg, re_module.IGNORECASE)
-        if match:
-            return float(match.group(1))
-        match = re_module.search(r'seconds[:\s]+(\d+\.?\d*)', msg, re_module.IGNORECASE)
-        if match:
-            return float(match.group(1))
-        return None  # Use exponential backoff
+        return _retry_delay(exc)
 
     def _run_async(self, coro):
         """Run a coroutine safely from sync code, even if a loop is active."""
@@ -206,16 +170,17 @@ class LLMAnswerGenerator:
         attempts = 0
         last_err = None
         import asyncio
-        start_time = asyncio.get_event_loop().time()
+        _loop = asyncio.get_running_loop()
+        start_time = _loop.time()
         max_total_time = 300  # 5 minutes maximum total wait time
         max_attempts = 20  # Increased for quota errors
         quota_error_count = 0  # Track consecutive quota errors
         max_quota_retries = 5  # Retry rate limit errors up to 5 times (was 3)
-        
+
         current_key = None  # Initialize for error handling
         while attempts < max_attempts:
             # Check total timeout
-            elapsed = asyncio.get_event_loop().time() - start_time
+            elapsed = _loop.time() - start_time
             if elapsed > max_total_time:
                 raise Exception(f"Async API call timed out after {elapsed:.1f}s (max {max_total_time}s). Quota may be exhausted.")
             try:

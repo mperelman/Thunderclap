@@ -27,7 +27,8 @@ def build_complete_index():
     print("="*80 + "\n")
     
     # Environment detection (used for error guidance)
-    is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+    from lib.config import is_railway as _is_railway
+    is_railway = _is_railway()
     
     # Step 1: Load documents (with endnotes)
     print("Step 1: Loading documents...")
@@ -65,6 +66,13 @@ def build_complete_index():
     print()
     
     # Step 3b: Load identity detection results and augment indices
+    # Helper used in 3b and 3d — defined once here
+    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
+    def should_exclude_term(term):
+        """Check if term should be excluded (generic word or phrase)."""
+        term_lower = term.lower()
+        return term_lower in GENERIC_WORDS_TO_EXCLUDE or term_lower in GENERIC_PHRASES_TO_EXCLUDE
+
     print("Step 3b: Loading identity detection results...")
     try:
         identity_file = os.path.join(DATA_DIR, 'identity_detection_v3.json')
@@ -111,17 +119,6 @@ def build_complete_index():
                 variants_to_update = list(set(variants_to_update))
                 
                 # Add chunks to ALL variants to preserve TERM_GROUPS merges
-                # CRITICAL: Skip generic terms that should not be in the index
-                from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
-                def should_exclude_term(term):
-                    """Check if term should be excluded (word or phrase)."""
-                    term_lower = term.lower()
-                    if term_lower in GENERIC_WORDS_TO_EXCLUDE:
-                        return True
-                    if term_lower in GENERIC_PHRASES_TO_EXCLUDE:
-                        return True
-                    return False
-                
                 for variant in variants_to_update:
                     # CRITICAL: Skip generic terms - they should not be in the index
                     if should_exclude_term(variant):
@@ -179,15 +176,6 @@ def build_complete_index():
     # CRITICAL: This runs AFTER identity augmentation to ensure generic terms are never in the index
     # Hyperlinking is based on what's in the index, so we must remove generic terms here
     print("Step 3d: Final filtering (removing generic terms)...")
-    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
-    def should_exclude_term(term):
-        """Check if term should be excluded (word or phrase)."""
-        term_lower = term.lower()
-        if term_lower in GENERIC_WORDS_TO_EXCLUDE:
-            return True
-        if term_lower in GENERIC_PHRASES_TO_EXCLUDE:
-            return True
-        return False
     
     # Remove generic terms from index
     terms_before = len(indices['term_to_chunks'])

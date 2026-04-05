@@ -239,7 +239,7 @@ class LLMExecutor:
                     print("  [PINPOINT] get_client_start (run_in_executor)...")
                     sys.stdout.flush()
                 # Get client in thread so list_models() doesn't block the event loop
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 client = await loop.run_in_executor(None, lambda: self._get_client(key_str))
                 if _pinpoint:
                     print("  [PINPOINT] get_client_done")

@@ -115,7 +115,7 @@ class APIKeyManager:
 
         print(f"[KEY_MANAGER] Initialized with {len(self.keys)} API keys (RPM/key={self.rpm_per_key})")
         for i, key_status in enumerate(self.keys):
-            print(f"  [{i+1}] {key_status.name}: {key_status.key[:20]}...")
+            print(f"  [{i+1}] {key_status.name}: key length {len(key_status.key)}")
     
     def _load_keys_from_test_file(self):
         """

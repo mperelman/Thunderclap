@@ -32,7 +32,7 @@ MIN_CHUNKS_FOR_FIRM_QUERY = 50  # Minimum chunks for firm queries (ensures compr
 
 # LLM settings (optional)
 DEFAULT_LLM_MODEL = "gpt-4o-mini"  # OpenAI model
-DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"  # Gemini model
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"  # Fallback label; actual model from lib.llm_config.MODEL_PRIORITY
 LLM_TEMPERATURE = 0.3  # Lower = more factual
 
 # Answer generation parameters
@@ -70,4 +70,25 @@ CONTROL_INFLUENCE_SLOW_THRESHOLD_SECONDS = 120  # Threshold for warning about sl
 
 # Note: Removed BROAD_IDENTITY special-casing - all queries now use standard tiered routing
 # Identity queries are filtered for banking/finance relevance, then routed by chunk count
+
+
+def is_railway() -> bool:
+    """Return True when running inside a Railway deployment."""
+    return (
+        os.getenv('RAILWAY_ENVIRONMENT') is not None
+        or os.getenv('RAILWAY_PROJECT_ID') is not None
+    )
+
+
+def safe_load_json(file_path: str, default=None):
+    """Load a JSON file, returning *default* if the file is missing or malformed."""
+    import json
+    if not os.path.exists(file_path):
+        return default
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[CONFIG] Warning: could not load {file_path}: {e}")
+        return default
 

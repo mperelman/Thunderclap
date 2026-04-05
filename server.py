@@ -25,7 +25,7 @@ import shutil
 
 # Import query engine
 from lib.query_engine import QueryEngine
-from lib.config import MAX_ANSWER_LENGTH
+from lib.config import MAX_ANSWER_LENGTH, is_railway, safe_load_json
 
 app = FastAPI(title="Thunderclap AI")
 
@@ -54,7 +54,7 @@ if not gemini_key:
     print("WARNING: GEMINI_API_KEY not set at startup. Set it in Railway Variables (or .env locally).")
     print("  Queries will try env again per request. Add GEMINI_API_KEY and redeploy if narratives fail.")
 else:
-    print(f"API Key loaded at startup: {gemini_key[:20]}... (length: {len(gemini_key)})")
+    print(f"API Key loaded at startup: length={len(gemini_key)}, valid={'yes' if gemini_key.startswith('AIza') else 'no'}")
 # Count env keys (GEMINI_API_KEY, GEMINI_API_KEY_1, ...) for debugging
 def _count_gemini_env_keys():
     n = 0
@@ -157,7 +157,7 @@ def background_rebuild():
         from lib.config import INDICES_FILE, VECTORDB_DIR
         if not os.path.exists(INDICES_FILE) or not chromadb_exists:
             # Check if we're on Railway - if so, can't rebuild ChromaDB
-            is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+            is_railway = is_railway()
             
             if is_railway and not chromadb_exists:
                 print(f"\n[STARTUP] ⚠️ ChromaDB collection missing on Railway")
@@ -228,8 +228,6 @@ rebuild_thread.start()
 print("Server ready! (QueryEngine created per-request)")
 print("Note: Index will only rebuild if source documents changed\n")
 
-print("Server ready! (QueryEngine created per-request)\n")
-
 class QueryRequest(BaseModel):
     question: str
     max_length: int = MAX_ANSWER_LENGTH  # Maximum answer length in characters
@@ -261,6 +259,31 @@ def check_rate_limit(ip: str):
 
 TRACE_BUFFER = deque(maxlen=200)
 JOB_STORE: Dict[str, Dict] = {}  # Store job status and results
+JOB_TTL_SECONDS = 1800  # Evict completed/errored jobs after 30 minutes
+
+# Secret token for debug endpoints. Set DEBUG_SECRET env var to enable; empty = debug routes disabled.
+_DEBUG_SECRET = os.getenv('DEBUG_SECRET', '').strip()
+
+def _check_debug_auth(request: Request):
+    """Raise 403 if DEBUG_SECRET is not set or token header doesn't match."""
+    if not _DEBUG_SECRET:
+        raise HTTPException(status_code=403, detail="Debug endpoints are disabled. Set DEBUG_SECRET env var to enable.")
+    token = request.headers.get('X-Debug-Token', '')
+    if token != _DEBUG_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid or missing X-Debug-Token header.")
+
+def _evict_old_jobs():
+    """Remove jobs older than JOB_TTL_SECONDS. Call periodically."""
+    now = time.time()
+    expired = [
+        jid for jid, job in list(JOB_STORE.items())
+        if job.get("status") in ("complete", "error")
+        and now - job.get("created_at", now) > JOB_TTL_SECONDS
+    ]
+    for jid in expired:
+        JOB_STORE.pop(jid, None)
+    if expired:
+        print(f"[JOB_STORE] Evicted {len(expired)} expired jobs")
 
 def trace_event(request_id: str, event: str, **fields):
     entry = {
@@ -314,12 +337,14 @@ async def process_query_job(job_id: str, question: str, max_length: int):
         print(f"[JOB {job_id}] Starting query processing (timeout: {QUERY_TIMEOUT_SECONDS}s)...")
         sys.stdout.flush()
         
-        # Reload .env file to pick up API key changes (do not let it clear the key we had at startup)
-        from dotenv import load_dotenv
-        load_dotenv(override=True)  # override=True forces reload
+        # On Railway, do not reload .env (no .env file; avoid touching env). Locally, reload to pick up changes.
+        is_railway = is_railway()
+        if not is_railway:
+            from dotenv import load_dotenv
+            load_dotenv(override=True)
         current_key = (os.getenv('GEMINI_API_KEY') or gemini_key or '').strip()
         if not current_key and gemini_key:
-            current_key = gemini_key  # keep using startup key if env was cleared (e.g. by load_dotenv)
+            current_key = gemini_key  # keep using startup key if env was cleared
         if not current_key:
             print(f"[JOB {job_id}] WARNING: No API key available for this request (env and startup key both missing)")
         else:
@@ -351,7 +376,7 @@ async def process_query_job(job_id: str, question: str, max_length: int):
                 raise RuntimeError("Database is being rebuilt. Please wait a few minutes and try again. Check Railway logs for progress.")
             else:
                 # Check if we're on Railway
-                is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('RAILWAY_PROJECT_ID') is not None
+                is_railway = is_railway()
                 if is_railway:
                     raise RuntimeError("Database not initialized. Railway volumes cannot create ChromaDB databases. Please build the database locally (python build_index.py) and upload data/vectordb/ to Railway volume at /app/data/vectordb/, then restart the service.")
                 else:
@@ -486,10 +511,13 @@ async def query(req: QueryRequest, http_req: Request, background_tasks: Backgrou
     client_ip = http_req.client.host if http_req and http_req.client else "unknown"
     job_id = str(uuid.uuid4())
     
+    # Evict old completed/errored jobs to keep JOB_STORE bounded
+    _evict_old_jobs()
+
     # Validate input
     if len(req.question) < 3:
         raise HTTPException(status_code=400, detail="Question too short")
-    
+
     # Rate limiting
     try:
         check_rate_limit(client_ip)
@@ -519,13 +547,15 @@ async def query(req: QueryRequest, http_req: Request, background_tasks: Backgrou
     )
 
 @app.get("/debug/last")
-def debug_last(n: int = 50):
+def debug_last(request: Request, n: int = 50):
+    _check_debug_auth(request)
     n = max(1, min(200, n))
     return list(TRACE_BUFFER)[-n:]
 
 @app.get("/debug/job/{job_id}")
-def debug_job(job_id: str):
+def debug_job(request: Request, job_id: str):
     """Get diagnostic information for a specific job."""
+    _check_debug_auth(request)
     # Get job info
     job_info = JOB_STORE.get(job_id, {})
     
@@ -548,10 +578,20 @@ def debug_job(job_id: str):
 @app.get("/status")
 def get_status():
     """Get current server status and last query progress."""
-    
+    pending = sum(1 for j in JOB_STORE.values() if j.get("status") == "pending")
+    processing = sum(1 for j in JOB_STORE.values() if j.get("status") == "processing")
+    return {
+        "status": "ok",
+        "rebuild_in_progress": rebuild_in_progress,
+        "jobs_total": len(JOB_STORE),
+        "jobs_pending": pending,
+        "jobs_processing": processing,
+    }
+
 @app.get("/debug/rebuild-status")
-def get_rebuild_status():
+def get_rebuild_status(request: Request):
     """Get ChromaDB and rebuild status for debugging."""
+    _check_debug_auth(request)
     from lib.config import VECTORDB_DIR, COLLECTION_NAME, INDICES_FILE
     
     status = {
@@ -578,8 +618,9 @@ def get_rebuild_status():
     return status
 
 @app.get("/debug/api-key-status")
-def get_api_key_status():
+def get_api_key_status(request: Request):
     """Debug: whether API keys are visible to this process (no keys revealed)."""
+    _check_debug_auth(request)
     startup_has = bool(gemini_key and str(gemini_key).strip().startswith("AIza"))
     env_count = _count_gemini_env_keys()
     env_names = []
@@ -597,8 +638,9 @@ def get_api_key_status():
 
 @app.post("/debug/trigger-rebuild")
 @app.get("/debug/trigger-rebuild")  # Also allow GET for easier access
-def trigger_rebuild():
+def trigger_rebuild(request: Request):
     """Manually trigger a rebuild of ChromaDB."""
+    _check_debug_auth(request)
     global rebuild_in_progress
     
     if rebuild_in_progress:
@@ -634,18 +676,32 @@ def get_indexed_terms():
     """Get list of indexed terms for hyperlinking in responses.
     CRITICAL: Always filter generic terms here - this is the single point of filtering.
     Hyperlinking is based on what this endpoint returns, so filtering here is simpler than
-    filtering at multiple stages during indexing."""
+    filtering at multiple stages during indexing.
+
+    Env TERMS_FROM_INDICES_ONLY: if 1/true/yes, ignore filtered_terms.json and load term keys from
+    indices.json only (so /terms tracks the uploaded index; counts can still differ slightly after
+    normalization and generic-word filtering in the non-simplified path)."""
     from lib.config import INDICES_FILE, DATA_DIR
-    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE
+    from lib.constants import GENERIC_WORDS_TO_EXCLUDE, GENERIC_PHRASES_TO_EXCLUDE, HYPERLINK_SUPPLEMENTAL_WORDS, COMMON_FIRST_NAMES
+
+    terms_from_indices_only = os.getenv("TERMS_FROM_INDICES_ONLY", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
     
     def should_exclude_term(term):
-        """Check if term should be excluded (word or phrase)."""
+        """Check if term should be excluded.
+        Single source of truth — covers generic words, phrases, common first names,
+        and supplemental prose words that should never become hyperlinks.
+        """
         term_lower = term.lower().strip()
-        if term_lower in GENERIC_WORDS_TO_EXCLUDE:
-            return True
-        if term_lower in GENERIC_PHRASES_TO_EXCLUDE:
-            return True
-        return False
+        return (
+            term_lower in GENERIC_WORDS_TO_EXCLUDE
+            or term_lower in GENERIC_PHRASES_TO_EXCLUDE
+            or term_lower in COMMON_FIRST_NAMES
+            or term_lower in HYPERLINK_SUPPLEMENTAL_WORDS
+        )
     
     # Load terms from index (or filtered_terms.json if it exists)
     terms = []
@@ -653,23 +709,29 @@ def get_indexed_terms():
         # Try to load pre-filtered terms first (LLM-filtered list)
         # Prefer data/filtered_terms.json (uploaded via API) over lib/filtered_terms.json (from git)
         filtered_file = None
+        if terms_from_indices_only:
+            print(
+                "[TERMS] TERMS_FROM_INDICES_ONLY is set — skipping filtered_terms.json; "
+                "will load from indices.json"
+            )
         # Check DATA_DIR first (absolute path)
-        data_filtered = os.path.join(DATA_DIR, 'filtered_terms.json')
-        print(f"[TERMS] Checking for filtered_terms.json: DATA_DIR={DATA_DIR}, path={data_filtered}, exists={os.path.exists(data_filtered)}")
-        if os.path.exists(data_filtered):
-            filtered_file = data_filtered
-        else:
-            # Check lib/ directory (relative to current working directory)
-            lib_filtered = os.path.join('lib', 'filtered_terms.json')
-            print(f"[TERMS] Checking lib/: {lib_filtered}, exists={os.path.exists(lib_filtered)}")
-            if os.path.exists(lib_filtered):
-                filtered_file = lib_filtered
+        if not terms_from_indices_only:
+            data_filtered = os.path.join(DATA_DIR, 'filtered_terms.json')
+            print(f"[TERMS] Checking for filtered_terms.json: DATA_DIR={DATA_DIR}, path={data_filtered}, exists={os.path.exists(data_filtered)}")
+            if os.path.exists(data_filtered):
+                filtered_file = data_filtered
             else:
-                # Fallback to relative data/ path
-                rel_data_filtered = 'data/filtered_terms.json'
-                print(f"[TERMS] Checking relative data/: {rel_data_filtered}, exists={os.path.exists(rel_data_filtered)}")
-                if os.path.exists(rel_data_filtered):
-                    filtered_file = rel_data_filtered
+                # Check lib/ directory (relative to current working directory)
+                lib_filtered = os.path.join('lib', 'filtered_terms.json')
+                print(f"[TERMS] Checking lib/: {lib_filtered}, exists={os.path.exists(lib_filtered)}")
+                if os.path.exists(lib_filtered):
+                    filtered_file = lib_filtered
+                else:
+                    # Fallback to relative data/ path
+                    rel_data_filtered = 'data/filtered_terms.json'
+                    print(f"[TERMS] Checking relative data/: {rel_data_filtered}, exists={os.path.exists(rel_data_filtered)}")
+                    if os.path.exists(rel_data_filtered):
+                        filtered_file = rel_data_filtered
         
         if filtered_file and os.path.exists(filtered_file):
             try:
@@ -714,7 +776,10 @@ def get_indexed_terms():
         print(f"[TERMS] Final terms count before processing: {len(terms)}")
         if len(terms) == 0:
             print(f"[ERROR] No terms loaded! Check filtered_terms.json and indices.json")
-            return {"terms": [], "identity_metadata": {}}
+            return {
+                "terms": [],
+                "identity_metadata": {},
+            }
         
         # SIMPLIFIED PATH: If we loaded from filtered_terms.json, trust those terms
         # They've already been LLM-filtered, so skip complex normalization/filtering
@@ -792,7 +857,10 @@ def get_indexed_terms():
                 if metadata:
                     identity_metadata[term] = metadata
             
-            return {"terms": simple_filtered[:15000], "identity_metadata": identity_metadata}  # Limit to 15000 for performance
+            return {
+                "terms": simple_filtered[:15000],
+                "identity_metadata": identity_metadata,
+            }  # Limit to 15000 for performance
         
         # CRITICAL: Always filter generic terms here (single point of filtering)
         # This is simpler than filtering at multiple stages during indexing
@@ -1411,14 +1479,20 @@ def get_indexed_terms():
         if filtered_terms:
             return {
                 "terms": filtered_terms,
-                "identity_metadata": identity_metadata
+                "identity_metadata": identity_metadata,
             }
-        return {"terms": [], "identity_metadata": {}}
+        return {
+            "terms": [],
+            "identity_metadata": {},
+        }
     except Exception as e:
         print(f"[ERROR] Failed to load indexed terms: {e}")
         import traceback
         traceback.print_exc()
-        return {"terms": [], "identity_metadata": {}}
+        return {
+            "terms": [],
+            "identity_metadata": {},
+        }
 
 @app.get("/debug/identity-status")
 def debug_identity_status():

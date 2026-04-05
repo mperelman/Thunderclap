@@ -4,6 +4,8 @@ Centralized LLM Configuration – **source of truth** for model list and RPM (RE
 Uses a FIXED model list only (no list_models call). Text-out models only: 2.5 Flash, 2.5 Flash Lite,
 3 Flash. 2.5 Flash TTS is not supported for generateContent in the standard API (404).
 
+Note: Gemini 2.0 Flash and 2.0 Flash Lite are retired June 1, 2026; this project uses 2.5/3 only.
+
 Rate limits (per key per model); delay before reusing same (key, model) = 60/RPM seconds:
   Model                    RPM   TPM     RPD
   Gemini 2.5 Flash         5    250 K   20
@@ -68,6 +70,6 @@ def get_llm_client(api_key=None, model_index=0):
         model_name=model_name,
         generation_config=GENERATION_CONFIG,
     )
-    print(f"  [OK] Gemini API configured ({model_name}), key: {key[:20]}...")
+    print(f"  [OK] Gemini API configured ({model_name}), key length: {len(key)}")
     return client
 

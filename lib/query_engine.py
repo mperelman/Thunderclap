@@ -136,12 +136,15 @@ class QueryEngine:
         
         # Initialize API key manager for multi-key rotation
         # Pass gemini_api_key as initial_key so Railway/server key is used even when env not visible in request context
+        _key_len = len(gemini_api_key) if gemini_api_key else 0
+        print(f"  [QUERY_ENGINE] gemini_api_key passed: len={_key_len}")
         print("  Initializing API key manager...")
         self.key_manager = None
         try:
             from lib.api_key_manager import APIKeyManager
             initial = (gemini_api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or '').strip()
-            self.key_manager = APIKeyManager(initial_key=initial if initial and initial.startswith('AIza') else None)
+            initial_key = initial if initial and initial.startswith('AIza') else None
+            self.key_manager = APIKeyManager(initial_key=initial_key)
             key_count = len(self.key_manager.keys)
             available_count = self.key_manager.get_available_count()
             print(f"  [OK] Key manager initialized with {key_count} keys ({available_count} available)")
@@ -167,6 +170,7 @@ class QueryEngine:
                 print(f"  [OK] LLM initialized with single key mode")
         except Exception as e:
             print(f"  [WARNING] LLM initialization failed: {e}")
+        print(f"  [QUERY_ENGINE] self.llm present: {self.llm is not None}")
         
         # Initialize answer reviewer
         self.reviewer = AnswerReviewer()
@@ -1024,6 +1028,19 @@ class QueryEngine:
                     self.query_diagnostics["query_path"] = "single_term"
                     self.query_diagnostics["initial_chunk_count"] = len(chunk_ids)
                     print(f"  [SINGLE_TERM] Using single term set: {len(chunk_ids)} chunks")
+
+                    # RARE ENTITY CAP: if the primary term has very few index entries, the entity is
+                    # sparsely indexed. Aggressively cap chunks NOW — before crisis/time augmentation —
+                    # to prevent loosely-related content from flooding the context, which causes both
+                    # slow responses and hallucinated connections between unrelated families.
+                    # Threshold: ≤10 primary chunks → rare entity; cap total at 20 after expand.
+                    RARE_ENTITY_THRESHOLD = 10
+                    RARE_ENTITY_CAP = 20
+                    primary_chunk_count = len(self.term_to_chunks.get(primary_term, [])) if primary_term else len(chunk_ids)
+                    if primary_chunk_count <= RARE_ENTITY_THRESHOLD and len(chunk_ids) > RARE_ENTITY_CAP:
+                        print(f"  [RARE_ENTITY] '{primary_term}' has only {primary_chunk_count} primary chunks — capping at {RARE_ENTITY_CAP} (was {len(chunk_ids)}) to prevent hallucination from unrelated content")
+                        chunk_ids = set(list(chunk_ids)[:RARE_ENTITY_CAP])
+                        self.query_diagnostics["rare_entity_cap_applied"] = True
                 else:
                     # No meaningful terms found; fallback to union of whatever tokens mapped
                     for keyword in keywords:
@@ -1043,13 +1060,17 @@ class QueryEngine:
             chunk_ids = set(list(chunk_ids)[:CONTROL_INFLUENCE_EARLY_CHUNK_LIMIT])
             print(f"  [EARLY_LIMIT] After limit: {len(chunk_ids)} chunks")
         
+        # Propagate rare-entity flag for use by augmentation guards below
+        is_rare_entity = self.query_diagnostics.get("rare_entity_cap_applied", False)
+
         # Augment queries with crisis/panic chunks that overlap the subject
         # SKIP this augmentation if we matched a firm phrase (e.g., "First National Bank of Boston")
         # because firm phrases are specific entities - crisis augmentation adds too many chunks (100+)
         # and the firm phrase chunks already include relevant crisis contexts
         # LIMIT crisis augmentation to avoid timeouts: cap at 20 chunks max
         # SKIP crisis augmentation for control/influence queries (they're already limited)
-        if chunk_ids and not all_firm_phrases and not is_control_influence:
+        # SKIP for rare-entity queries — loosely-related crisis chunks cause hallucinated connections
+        if chunk_ids and not all_firm_phrases and not is_control_influence and not is_rare_entity:
             try:
                 crisis_terms = ['panic', 'crisis', 'crises', '1973', '1974', '1987', '1998', '2008', '1929', '1907', '1825', '1873']
                 crisis_ids = set()
@@ -1075,7 +1096,7 @@ class QueryEngine:
                         chunk_ids.update(limited_overlap)
                         print(f"  [AUGMENT] Added {len(limited_overlap)} crisis-related chunks (limited from {len(overlap)} to avoid timeout)")
             except Exception as e:
-                pass  # Crisis augmentation optional
+                print(f"  [AUGMENT] Crisis augmentation skipped: {e}")  # Optional step, non-fatal
         
         # Augment with chunks from later time periods that mention any subject term
         # This ensures we don't miss later periods due to strict intersection
@@ -1083,7 +1104,8 @@ class QueryEngine:
         # SKIP this augmentation if we matched a firm phrase (e.g., "Rothschild Vienna")
         # because firm phrases are specific entities that shouldn't be expanded with individual terms
         # SKIP this augmentation for control/influence queries (they're already limited)
-        if chunk_ids and subject_terms and len(term_sets) >= 2 and not all_firm_phrases and not is_control_influence:
+        # SKIP for rare-entity queries — time-period expansion drags in unrelated content
+        if chunk_ids and subject_terms and len(term_sets) >= 2 and not all_firm_phrases and not is_control_influence and not is_rare_entity:
             try:
                 # First, determine the time span of currently retrieved chunks
                 # Verify collection before accessing
@@ -1162,8 +1184,8 @@ class QueryEngine:
                         chunk_ids.update(self.term_to_chunks[term])
                 if expanded_terms:
                     print(f"  [AUGMENT] Applied entity aliases: {sorted(expanded_terms)}")
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  [AUGMENT] Entity alias expansion skipped: {e}")  # Optional step, non-fatal
 
         if not chunk_ids:
             return "No relevant information found."
@@ -1195,11 +1217,15 @@ class QueryEngine:
             print(f"  [EARLY_LIMIT] Limiting chunk IDs from {len(chunk_ids_list)} to {MAX_CHUNKS_BEFORE_FETCH} before fetching (prevents token quota errors and timeouts)")
             chunk_ids_list = chunk_ids_list[:MAX_CHUNKS_BEFORE_FETCH]
         
-        # Augment with endnotes if results are sparse (< 10 chunks)
-        # Endnotes provide additional bibliographic detail and source context
+        # Augment with endnotes if results are sparse OR the entity is rare.
+        # Sparse: fewer than SPARSE_RESULTS_THRESHOLD chunks (very little main-text coverage).
+        # Rare entity: primary term has ≤ RARE_ENTITY_THRESHOLD chunks — endnotes often hold
+        # the most reliable genealogical/bibliographic detail for lightly-indexed people/firms.
         endnote_chunks = []
-        if len(chunk_ids_list) < SPARSE_RESULTS_THRESHOLD and self.chunk_to_endnotes and self.endnotes:
-            print(f"  [AUGMENT] Sparse results - including endnotes linked to {len(chunk_ids_list)} chunks...")
+        _endnote_reason = ("sparse results" if len(chunk_ids_list) < SPARSE_RESULTS_THRESHOLD
+                           else "rare entity" if is_rare_entity else "")
+        if _endnote_reason and self.chunk_to_endnotes and self.endnotes:
+            print(f"  [AUGMENT] Including endnotes ({_endnote_reason}) linked to {len(chunk_ids_list)} chunks...")
             endnote_ids = set()
             # Prefer precise endnotes tied to paragraphs containing subject terms
             subject_terms_for_endnotes = []
@@ -1947,6 +1973,7 @@ class QueryEngine:
                 return ans
         else:
             # No LLM path: return chunks that contain the query term, or for single-term trust the index
+            print("  [QUERY_ENGINE] Taking no-LLM path (self.llm is None)")
             fallback_chunks = list(zip(data['documents'], data['metadatas']))
             filtered_chunks = self._filter_chunks_by_question_terms(question, fallback_chunks)
             tokens = re.findall(r"[A-Za-z']+", question)
@@ -2681,6 +2708,7 @@ STRICT RULES:
 5) CHRONOLOGICAL COVERAGE (MANDATORY - CRITICAL): The chunks contain information spanning {f"{years_sorted[0]} to {years_sorted[-1]}" if len(years_sorted) >= 2 else "multiple time periods"}. You MUST cover ALL eras from {f"{years_sorted[0]}" if years_sorted else "earliest"} to {f"{years_sorted[-1]}" if years_sorted else "latest"}. Do NOT stop at an early period. Move forward chronologically: {f"{years_sorted[0]//10*10}s → " if years_sorted else ""}{f"{years_sorted[-1]//10*10}s" if years_sorted else "all periods"}. Do not skip any decades or centuries present in the chunks.
 6) Organize chronologically with short transitions; MAX 3 sentences per paragraph; MIN 5 paragraphs (or more if multiple eras are present - aim for 1-2 paragraphs per major era).
 7) End with "Related Questions:" based on entities/topics that appear in the chunks (only if answerable from them).
+8) NO FABRICATED RELATIONSHIPS: NEVER state that the SUBJECT descended from, was the son/daughter of, or was related to any person UNLESS the chunk uses those exact words. Proximity of two families in the same chunk is NOT evidence of a family connection.
 """
     
     def _generate_iterative_narrative(
@@ -3171,6 +3199,13 @@ DOCUMENT CHUNKS:
 {chunks_text}
 
 CRITICAL FRAMEWORK - Create THEMATIC narrative with CULTURAL ANALYSIS:
+
+CRITICAL - NO FABRICATED RELATIONSHIPS:
+   - NEVER state that the SUBJECT descended from, was the son/daughter of, was related to, or was a family member of any person UNLESS the source text uses those exact words ("son of", "daughter of", "descended from", "née", "cousin", "nephew", etc.).
+   - If a chunk mentions another family near the SUBJECT, that is NOT evidence of a family connection. Proximity in a document ≠ genealogical relationship.
+   - When in doubt about a relationship, omit it. A factual gap is better than a false connection.
+   - BAD: "The Wissotsky family descended from Rabbi Havar" (unless the chunk says exactly that)
+   - GOOD: "Rabbi Havar of Grodno was a prominent figure in the region" (stated as independent fact if supported)
 
 CRITICAL - NEVER MENTION SOURCES:
    - NEVER say "provided information", "the provided documents", "as depicted in these documents", "the documents indicate", "historical documents", "historical records", "historical evidence", "records show", "the information provided", "according to the chunks", or any reference to sources
