@@ -3201,42 +3201,10 @@ STRICT RULES:
                         break
         return terms
     
-    # Patterns that indicate a chunk opens with a dangling pronoun whose referent
-    # is in a preceding chunk that is NOT included in this context window.
-    _DANGLING_PRONOUN_PREFIXES = (
-        "this family ",
-        "the family ",
-        "their family ",
-        "this family,",
-        "the family,",
-        "their family,",
-        "this family's",
-        "the family's",
-        "their family's",
-    )
-    _DANGLING_PRONOUN_NOTE = (
-        "[CONTEXT NOTE: This passage begins with a pronoun ('this family', 'the family', "
-        "etc.) whose referent is introduced in a PRECEDING passage that is NOT included "
-        "here. The subject of 'this family' / 'the family' is UNKNOWN from this passage "
-        "alone. Do NOT attribute this family's ancestry, descent, or genealogy to any "
-        "person, business, or entity mentioned LATER in this same passage. Treat any "
-        "genealogical claim in this passage as belonging to an unnamed family, not to "
-        "any subsequent entity mentioned.]"
-    )
-
     def _build_prompt(self, question: str, chunks: list) -> str:
         """Build prompt for LLM narrative generation."""
-
-        def _annotate_chunk(text: str) -> str:
-            """Prepend a disambiguation note to chunks that start with dangling pronouns."""
-            lower = text.lstrip().lower()
-            for prefix in self._DANGLING_PRONOUN_PREFIXES:
-                if lower.startswith(prefix):
-                    return f"{self._DANGLING_PRONOUN_NOTE}\n\n{text}"
-            return text
-
         chunks_text = "\n\n".join([
-            f"--- CHUNK {i+1} ---\n{_annotate_chunk(text)}"
+            f"--- CHUNK {i+1} ---\n{text}"
             for i, (text, meta) in enumerate(chunks)
         ])
         
@@ -3247,12 +3215,13 @@ DOCUMENT CHUNKS:
 
 CRITICAL FRAMEWORK - Create THEMATIC narrative with CULTURAL ANALYSIS:
 
-CRITICAL - NO FABRICATED RELATIONSHIPS:
-   - NEVER state that the SUBJECT descended from, was the son/daughter of, was related to, or was a family member of any person UNLESS the source text uses those exact words ("son of", "daughter of", "descended from", "née", "cousin", "nephew", etc.).
-   - If a chunk mentions another family near the SUBJECT, that is NOT evidence of a family connection. Proximity in a document ≠ genealogical relationship.
-   - When in doubt about a relationship, omit it. A factual gap is better than a false connection.
-   - BAD: "The Wissotsky family descended from Rabbi Havar" (unless the chunk says exactly that)
-   - GOOD: "Rabbi Havar of Grodno was a prominent figure in the region" (stated as independent fact if supported)
+CRITICAL — COREFERENCE RESOLUTION (RESOLVE BEFORE EVERY CLAIM):
+   - Before attributing ANY genealogical or relational claim to the query SUBJECT, identify the GRAMMATICAL SUBJECT of that sentence as it appears in the passage.
+   - Pronouns and demonstratives ("this family", "this bank", "the firm", "the company", "they", "he", "she", "it") ALWAYS refer to the nearest named entity of the same type EARLIER in the same passage — NEVER to the query subject unless the query subject is that nearest named entity.
+   - An entity appearing in the same passage near a claim does NOT inherit that claim. Thematic or physical proximity ≠ genealogical or relational connection.
+   - Example: A passage reads "Key to this trade was the Hoffmann family. This family descended from [ancestor]... [details]... Wertheim Bank expanded..." — the descent claim belongs to the HOFFMANN FAMILY. Even if the query is about Wertheim Bank and Wertheim Bank appears in the same passage, it does NOT inherit the Hoffmann ancestry.
+   - NEVER state that the SUBJECT descended from, was the son/daughter of, was related to, or was a family member of any person UNLESS the passage uses those exact words ("son of", "daughter of", "descended from", "née", "cousin", "nephew", etc.) with the SUBJECT as the explicit grammatical subject of that sentence.
+   - When in doubt about who a pronoun refers to, OMIT the claim. A factual gap is better than a false attribution.
 
 CRITICAL - NEVER MENTION SOURCES:
    - NEVER say "provided information", "the provided documents", "as depicted in these documents", "the documents indicate", "historical documents", "historical records", "historical evidence", "records show", "the information provided", "according to the chunks", or any reference to sources
