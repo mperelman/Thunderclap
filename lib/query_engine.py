@@ -1037,10 +1037,16 @@ class QueryEngine:
                     RARE_ENTITY_THRESHOLD = 10
                     RARE_ENTITY_CAP = 20
                     primary_chunk_count = len(self.term_to_chunks.get(primary_term, [])) if primary_term else len(chunk_ids)
-                    if primary_chunk_count <= RARE_ENTITY_THRESHOLD and len(chunk_ids) > RARE_ENTITY_CAP:
-                        print(f"  [RARE_ENTITY] '{primary_term}' has only {primary_chunk_count} primary chunks — capping at {RARE_ENTITY_CAP} (was {len(chunk_ids)}) to prevent hallucination from unrelated content")
-                        chunk_ids = set(list(chunk_ids)[:RARE_ENTITY_CAP])
+                    if primary_chunk_count <= RARE_ENTITY_THRESHOLD:
+                        # Mark as rare entity regardless of total chunk count.
+                        # This suppresses crisis/time-period augmentation even when SURNAME_EXPAND
+                        # produced fewer than RARE_ENTITY_CAP chunks (so the cap itself isn't needed).
                         self.query_diagnostics["rare_entity_cap_applied"] = True
+                        if len(chunk_ids) > RARE_ENTITY_CAP:
+                            print(f"  [RARE_ENTITY] '{primary_term}' has only {primary_chunk_count} primary chunks — capping at {RARE_ENTITY_CAP} (was {len(chunk_ids)}) to prevent hallucination from unrelated content")
+                            chunk_ids = set(list(chunk_ids)[:RARE_ENTITY_CAP])
+                        else:
+                            print(f"  [RARE_ENTITY] '{primary_term}' has only {primary_chunk_count} primary chunks — suppressing crisis/time augmentation (chunk count {len(chunk_ids)} within cap)")
                 else:
                     # No meaningful terms found; fallback to union of whatever tokens mapped
                     for keyword in keywords:
