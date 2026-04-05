@@ -3201,10 +3201,42 @@ STRICT RULES:
                         break
         return terms
     
+    # Patterns that indicate a chunk opens with a dangling pronoun whose referent
+    # is in a preceding chunk that is NOT included in this context window.
+    _DANGLING_PRONOUN_PREFIXES = (
+        "this family ",
+        "the family ",
+        "their family ",
+        "this family,",
+        "the family,",
+        "their family,",
+        "this family's",
+        "the family's",
+        "their family's",
+    )
+    _DANGLING_PRONOUN_NOTE = (
+        "[CONTEXT NOTE: This passage begins with a pronoun ('this family', 'the family', "
+        "etc.) whose referent is introduced in a PRECEDING passage that is NOT included "
+        "here. The subject of 'this family' / 'the family' is UNKNOWN from this passage "
+        "alone. Do NOT attribute this family's ancestry, descent, or genealogy to any "
+        "person, business, or entity mentioned LATER in this same passage. Treat any "
+        "genealogical claim in this passage as belonging to an unnamed family, not to "
+        "any subsequent entity mentioned.]"
+    )
+
     def _build_prompt(self, question: str, chunks: list) -> str:
         """Build prompt for LLM narrative generation."""
+
+        def _annotate_chunk(text: str) -> str:
+            """Prepend a disambiguation note to chunks that start with dangling pronouns."""
+            lower = text.lstrip().lower()
+            for prefix in self._DANGLING_PRONOUN_PREFIXES:
+                if lower.startswith(prefix):
+                    return f"{self._DANGLING_PRONOUN_NOTE}\n\n{text}"
+            return text
+
         chunks_text = "\n\n".join([
-            f"--- CHUNK {i+1} ---\n{text}"
+            f"--- CHUNK {i+1} ---\n{_annotate_chunk(text)}"
             for i, (text, meta) in enumerate(chunks)
         ])
         
